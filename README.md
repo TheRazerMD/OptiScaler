@@ -26,7 +26,7 @@
 - Allows users to fine-tune their upscaling experience with a wide range of tweaks and enhancements (RCAS & MAS, Output Scaling, DLSS Presets, Ratio & DRS Overrides etc.)
 - Since v0.7.0+, added ***experimental DX12*** frame generation support with possible HUDfix solution ([**OptiFG**](#optifg-powered-by-fsr3-fg--hudfix-experimental-hud-ghosting-fix) by FSR3)
 - Supports [**Fakenvapi**](#installation) integration - enables Reflex hooking and injecting _Anti-Lag 2_ (RDNA1+ only) or _LatencyFlex_ (LFX) - **_not bundled_**$`^3`$  
-- Since v0.7.7, added support for Nukem's FSR FG mod [**dlssg-to-fsr3**](#installation) , only works for games with native DLSS-FG - **_not bundled_**$`^3`$  
+- Since v0.7.7, added support for **Nukem's** FSR FG mod [**dlssg-to-fsr3**](#installation), only supports games with ***native DLSS-FG*** - **_not bundled_**$`^3`$  
 - For a detailed list of all features, check [Features](Features.md)
 
 
