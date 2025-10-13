@@ -152,9 +152,16 @@ bool ResTrack_Dx12::CheckResource(ID3D12Resource* resource)
 
     if (resDesc.Height != scDesc.BufferDesc.Height || resDesc.Width != scDesc.BufferDesc.Width)
     {
-        return Config::Instance()->FGRelaxedResolutionCheck.value_or_default() &&
-               resDesc.Height >= scDesc.BufferDesc.Height - 32 && resDesc.Height <= scDesc.BufferDesc.Height + 32 &&
-               resDesc.Width >= scDesc.BufferDesc.Width - 32 && resDesc.Width <= scDesc.BufferDesc.Width + 32;
+        auto result = Config::Instance()->FGRelaxedResolutionCheck.value_or_default() &&
+                      resDesc.Height >= scDesc.BufferDesc.Height - 32 &&
+                      resDesc.Height <= scDesc.BufferDesc.Height + 32 &&
+                      resDesc.Width >= scDesc.BufferDesc.Width - 32 && resDesc.Width <= scDesc.BufferDesc.Width + 32;
+
+        LOG_TRACK("Resource: {}x{} ({}), Swapchain: {}x{} ({}), Relaxed Result: {}", resDesc.Width, resDesc.Height,
+                  (UINT) resDesc.Format, scDesc.BufferDesc.Width, scDesc.BufferDesc.Height,
+                  (UINT) scDesc.BufferDesc.Format, result);
+
+        return result;
     }
 
     return true;
@@ -571,7 +578,6 @@ void ResTrack_Dx12::hkCreateRenderTargetView(ID3D12Device* This, ID3D12Resource*
 
     if (pResource == nullptr)
     {
-
         auto heap = GetHeapByCpuHandleRTV(DestDescriptor.ptr);
 
         if (heap != nullptr)
@@ -583,15 +589,18 @@ void ResTrack_Dx12::hkCreateRenderTargetView(ID3D12Device* This, ID3D12Resource*
     if (!CheckResource(pResource))
         return;
 
-    auto gpuHandle = GetGPUHandle(This, DestDescriptor.ptr, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-
-    ResourceInfo resInfo {};
-    FillResourceInfo(pResource, &resInfo);
-    resInfo.type = RTV;
-
     auto heap = GetHeapByCpuHandleRTV(DestDescriptor.ptr);
     if (heap != nullptr)
+    {
+        ResourceInfo resInfo {};
+        FillResourceInfo(pResource, &resInfo);
+        resInfo.type = RTV;
         heap->SetByCpuHandle(DestDescriptor.ptr, resInfo);
+    }
+    // else
+    //{
+    //     LOG_TRACK("Heap not found for RTV: {:X}", DestDescriptor.ptr);
+    // }
 }
 
 void ResTrack_Dx12::hkCreateShaderResourceView(ID3D12Device* This, ID3D12Resource* pResource,
@@ -619,7 +628,6 @@ void ResTrack_Dx12::hkCreateShaderResourceView(ID3D12Device* This, ID3D12Resourc
 
     if (pResource == nullptr)
     {
-
         auto heap = GetHeapByCpuHandleSRV(DestDescriptor.ptr);
 
         if (heap != nullptr)
@@ -631,15 +639,18 @@ void ResTrack_Dx12::hkCreateShaderResourceView(ID3D12Device* This, ID3D12Resourc
     if (!CheckResource(pResource))
         return;
 
-    auto gpuHandle = GetGPUHandle(This, DestDescriptor.ptr, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
-    ResourceInfo resInfo {};
-    FillResourceInfo(pResource, &resInfo);
-    resInfo.type = SRV;
-
     auto heap = GetHeapByCpuHandleSRV(DestDescriptor.ptr);
     if (heap != nullptr)
+    {
+        ResourceInfo resInfo {};
+        FillResourceInfo(pResource, &resInfo);
+        resInfo.type = SRV;
         heap->SetByCpuHandle(DestDescriptor.ptr, resInfo);
+    }
+    // else
+    //{
+    //     LOG_TRACK("Heap not found for SRV: {:X}", DestDescriptor.ptr);
+    // }
 }
 
 void ResTrack_Dx12::hkCreateUnorderedAccessView(ID3D12Device* This, ID3D12Resource* pResource,
@@ -678,15 +689,18 @@ void ResTrack_Dx12::hkCreateUnorderedAccessView(ID3D12Device* This, ID3D12Resour
     if (!CheckResource(pResource))
         return;
 
-    auto gpuHandle = GetGPUHandle(This, DestDescriptor.ptr, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
-    ResourceInfo resInfo {};
-    FillResourceInfo(pResource, &resInfo);
-    resInfo.type = UAV;
-
     auto heap = GetHeapByCpuHandleUAV(DestDescriptor.ptr);
     if (heap != nullptr)
+    {
+        ResourceInfo resInfo {};
+        FillResourceInfo(pResource, &resInfo);
+        resInfo.type = UAV;
         heap->SetByCpuHandle(DestDescriptor.ptr, resInfo);
+    }
+    // else
+    //{
+    //     LOG_TRACK("Heap not found for UAV: {:X}", DestDescriptor.ptr);
+    // }
 }
 
 #pragma endregion
@@ -790,14 +804,17 @@ static ULONG STDMETHODCALLTYPE hkHeapRelease(ID3D12DescriptorHeap* This)
             if (up == nullptr || up->heap != This)
                 continue;
 
+            LOG_INFO("Heap released: {:X}", (size_t) This);
+
             // detach all slots from _trackedResources
             {
                 std::scoped_lock lk(_trMutex);
+
                 for (UINT j = 0; j < up->numDescriptors; ++j)
                 {
                     auto& slot = up->info[j];
 
-                    if (!slot.buffer)
+                    if (slot.buffer == nullptr)
                         continue;
 
                     if (auto it = _trackedResources.find(slot.buffer); it != _trackedResources.end())
@@ -1133,7 +1150,8 @@ void ResTrack_Dx12::hkSetGraphicsRootDescriptorTable(ID3D12GraphicsCommandList* 
                 fgPossibleHudless[fIndex].insert_or_assign(This, newMap);
             }
 
-            LOG_TRACK("AddRef Resource: {:X}, Desc: {:X}", (size_t) capturedBuffer->buffer, BaseDescriptor.ptr);
+            LOG_TRACK("CmdList: {:X}, AddRef Resource: {:X}, Desc: {:X}", (size_t) This,
+                      (size_t) capturedBuffer->buffer, BaseDescriptor.ptr);
             fgPossibleHudless[fIndex][This].insert_or_assign(capturedBuffer->buffer, *capturedBuffer);
         }
     } while (false);
@@ -1211,6 +1229,7 @@ void ResTrack_Dx12::hkOMSetRenderTargets(ID3D12GraphicsCommandList* This, UINT N
             {
                 if (Hudfix_Dx12::CheckForHudless(__FUNCTION__, This, capturedBuffer, capturedBuffer->state))
                 {
+                    LOG_TRACK("Hudless Resource: {:X}, Desc: {:X}", (size_t) capturedBuffer->buffer, handle.ptr);
                     break;
                 }
             }
@@ -1228,7 +1247,8 @@ void ResTrack_Dx12::hkOMSetRenderTargets(ID3D12GraphicsCommandList* This, UINT N
                 }
 
                 // add found resource
-                LOG_TRACK("AddRef Resource: {:X}, Desc: {:X}", (size_t) capturedBuffer->buffer, handle.ptr);
+                LOG_TRACK("CmdList: {:X}, AddRef Resource: {:X}, Desc: {:X}, Format: {}", (size_t) This,
+                          (size_t) capturedBuffer->buffer, handle.ptr, (UINT) capturedBuffer->format);
                 fgPossibleHudless[fIndex][This].insert_or_assign(capturedBuffer->buffer, *capturedBuffer);
             }
         }
@@ -1306,7 +1326,9 @@ void ResTrack_Dx12::hkSetComputeRootDescriptorTable(ID3D12GraphicsCommandList* T
                 fgPossibleHudless[fIndex].insert_or_assign(This, newMap);
             }
 
-            LOG_TRACK("AddRef Resource: {:X}, Desc: {:X}", (size_t) capturedBuffer->buffer, BaseDescriptor.ptr);
+            LOG_TRACK("CmdList: {:X}, AddRef Resource: {:X}, Desc: {:X}, Format: {}", (size_t) This,
+                      (size_t) capturedBuffer->buffer, BaseDescriptor.ptr, (UINT) capturedBuffer->format);
+
             fgPossibleHudless[fIndex][This].insert_or_assign(capturedBuffer->buffer, *capturedBuffer);
         }
     } while (false);
@@ -1325,7 +1347,12 @@ void ResTrack_Dx12::hkDrawInstanced(ID3D12GraphicsCommandList* This, UINT Vertex
     o_DrawInstanced(This, VertexCountPerInstance, InstanceCount, StartVertexLocation, StartInstanceLocation);
 
     if (!IsHudFixActive())
+    {
+        LOG_TRACK("Skipping {:X}", (size_t) This);
         return;
+    }
+
+    LOG_TRACK("CmdList: {:X}", (size_t) This);
 
     auto fIndex = Hudfix_Dx12::ActivePresentFrame() % BUFFER_COUNT;
 
@@ -1381,7 +1408,12 @@ void ResTrack_Dx12::hkDrawIndexedInstanced(ID3D12GraphicsCommandList* This, UINT
                            StartInstanceLocation);
 
     if (!IsHudFixActive())
+    {
+        LOG_TRACK("Skipping CmdList: {:X}", (size_t) This);
         return;
+    }
+
+    LOG_TRACK("CmdList: {:X}", (size_t) This);
 
     auto fIndex = Hudfix_Dx12::ActivePresentFrame() % BUFFER_COUNT;
 
@@ -1516,7 +1548,12 @@ void ResTrack_Dx12::hkDispatch(ID3D12GraphicsCommandList* This, UINT ThreadGroup
     o_Dispatch(This, ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
 
     if (!IsHudFixActive())
+    {
+        LOG_TRACK("Skipping {:X}", (size_t) This);
         return;
+    }
+
+    LOG_TRACK("CmdList: {:X}", (size_t) This);
 
     auto fIndex = Hudfix_Dx12::ActivePresentFrame() % BUFFER_COUNT;
 
@@ -1663,11 +1700,11 @@ void ResTrack_Dx12::HookCommandList(ID3D12Device* InDevice)
                         DetourAttach(&(PVOID&) o_Dispatch, hkDispatch);
                 }
 
-                if (o_ExecuteBundle != nullptr)
-                    DetourAttach(&(PVOID&) o_ExecuteBundle, hkExecuteBundle);
-
                 if (o_Close != nullptr)
                     DetourAttach(&(PVOID&) o_Close, hkClose);
+
+                if (o_ExecuteBundle != nullptr)
+                    DetourAttach(&(PVOID&) o_ExecuteBundle, hkExecuteBundle);
 
                 DetourTransactionCommit();
             }
@@ -1723,67 +1760,148 @@ void ResTrack_Dx12::HookDevice(ID3D12Device* device)
     if (State::Instance().activeFgInput == FGInput::Nukems)
         return;
 
-    if (o_CreateDescriptorHeap != nullptr || device == nullptr)
+    if (device == nullptr)
         return;
 
-    LOG_FUNC();
-
-    ID3D12Device* realDevice = nullptr;
-    if (!CheckForRealObject(__FUNCTION__, device, (IUnknown**) &realDevice))
-        realDevice = device;
-
-    // Get the vtable pointer
-    PVOID* pVTable = *(PVOID**) realDevice;
-
-    // Hudfix
-    o_CreateDescriptorHeap = (PFN_CreateDescriptorHeap) pVTable[14];
-    o_CreateConstantBufferView = (PFN_CreateConstantBufferView) pVTable[17];
-    o_CreateShaderResourceView = (PFN_CreateShaderResourceView) pVTable[18];
-    o_CreateUnorderedAccessView = (PFN_CreateUnorderedAccessView) pVTable[19];
-    o_CreateRenderTargetView = (PFN_CreateRenderTargetView) pVTable[20];
-    o_CreateDepthStencilView = (PFN_CreateDepthStencilView) pVTable[21];
-    o_CreateSampler = (PFN_CreateSampler) pVTable[22];
-    o_CopyDescriptors = (PFN_CopyDescriptors) pVTable[23];
-    o_CopyDescriptorsSimple = (PFN_CopyDescriptorsSimple) pVTable[24];
-
-    // Apply the detour
-    // Only needed for Hudfix
-    if (o_CreateDescriptorHeap != nullptr && State::Instance().activeFgInput == FGInput::Upscaler)
+    if (o_CreateDescriptorHeap == nullptr)
     {
-        DetourTransactionBegin();
-        DetourUpdateThread(GetCurrentThread());
+        LOG_FUNC();
 
-        if (o_CreateDescriptorHeap != nullptr)
-            DetourAttach(&(PVOID&) o_CreateDescriptorHeap, hkCreateDescriptorHeap);
+        ID3D12Device* realDevice = nullptr;
+        if (!CheckForRealObject(__FUNCTION__, device, (IUnknown**) &realDevice))
+            realDevice = device;
 
-        if (o_CreateRenderTargetView != nullptr)
-            DetourAttach(&(PVOID&) o_CreateRenderTargetView, hkCreateRenderTargetView);
+        // Get the vtable pointer
+        PVOID* pVTable = *(PVOID**) realDevice;
 
-        if (o_CreateShaderResourceView != nullptr)
-            DetourAttach(&(PVOID&) o_CreateShaderResourceView, hkCreateShaderResourceView);
+        // Hudfix
+        o_CreateDescriptorHeap = (PFN_CreateDescriptorHeap) pVTable[14];
+        o_CreateConstantBufferView = (PFN_CreateConstantBufferView) pVTable[17];
+        o_CreateShaderResourceView = (PFN_CreateShaderResourceView) pVTable[18];
+        o_CreateUnorderedAccessView = (PFN_CreateUnorderedAccessView) pVTable[19];
+        o_CreateRenderTargetView = (PFN_CreateRenderTargetView) pVTable[20];
+        o_CreateDepthStencilView = (PFN_CreateDepthStencilView) pVTable[21];
+        o_CreateSampler = (PFN_CreateSampler) pVTable[22];
+        o_CopyDescriptors = (PFN_CopyDescriptors) pVTable[23];
+        o_CopyDescriptorsSimple = (PFN_CopyDescriptorsSimple) pVTable[24];
 
-        if (o_CreateUnorderedAccessView != nullptr)
-            DetourAttach(&(PVOID&) o_CreateUnorderedAccessView, hkCreateUnorderedAccessView);
+        // Apply the detour
+        // Only needed for Hudfix
+        if (o_CreateDescriptorHeap != nullptr && State::Instance().activeFgInput == FGInput::Upscaler)
+        {
+            DetourTransactionBegin();
+            DetourUpdateThread(GetCurrentThread());
 
-        if (o_CopyDescriptors != nullptr)
-            DetourAttach(&(PVOID&) o_CopyDescriptors, hkCopyDescriptors);
+            if (o_CreateDescriptorHeap != nullptr)
+                DetourAttach(&(PVOID&) o_CreateDescriptorHeap, hkCreateDescriptorHeap);
 
-        if (o_CopyDescriptorsSimple != nullptr)
-            DetourAttach(&(PVOID&) o_CopyDescriptorsSimple, hkCopyDescriptorsSimple);
+            if (o_CreateRenderTargetView != nullptr)
+                DetourAttach(&(PVOID&) o_CreateRenderTargetView, hkCreateRenderTargetView);
 
-        DetourTransactionCommit();
+            if (o_CreateShaderResourceView != nullptr)
+                DetourAttach(&(PVOID&) o_CreateShaderResourceView, hkCreateShaderResourceView);
+
+            if (o_CreateUnorderedAccessView != nullptr)
+                DetourAttach(&(PVOID&) o_CreateUnorderedAccessView, hkCreateUnorderedAccessView);
+
+            if (o_CopyDescriptors != nullptr)
+                DetourAttach(&(PVOID&) o_CopyDescriptors, hkCopyDescriptors);
+
+            if (o_CopyDescriptorsSimple != nullptr)
+                DetourAttach(&(PVOID&) o_CopyDescriptorsSimple, hkCopyDescriptorsSimple);
+
+            DetourTransactionCommit();
+        }
     }
-
-    if (State::Instance().activeFgOutput == FGOutput::FSRFG || State::Instance().activeFgInput == FGInput::Upscaler)
-        HookCommandList(device);
 
     // Only needed for FSR-FG Feature
     if (State::Instance().activeFgOutput == FGOutput::FSRFG)
         HookToQueue(device);
 
+    if (State::Instance().activeFgOutput == FGOutput::FSRFG || State::Instance().activeFgInput == FGInput::Upscaler)
+        HookCommandList(device);
+
     // Only needed for Hudfix
     if (State::Instance().activeFgInput == FGInput::Upscaler)
         HookResource(device);
+}
+
+void ResTrack_Dx12::ReleaseHooks()
+{
+    LOG_DEBUG("");
+
+    DetourTransactionBegin();
+    DetourUpdateThread(GetCurrentThread());
+
+    // if (o_CreateDescriptorHeap != nullptr)
+    //     DetourDetach(&(PVOID&) o_CreateDescriptorHeap, hkCreateDescriptorHeap);
+
+    // if (o_CreateRenderTargetView != nullptr)
+    //     DetourDetach(&(PVOID&) o_CreateRenderTargetView, hkCreateRenderTargetView);
+
+    // if (o_CreateShaderResourceView != nullptr)
+    //     DetourDetach(&(PVOID&) o_CreateShaderResourceView, hkCreateShaderResourceView);
+
+    // if (o_CreateUnorderedAccessView != nullptr)
+    //     DetourDetach(&(PVOID&) o_CreateUnorderedAccessView, hkCreateUnorderedAccessView);
+
+    // if (o_CopyDescriptors != nullptr)
+    //     DetourDetach(&(PVOID&) o_CopyDescriptors, hkCopyDescriptors);
+
+    // if (o_CopyDescriptorsSimple != nullptr)
+    //     DetourDetach(&(PVOID&) o_CopyDescriptorsSimple, hkCopyDescriptorsSimple);
+
+    // o_CreateDescriptorHeap = nullptr;
+    // o_CreateRenderTargetView = nullptr;
+    // o_CreateShaderResourceView = nullptr;
+    // o_CreateUnorderedAccessView = nullptr;
+    // o_CopyDescriptors = nullptr;
+    // o_CopyDescriptorsSimple = nullptr;
+
+    // if (o_ExecuteCommandLists != nullptr)
+    //     DetourAttach(&(PVOID&) o_ExecuteCommandLists, hkExecuteCommandLists);
+
+    // o_ExecuteCommandLists = nullptr;
+
+    // if (o_Release != nullptr)
+    //     DetourAttach(&(PVOID&) o_Release, hkRelease);
+
+    // o_Release = nullptr;
+
+    if (o_OMSetRenderTargets != nullptr)
+        DetourDetach(&(PVOID&) o_OMSetRenderTargets, hkOMSetRenderTargets);
+
+    if (o_SetGraphicsRootDescriptorTable != nullptr)
+        DetourDetach(&(PVOID&) o_SetGraphicsRootDescriptorTable, hkSetGraphicsRootDescriptorTable);
+
+    if (o_SetComputeRootDescriptorTable != nullptr)
+        DetourDetach(&(PVOID&) o_SetComputeRootDescriptorTable, hkSetComputeRootDescriptorTable);
+
+    if (o_DrawIndexedInstanced != nullptr)
+        DetourDetach(&(PVOID&) o_DrawIndexedInstanced, hkDrawIndexedInstanced);
+
+    if (o_DrawInstanced != nullptr)
+        DetourDetach(&(PVOID&) o_DrawInstanced, hkDrawInstanced);
+
+    if (o_Dispatch != nullptr)
+        DetourDetach(&(PVOID&) o_Dispatch, hkDispatch);
+
+    if (o_Close != nullptr)
+        DetourDetach(&(PVOID&) o_Close, hkClose);
+
+    if (o_ExecuteBundle != nullptr)
+        DetourDetach(&(PVOID&) o_ExecuteBundle, hkExecuteBundle);
+
+    o_OMSetRenderTargets = nullptr;
+    o_SetGraphicsRootDescriptorTable = nullptr;
+    o_SetComputeRootDescriptorTable = nullptr;
+    o_DrawIndexedInstanced = nullptr;
+    o_DrawInstanced = nullptr;
+    o_Dispatch = nullptr;
+    o_Close = nullptr;
+    o_ExecuteBundle = nullptr;
+
+    DetourTransactionCommit();
 }
 
 void ResTrack_Dx12::ClearPossibleHudless()

@@ -50,6 +50,7 @@ static D3d12Proxy::PFN_D3D12SerializeVersionedRootSignature o_D3D12SerializeVers
 static PFN_Release o_D3D12DeviceRelease = nullptr;
 
 static bool _d3d12Captured = false;
+static LUID _lastAdapterLuid = {};
 
 // Intel Atomic Extension
 struct UE_D3D12_RESOURCE_DESC
@@ -93,6 +94,7 @@ static void CALLBACK D3D12DebugCallback(D3D12_MESSAGE_CATEGORY Category, D3D12_M
 #endif
 
 static void HookToDevice(ID3D12Device* InDevice);
+static void UnhookDevice();
 
 static inline D3D12_FILTER UpgradeToAF(D3D12_FILTER f)
 {
@@ -206,6 +208,14 @@ static HRESULT hkD3D12CreateDevice(IDXGIAdapter* pAdapter, D3D_FEATURE_LEVEL Min
                 o_D3D12DeviceRelease(_intelD3D12Device);
         }
 
+        // For WuWa, might cause issues with other games
+        if (_lastAdapterLuid.HighPart != desc.AdapterLuid.HighPart ||
+            _lastAdapterLuid.LowPart != desc.AdapterLuid.LowPart)
+        {
+            ResTrack_Dx12::ReleaseHooks();
+        }
+
+        _lastAdapterLuid = desc.AdapterLuid;
         HookToDevice(State::Instance().currentD3D12Device);
         _d3d12Captured = true;
 
@@ -510,60 +520,96 @@ static void hkCreateSampler(ID3D12Device* device, const D3D12_SAMPLER_DESC* pDes
 
 static void HookToDevice(ID3D12Device* InDevice)
 {
-    if (o_CreateSampler != nullptr || InDevice == nullptr)
+    if (InDevice == nullptr)
         return;
 
-    LOG_DEBUG("Dx12");
-
-    // Get the vtable pointer
-    PVOID* pVTable = *(PVOID**) InDevice;
-
-    ID3D12Device* realDevice = nullptr;
-    if (Util::CheckForRealObject(__FUNCTION__, InDevice, (IUnknown**) &realDevice))
-        pVTable = *(PVOID**) realDevice;
-
-    // hudless
-    o_D3D12DeviceRelease = (PFN_Release) pVTable[2];
-    o_CreateSampler = (PFN_CreateSampler) pVTable[22];
-    o_CheckFeatureSupport = (PFN_CheckFeatureSupport) pVTable[13];
-    o_GetResourceAllocationInfo = (PFN_GetResourceAllocationInfo) pVTable[25];
-    o_CreateCommittedResource = (PFN_CreateCommittedResource) pVTable[27];
-    o_CreatePlacedResource = (PFN_CreatePlacedResource) pVTable[29];
-
-    // Apply the detour
-    if (o_CreateSampler != nullptr)
+    if (o_CreateSampler == nullptr)
     {
-        DetourTransactionBegin();
-        DetourUpdateThread(GetCurrentThread());
+        LOG_DEBUG("Dx12");
 
+        // Get the vtable pointer
+        PVOID* pVTable = *(PVOID**) InDevice;
+
+        ID3D12Device* realDevice = nullptr;
+        if (Util::CheckForRealObject(__FUNCTION__, InDevice, (IUnknown**) &realDevice))
+            pVTable = *(PVOID**) realDevice;
+
+        // hudless
+        o_D3D12DeviceRelease = (PFN_Release) pVTable[2];
+        o_CreateSampler = (PFN_CreateSampler) pVTable[22];
+        o_CheckFeatureSupport = (PFN_CheckFeatureSupport) pVTable[13];
+        o_GetResourceAllocationInfo = (PFN_GetResourceAllocationInfo) pVTable[25];
+        o_CreateCommittedResource = (PFN_CreateCommittedResource) pVTable[27];
+        o_CreatePlacedResource = (PFN_CreatePlacedResource) pVTable[29];
+
+        // Apply the detour
         if (o_CreateSampler != nullptr)
-            DetourAttach(&(PVOID&) o_CreateSampler, hkCreateSampler);
-
-        if (Config::Instance()->UESpoofIntelAtomics64.value_or_default())
         {
-            if (o_CheckFeatureSupport != nullptr)
-                DetourAttach(&(PVOID&) o_CheckFeatureSupport, hkCheckFeatureSupport);
+            DetourTransactionBegin();
+            DetourUpdateThread(GetCurrentThread());
 
-            if (o_CreateCommittedResource != nullptr)
-                DetourAttach(&(PVOID&) o_CreateCommittedResource, hkCreateCommittedResource);
+            if (o_CreateSampler != nullptr)
+                DetourAttach(&(PVOID&) o_CreateSampler, hkCreateSampler);
 
-            if (o_CreatePlacedResource != nullptr)
-                DetourAttach(&(PVOID&) o_CreatePlacedResource, hkCreatePlacedResource);
+            if (Config::Instance()->UESpoofIntelAtomics64.value_or_default())
+            {
+                if (o_CheckFeatureSupport != nullptr)
+                    DetourAttach(&(PVOID&) o_CheckFeatureSupport, hkCheckFeatureSupport);
 
-            if (o_D3D12DeviceRelease != nullptr)
-                DetourAttach(&(PVOID&) o_D3D12DeviceRelease, hkD3D12DeviceRelease);
+                if (o_CreateCommittedResource != nullptr)
+                    DetourAttach(&(PVOID&) o_CreateCommittedResource, hkCreateCommittedResource);
 
-            // This does not work but luckily
-            // UE works without Intel Extension for it
-            // if (o_GetResourceAllocationInfo != nullptr)
-            //    DetourAttach(&(PVOID&) o_GetResourceAllocationInfo, hkGetResourceAllocationInfo);
+                if (o_CreatePlacedResource != nullptr)
+                    DetourAttach(&(PVOID&) o_CreatePlacedResource, hkCreatePlacedResource);
+
+                if (o_D3D12DeviceRelease != nullptr)
+                    DetourAttach(&(PVOID&) o_D3D12DeviceRelease, hkD3D12DeviceRelease);
+
+                // This does not work but luckily
+                // UE works without Intel Extension for it
+                // if (o_GetResourceAllocationInfo != nullptr)
+                //    DetourAttach(&(PVOID&) o_GetResourceAllocationInfo, hkGetResourceAllocationInfo);
+            }
+
+            DetourTransactionCommit();
         }
-
-        DetourTransactionCommit();
     }
 
-    if (State::Instance().activeFgInput != FGInput::Nukems && Config::Instance()->OverlayMenu.value_or_default())
+    if (State::Instance().activeFgInput != FGInput::Nukems)
         ResTrack_Dx12::HookDevice(InDevice);
+}
+
+static void UnhookDevice()
+{
+    DetourTransactionBegin();
+    DetourUpdateThread(GetCurrentThread());
+
+    if (o_CreateSampler != nullptr)
+        DetourDetach(&(PVOID&) o_CreateSampler, hkCreateSampler);
+
+    if (o_CheckFeatureSupport != nullptr)
+        DetourDetach(&(PVOID&) o_CheckFeatureSupport, hkCheckFeatureSupport);
+
+    if (o_CreateCommittedResource != nullptr)
+        DetourDetach(&(PVOID&) o_CreateCommittedResource, hkCreateCommittedResource);
+
+    if (o_CreatePlacedResource != nullptr)
+        DetourDetach(&(PVOID&) o_CreatePlacedResource, hkCreatePlacedResource);
+
+    if (o_D3D12DeviceRelease != nullptr)
+        DetourDetach(&(PVOID&) o_D3D12DeviceRelease, hkD3D12DeviceRelease);
+
+    if (o_GetResourceAllocationInfo != nullptr)
+        DetourDetach(&(PVOID&) o_GetResourceAllocationInfo, hkGetResourceAllocationInfo);
+
+    o_CreateSampler == nullptr;
+    o_CheckFeatureSupport == nullptr;
+    o_CreateCommittedResource == nullptr;
+    o_CreatePlacedResource == nullptr;
+    o_D3D12DeviceRelease == nullptr;
+    o_GetResourceAllocationInfo == nullptr;
+
+    DetourTransactionCommit();
 }
 
 void D3D12Hooks::Hook()

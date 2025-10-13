@@ -9,6 +9,8 @@
 
 #include <map>
 
+// #define DEBUG_TRACKING
+
 #ifdef DEBUG_TRACKING
 static void TestResource(ResourceInfo* info)
 {
@@ -19,8 +21,10 @@ static void TestResource(ResourceInfo* info)
 
     if (desc.Width != info->width || desc.Height != info->height || desc.Format != info->format)
     {
-        LOG_WARN("Resource mismatch: {:X}, info: {:X}", (size_t) info->buffer, (size_t) info);
-        __debugbreak();
+        LOG_TRACK("Resource mismatch: {:X}, info: {:X}", (size_t) info->buffer, (size_t) info);
+
+        // LOG_WARN("Resource mismatch: {:X}, info: {:X}", (size_t) info->buffer, (size_t) info);
+        //__debugbreak();
     }
 }
 #endif
@@ -61,6 +65,8 @@ typedef struct HeapInfo
             return;
 
         std::scoped_lock lock(_trMutex);
+        LOG_TRACK("Heap: {:X}, Index: {}, Resource: {:X}, Res: {}x{}, Format: {}", (size_t) this, index,
+                  (size_t) info[index].buffer, info[index].width, info[index].height, (UINT) info[index].format);
         auto it = _trackedResources.find(info[index].buffer);
         if (it != _trackedResources.end())
         {
@@ -74,6 +80,8 @@ typedef struct HeapInfo
     void AttachToNewResource(UINT index) const
     {
         std::scoped_lock lock(_trMutex);
+        LOG_TRACK("Heap: {:X}, Index: {}, Resource: {:X}, Res: {}x{}, Format: {}", (size_t) this, index,
+                  (size_t) info[index].buffer, info[index].width, info[index].height, (UINT) info[index].format);
         auto& vec = _trackedResources[info[index].buffer];
         if (std::find(vec.begin(), vec.end(), &info[index]) == vec.end())
             vec.push_back(&info[index]);
@@ -158,7 +166,8 @@ typedef struct HeapInfo
 
         if (info[index].buffer != nullptr)
         {
-            LOG_TRACK("Resource: {:X}, Res: {}x{}", (size_t) info[index].buffer, info[index].width, info[index].height);
+            LOG_TRACK("Resource: {:X}, Res: {}x{}, Format: {}", (size_t) info[index].buffer, info[index].width,
+                      info[index].height, (UINT) info[index].format);
             DetachFromOldResource(index);
         }
 
@@ -175,7 +184,8 @@ typedef struct HeapInfo
 
         if (info[index].buffer != nullptr)
         {
-            LOG_TRACK("Resource: {:X}, Res: {}x{}", (size_t) info[index].buffer, info[index].width, info[index].height);
+            LOG_TRACK("Resource: {:X}, Res: {}x{}, Format: {}", (size_t) info[index].buffer, info[index].width,
+                      info[index].height, (UINT) info[index].format);
             DetachFromOldResource(index);
         }
 
@@ -284,6 +294,7 @@ class ResTrack_Dx12
 
   public:
     static void HookDevice(ID3D12Device* device);
+    static void ReleaseHooks();
     static void ClearPossibleHudless();
     static void SetResourceCmdList(FG_ResourceType type, ID3D12GraphicsCommandList* cmdList);
 };
