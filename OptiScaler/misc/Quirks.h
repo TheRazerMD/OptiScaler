@@ -117,8 +117,9 @@ static const QuirkEntry quirkTable[] = {
     QUIRK_ENTRY("hitman3.exe", GameQuirk::DisableDxgiSpoofing, GameQuirk::HitmanReflexHacks,
                 GameQuirk::DisableFSR2Inputs),
 
-    // ELDEN RING NIGHTREIGN
+    // ELDEN RING (for ERSS mod) and ER NIGHTREIGN (for NRSS mod)
     // no spoof needed for DLSS inputs
+    QUIRK_ENTRY("eldenring.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("nightreign.exe", GameQuirk::DisableDxgiSpoofing, GameQuirk::DisableOptiXessPipelineCreation),
 
     // Returnal
@@ -144,7 +145,8 @@ static const QuirkEntry quirkTable[] = {
     // The Witcher 3, Alan Wake 2, Crysis 3 Remastered, Marvel's Guardians of the Galaxy, UNCHARTED: Legacy of Thieves
     // Collection, Warhammer 40,000: Darktide, Dying Light 2 Stay Human, Dying Light: The Beast, Observer: System Redux,
     // Sackboy: A Big Adventure, Hellblade: Senua's Sacrifice, Pumpkin Jack, Metro Exodus Enhanced Edition, Rise of the
-    // Ronin, DYNASTY WARRIORS: ORIGINS, Crysis Remastered, Crysis 2 Remastered, Mortal Shell
+    // Ronin, DYNASTY WARRIORS: ORIGINS, Crysis Remastered, Crysis 2 Remastered, Mortal Shell, Sekiro: Shadows Die
+    // Twice (for SekiroTSR mod)
     QUIRK_ENTRY("witcher3.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("alanwake2.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("crysis3remastered.exe", GameQuirk::DisableDxgiSpoofing),
@@ -166,6 +168,7 @@ static const QuirkEntry quirkTable[] = {
     QUIRK_ENTRY("crysisremastered.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("crysis2remastered.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("dungeonhaven-win64-shipping.exe", GameQuirk::DisableDxgiSpoofing),
+    QUIRK_ENTRY("sekiro.exe", GameQuirk::DisableDxgiSpoofing),
 
     // FSR2 only, no spoof needed
     //
