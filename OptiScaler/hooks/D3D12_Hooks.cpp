@@ -209,11 +209,11 @@ static HRESULT hkD3D12CreateDevice(IDXGIAdapter* pAdapter, D3D_FEATURE_LEVEL Min
         }
 
         // For WuWa, might cause issues with other games
-        if (_lastAdapterLuid.HighPart != desc.AdapterLuid.HighPart ||
-            _lastAdapterLuid.LowPart != desc.AdapterLuid.LowPart)
-        {
-            ResTrack_Dx12::ReleaseHooks();
-        }
+        // if (_lastAdapterLuid.HighPart != desc.AdapterLuid.HighPart ||
+        //    _lastAdapterLuid.LowPart != desc.AdapterLuid.LowPart)
+        // {
+        //    ResTrack_Dx12::ReleaseHooks();
+        // }
 
         _lastAdapterLuid = desc.AdapterLuid;
         HookToDevice(State::Instance().currentD3D12Device);
