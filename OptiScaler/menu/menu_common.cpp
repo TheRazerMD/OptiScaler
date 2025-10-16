@@ -2266,13 +2266,13 @@ bool MenuCommon::RenderMenu()
                     ImGui::SeparatorText("Upscalers");
                     ShowTooltip("Which copium you choose?");
 
-                    GetCurrentBackendInfo(state.swapchainApi, &currentBackend, &currentBackendName);
+                    GetCurrentBackendInfo(state.api, &currentBackend, &currentBackendName);
 
                     std::string spoofingText;
 
                     ImGui::PushItemWidth(180.0f * Config::Instance()->MenuScale.value_or_default());
 
-                    switch (state.swapchainApi)
+                    switch (state.api)
                     {
                     case DX11:
                         if (state.DeviceAdapterNames.contains(state.currentD3D11Device))
@@ -2376,7 +2376,7 @@ bool MenuCommon::RenderMenu()
                 if (currentFeature != nullptr && !currentFeature->IsFrozen())
                 {
                     // Dx11 with Dx12
-                    if (state.swapchainApi == DX11 && Config::Instance()->Dx11Upscaler.value_or_default() != "fsr22" &&
+                    if (state.api == DX11 && Config::Instance()->Dx11Upscaler.value_or_default() != "fsr22" &&
                         Config::Instance()->Dx11Upscaler.value_or_default() != "dlss" &&
                         Config::Instance()->Dx11Upscaler.value_or_default() != "fsr31")
                     {
@@ -2900,7 +2900,7 @@ bool MenuCommon::RenderMenu()
                 //    fgInputDesc[optiFgIndex] = "Old overlay menu is unsupported";
                 //}
                 // else if (state.swapchainApi != DX12)
-                if (state.swapchainApi != DX12)
+                if (state.swapchainApi != DX12 || state.api != DX12)
                 {
                     disabledMaskInput[optiFgIndex] = true;
                     fgInputDesc[optiFgIndex] = "Unsupported API";
@@ -3518,7 +3518,8 @@ bool MenuCommon::RenderMenu()
                 }
 
                 // OptiFG
-                if (state.swapchainApi == DX12 && !state.isWorkingAsNvngx && state.activeFgInput == FGInput::Upscaler)
+                if (state.api == DX12 && state.swapchainApi == DX12 && !state.isWorkingAsNvngx &&
+                    state.activeFgInput == FGInput::Upscaler)
                 {
                     SeparatorWithHelpMarker("Frame Generation (OptiFG)", "Using upscaler data for FG");
 
@@ -3743,7 +3744,7 @@ bool MenuCommon::RenderMenu()
                     }
                 }
 
-                // DLSSG Mod
+                // Nukems Mod
                 if (state.swapchainApi != DX11 && !state.isWorkingAsNvngx && state.activeFgInput == FGInput::Nukems &&
                     state.activeFgOutput == FGOutput::Nukems)
                 {
@@ -4109,7 +4110,7 @@ bool MenuCommon::RenderMenu()
                     ImGui::EndDisabled();
 
                     // RCAS
-                    if (state.swapchainApi == DX12 || state.swapchainApi == DX11)
+                    if (state.api == DX12 || state.api == DX11)
                     {
                         // xess or dlss version >= 2.5.1
                         constexpr feature_version requiredDlssVersion = { 2, 5, 1 };
@@ -4263,7 +4264,7 @@ bool MenuCommon::RenderMenu()
                     if (currentFeature != nullptr && !currentFeature->IsFrozen())
                     {
                         // OUTPUT SCALING -----------------------------
-                        if (state.swapchainApi == DX12 || state.swapchainApi == DX11)
+                        if (state.api == DX12 || state.api == DX11)
                         {
                             // if motion vectors are not display size
                             ImGui::BeginDisabled(!currentFeature->LowResMV());
@@ -4365,7 +4366,7 @@ bool MenuCommon::RenderMenu()
                         ImGui::TableNextColumn();
 
                         // AutoExposure is always enabled for XeSS with native Dx11
-                        bool autoExposureDisabled = state.swapchainApi == API::DX11 && currentBackend == "xess";
+                        bool autoExposureDisabled = state.api == API::DX11 && currentBackend == "xess";
                         ImGui::BeginDisabled(autoExposureDisabled);
 
                         if (bool autoExposure = currentFeature->AutoExposure();
@@ -4479,7 +4480,7 @@ bool MenuCommon::RenderMenu()
                                 ImGui::BeginDisabled(
                                     Config::Instance()->DisableReactiveMask.value_or(currentBackend == "xess"));
 
-                                bool binaryMask = state.swapchainApi == Vulkan || currentBackend == "xess";
+                                bool binaryMask = state.api == Vulkan || currentBackend == "xess";
                                 auto defaultBias = binaryMask ? 0.0f : 0.45f;
                                 auto maskBias = Config::Instance()->DlssReactiveMaskBias.value_or(defaultBias);
 
@@ -4572,7 +4573,7 @@ bool MenuCommon::RenderMenu()
                         }
 
                         // HOTFIXES -----------------------------
-                        if (state.swapchainApi == DX12)
+                        if (state.api == DX12)
                         {
                             ImGui::Spacing();
                             if (ImGui::CollapsingHeader("Root Signatures"))
