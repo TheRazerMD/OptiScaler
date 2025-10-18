@@ -173,9 +173,10 @@ static const QuirkEntry quirkTable[] = {
 
     // FSR2 only, no spoof needed
     //
-    // Tiny Tina's Wonderlands, Dead Island 2
+    // Tiny Tina's Wonderlands, Dead Island 2, The Outer Worlds: Spacer's Choice Edition
     QUIRK_ENTRY("wonderlands.exe", GameQuirk::DisableReactiveMasks, GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("deadisland-win64-shipping.exe", GameQuirk::DisableReactiveMasks, GameQuirk::DisableDxgiSpoofing),
+    QUIRK_ENTRY("indiana-win64-shipping.exe", GameQuirk::DisableReactiveMasks, GameQuirk::DisableDxgiSpoofing),
 
     // Disable FSR2/3 inputs due to crashing/custom implementations
     //
