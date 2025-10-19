@@ -25,6 +25,7 @@ enum class GameQuirk : uint64_t
     SkipFirst10Frames,
     DisableVsyncOverride,
     UseNtDllHooks,
+    UseFSR2PatternMatching,
 
     // Quirks that are applied deeper in code
     CyberpunkHudlessStateOverride,
@@ -62,6 +63,14 @@ static const QuirkEntry quirkTable[] = {
 
     // No Man's Sky
     QUIRK_ENTRY("nms.exe", GameQuirk::KernelBaseHooks, GameQuirk::VulkanDLSSBarrierFixup),
+
+    // Visions of Mana
+    // Use FSR2 Pattern Matching to fix broken FSR2 detection
+
+    QUIRK_ENTRY("visionsofmana-win64-shipping.exe.exe", GameQuirk::UseFSR2PatternMatching,
+                GameQuirk::DisableDxgiSpoofing),
+    QUIRK_ENTRY("visionsofmana-wingdk-shipping.exe.exe", GameQuirk::UseFSR2PatternMatching,
+                GameQuirk::DisableDxgiSpoofing),
 
     // Path of Exile 2
     QUIRK_ENTRY("pathofexile.exe", GameQuirk::LoadD3D12Manually),
@@ -301,6 +310,8 @@ static void printQuirks(flag_set<GameQuirk>& quirks)
         spdlog::info("Quirk: Skipping D3D11 feature level elevation, native FSR3.1 will be disabled!");
     if (quirks & GameQuirk::UseNtDllHooks)
         spdlog::info("Quirk: Using NTdll hooks instead of kernel ones");
+    if (quirks & GameQuirk::UseFSR2PatternMatching)
+        spdlog::info("Quirk: Use FSR2 pattern matching");
 
     return;
 }

@@ -1051,6 +1051,9 @@ static void CheckQuirks()
     if (quirks & GameQuirk::UseNtDllHooks && !Config::Instance()->UseNtdllHooks.has_value())
         Config::Instance()->UseNtdllHooks.set_volatile_value(true);
 
+    if (quirks & GameQuirk::UseFSR2PatternMatching && !Config::Instance()->Fsr2Pattern.has_value())
+        Config::Instance()->Fsr2Pattern.set_volatile_value(true);
+
     State::Instance().gameQuirks = quirks;
 }
 
