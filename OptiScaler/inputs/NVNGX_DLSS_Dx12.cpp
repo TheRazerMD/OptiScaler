@@ -182,7 +182,6 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D12_Init_Ext(unsigned long long InApp
 
     D3D12Device = InDevice;
 
-    State::Instance().api = DX12;
     State::Instance().currentD3D12Device = InDevice;
 
     if (!State::Instance().isWorkingAsNvngx)
@@ -578,6 +577,7 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D12_CreateFeature(ID3D12GraphicsComma
     }
 
     // Create feature
+    State::Instance().api = DX12;
     auto handleId = IFeature::GetNextHandleId();
     LOG_INFO("HandleId: {0}", handleId);
 

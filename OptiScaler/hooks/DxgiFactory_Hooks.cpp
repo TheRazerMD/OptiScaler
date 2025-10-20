@@ -214,22 +214,33 @@ HRESULT DxgiFactoryHooks::CreateSwapChain(IDXGIFactory* realFactory, IUnknown* p
     State::Instance().realExclusiveFullscreen = !pDesc->Windowed;
 
     // Check for SL proxy, get real queue
-    ID3D12CommandQueue* real = nullptr;
-    if (!Util::CheckForRealObject(__FUNCTION__, pDevice, (IUnknown**) &real))
-        real = (ID3D12CommandQueue*) pDevice;
-
-    State::Instance().currentCommandQueue = real;
-
-    // Create FG SwapChain
+    ID3D12CommandQueue* cq = nullptr;
+    IUnknown* real = nullptr;
     HRESULT FGSCResult = E_NOTIMPL;
-    if (!_skipFGSwapChainCreation)
-    {
-        _skipFGSwapChainCreation = true;
-        FGSCResult = FGHooks::CreateSwapChain(realFactory, real, pDesc, ppSwapChain);
-        _skipFGSwapChainCreation = false;
 
-        if (FGSCResult == S_OK)
-            return FGSCResult;
+    if (pDevice->QueryInterface(IID_PPV_ARGS(&cq)) == S_OK)
+    {
+        cq->Release();
+
+        if (!Util::CheckForRealObject(__FUNCTION__, cq, &real))
+            real = cq;
+
+        State::Instance().currentCommandQueue = (ID3D12CommandQueue*) real;
+
+        // Create FG SwapChain
+        if (!_skipFGSwapChainCreation)
+        {
+            _skipFGSwapChainCreation = true;
+            FGSCResult = FGHooks::CreateSwapChain(realFactory, real, pDesc, ppSwapChain);
+            _skipFGSwapChainCreation = false;
+
+            if (FGSCResult == S_OK)
+                return FGSCResult;
+        }
+    }
+    else
+    {
+        LOG_INFO("Failed to get ID3D12CommandQueue from pDevice, creating Dx11 swapchain!");
     }
 
     HRESULT result = E_FAIL;
@@ -397,23 +408,34 @@ HRESULT DxgiFactoryHooks::CreateSwapChainForHwnd(IDXGIFactory2* realFactory, IUn
     State::Instance().realExclusiveFullscreen = pFullscreenDesc != nullptr && !pFullscreenDesc->Windowed;
 
     // Check for SL proxy, get real queue
-    ID3D12CommandQueue* real = nullptr;
-    if (!Util::CheckForRealObject(__FUNCTION__, pDevice, (IUnknown**) &real))
-        real = (ID3D12CommandQueue*) pDevice;
-
-    State::Instance().currentCommandQueue = real;
-
-    // Create FG SwapChain
+    ID3D12CommandQueue* cq = nullptr;
+    IUnknown* real = nullptr;
     HRESULT FGSCResult = E_NOTIMPL;
-    if (!_skipFGSwapChainCreation)
-    {
-        _skipFGSwapChainCreation = true;
-        FGSCResult = FGHooks::CreateSwapChainForHwnd(realFactory, real, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput,
-                                                     ppSwapChain);
-        _skipFGSwapChainCreation = false;
 
-        if (FGSCResult == S_OK)
-            return FGSCResult;
+    if (pDevice->QueryInterface(IID_PPV_ARGS(&cq)) == S_OK)
+    {
+        cq->Release();
+
+        if (!Util::CheckForRealObject(__FUNCTION__, cq, &real))
+            real = cq;
+
+        State::Instance().currentCommandQueue = (ID3D12CommandQueue*) real;
+
+        // Create FG SwapChain
+        if (!_skipFGSwapChainCreation)
+        {
+            _skipFGSwapChainCreation = true;
+            FGSCResult = FGHooks::CreateSwapChainForHwnd(realFactory, real, hWnd, pDesc, pFullscreenDesc,
+                                                         pRestrictToOutput, ppSwapChain);
+            _skipFGSwapChainCreation = false;
+
+            if (FGSCResult == S_OK)
+                return FGSCResult;
+        }
+    }
+    else
+    {
+        LOG_INFO("Failed to get ID3D12CommandQueue from pDevice, creating Dx11 swapchain!");
     }
 
     HRESULT result = E_FAIL;
@@ -541,11 +563,17 @@ HRESULT DxgiFactoryHooks::CreateSwapChainForCoreWindow(IDXGIFactory2* realFactor
     State::Instance().SCLastFlags = pDesc->Flags;
     State::Instance().realExclusiveFullscreen = false;
 
-    ID3D12CommandQueue* realQ = nullptr;
-    if (!Util::CheckForRealObject(__FUNCTION__, pDevice, (IUnknown**) &realQ))
-        realQ = (ID3D12CommandQueue*) pDevice;
+    ID3D12CommandQueue* cq = nullptr;
+    IUnknown* real = nullptr;
+    if (pDevice->QueryInterface(IID_PPV_ARGS(&cq)) == S_OK)
+    {
+        cq->Release();
 
-    State::Instance().currentCommandQueue = realQ;
+        if (!Util::CheckForRealObject(__FUNCTION__, cq, &real))
+            real = cq;
+
+        State::Instance().currentCommandQueue = (ID3D12CommandQueue*) real;
+    }
 
     State::Instance().skipDxgiLoadChecks = true;
     auto result = o_CreateSwapChainForCoreWindow(realFactory, pDevice, pWindow, pDesc, pRestrictToOutput, ppSwapChain);
