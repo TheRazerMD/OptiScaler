@@ -221,15 +221,30 @@ bool XeFG_Dx12::CreateSwapchain(IDXGIFactory* factory, ID3D12CommandQueue* cmdQu
     HWND hwnd = desc->OutputWindow;
     DXGI_SWAP_CHAIN_DESC1 scDesc {};
 
-    scDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED; // No info
+    scDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE; // No info
     scDesc.BufferCount = desc->BufferCount;
     scDesc.BufferUsage = desc->BufferUsage;
     scDesc.Flags = desc->Flags;
     scDesc.Format = desc->BufferDesc.Format;
     scDesc.Height = desc->BufferDesc.Height;
     scDesc.SampleDesc = desc->SampleDesc;
-    scDesc.Scaling = DXGI_SCALING_NONE; // No info
-    scDesc.Stereo = false;              // No info
+
+    switch (desc->BufferDesc.Scaling)
+    {
+    case DXGI_MODE_SCALING_CENTERED:
+        scDesc.Scaling = DXGI_SCALING_ASPECT_RATIO_STRETCH;
+        break;
+
+    case DXGI_MODE_SCALING_STRETCHED:
+        scDesc.Scaling = DXGI_SCALING_STRETCH;
+        break;
+
+    case DXGI_MODE_SCALING_UNSPECIFIED:
+        scDesc.Scaling = DXGI_SCALING_NONE;
+        break;
+    }
+
+    scDesc.Stereo = false; // No info
     scDesc.SwapEffect = desc->SwapEffect;
     scDesc.Width = desc->BufferDesc.Width;
 
