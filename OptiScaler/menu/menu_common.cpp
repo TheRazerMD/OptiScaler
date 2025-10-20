@@ -1464,8 +1464,7 @@ bool MenuCommon::RenderMenu()
             inputFG = false;
 
             if (state.activeFgInput != FGInput::NoFG && state.activeFgOutput != FGOutput::NoFG &&
-                state.swapchainApi != API::DX11 &&
-                (state.swapchainApi != API::Vulkan || state.activeFgInput == FGInput::Nukems))
+                (state.currentFGSwapchain != nullptr || state.activeFgInput == FGInput::Nukems))
             {
                 Config::Instance()->FGEnabled = !Config::Instance()->FGEnabled.value_or_default();
 
@@ -2900,7 +2899,7 @@ bool MenuCommon::RenderMenu()
                 //    fgInputDesc[optiFgIndex] = "Old overlay menu is unsupported";
                 //}
                 // else if (state.swapchainApi != DX12)
-                if (state.swapchainApi != DX12 || state.api != DX12)
+                if (state.currentFGSwapchain == nullptr || state.api != DX12)
                 {
                     disabledMaskInput[optiFgIndex] = true;
                     fgInputDesc[optiFgIndex] = "Unsupported API";
@@ -2937,7 +2936,7 @@ bool MenuCommon::RenderMenu()
                     if (Config::Instance()->FGInput.value_or_default() == FGInput::DLSSG)
                         Config::Instance()->FGInput.reset();
                 }
-                else if (state.swapchainApi != DX12)
+                else if (state.currentFGSwapchain == nullptr)
                 {
                     disabledMaskInput[dlssgInputIndex] = true;
                     fgInputDesc[dlssgInputIndex] = "Unsupported API";
@@ -2945,7 +2944,7 @@ bool MenuCommon::RenderMenu()
 
                 // FSRFG inputs requirements
                 auto constexpr fsrfgInputIndex = (uint32_t) FGInput::FSRFG;
-                if (state.swapchainApi != DX12)
+                if (state.currentFGSwapchain == nullptr)
                 {
                     disabledMaskInput[fsrfgInputIndex] = true;
                     fgInputDesc[fsrfgInputIndex] = "Unsupported API";
@@ -2984,14 +2983,15 @@ bool MenuCommon::RenderMenu()
                 // Nukem's FG mod requirements
                 auto constexpr nukemsInputIndex = (uint32_t) FGInput::Nukems;
                 auto constexpr nukemsOutputIndex = (uint32_t) FGOutput::Nukems;
-                if (state.swapchainApi == DX11)
-                {
-                    disabledMaskInput[nukemsInputIndex] = true;
-                    fgInputDesc[nukemsInputIndex] = "Unsupported API";
-                    disabledMaskOutput[nukemsOutputIndex] = true;
-                    fgOutputDesc[nukemsOutputIndex] = "Unsupported API";
-                }
-                else if (state.isWorkingAsNvngx)
+                // if (state.swapchainApi == DX11)
+                //{
+                //     disabledMaskInput[nukemsInputIndex] = true;
+                //     fgInputDesc[nukemsInputIndex] = "Unsupported API";
+                //     disabledMaskOutput[nukemsOutputIndex] = true;
+                //     fgOutputDesc[nukemsOutputIndex] = "Unsupported API";
+                // }
+                // else
+                if (state.isWorkingAsNvngx)
                 {
                     disabledMaskInput[nukemsInputIndex] = true;
                     fgInputDesc[nukemsInputIndex] = "Unsupported Opti working mode";
@@ -3009,7 +3009,7 @@ bool MenuCommon::RenderMenu()
                 // FSR FG / XeFG output requirements
                 auto constexpr fsrfgOutputIndex = (uint32_t) FGOutput::FSRFG;
                 auto constexpr xefgOutputIndex = (uint32_t) FGOutput::XeFG;
-                if (state.swapchainApi != DX12)
+                if (state.currentFGSwapchain == nullptr)
                 {
                     disabledMaskOutput[fsrfgOutputIndex] = true;
                     fgOutputDesc[fsrfgOutputIndex] = "Unsupported API";
@@ -3023,7 +3023,7 @@ bool MenuCommon::RenderMenu()
                     Config::Instance()->FGOutput =
                         Config::Instance()->FGOutput.value_or_default(); // need to have a value before combo
 
-                if (state.swapchainApi != DX11)
+                if (state.currentFGSwapchain != nullptr)
                 {
                     ImGui::SeparatorText("Frame Generation");
 
@@ -3148,7 +3148,7 @@ bool MenuCommon::RenderMenu()
 
                 // FSR FG controls
                 if (state.activeFgOutput == FGOutput::FSRFG && state.activeFgInput != FGInput::NoFG &&
-                    !state.isWorkingAsNvngx && state.swapchainApi == DX12)
+                    !state.isWorkingAsNvngx && state.currentFGSwapchain != nullptr)
                 {
                     if (state.activeFgInput != FGInput::Upscaler ||
                         (currentFeature != nullptr && !currentFeature->IsFrozen()) && FfxApiProxy::IsFGReady())
@@ -3346,7 +3346,7 @@ bool MenuCommon::RenderMenu()
 
                 // XeFG controls
                 if (state.activeFgOutput == FGOutput::XeFG && state.activeFgInput != FGInput::NoFG &&
-                    !state.isWorkingAsNvngx && state.swapchainApi == DX12)
+                    !state.isWorkingAsNvngx && state.currentFGSwapchain != nullptr)
                 {
                     if (state.activeFgInput != FGInput::Upscaler ||
                         (currentFeature != nullptr && !currentFeature->IsFrozen()) && XeFGProxy::InitXeFG())
@@ -3518,7 +3518,7 @@ bool MenuCommon::RenderMenu()
                 }
 
                 // OptiFG
-                if (state.api == DX12 && state.swapchainApi == DX12 && !state.isWorkingAsNvngx &&
+                if (state.api == DX12 && state.currentFGSwapchain != nullptr && !state.isWorkingAsNvngx &&
                     state.activeFgInput == FGInput::Upscaler)
                 {
                     SeparatorWithHelpMarker("Frame Generation (OptiFG)", "Using upscaler data for FG");
@@ -3745,7 +3745,7 @@ bool MenuCommon::RenderMenu()
                 }
 
                 // Nukems Mod
-                if (state.swapchainApi != DX11 && !state.isWorkingAsNvngx && state.activeFgInput == FGInput::Nukems &&
+                if (!state.isWorkingAsNvngx && state.activeFgInput == FGInput::Nukems &&
                     state.activeFgOutput == FGOutput::Nukems)
                 {
                     SeparatorWithHelpMarker("Frame Generation (FSR-FG via Nukem's DLSSG)",
@@ -3762,8 +3762,8 @@ bool MenuCommon::RenderMenu()
                     }
                     else if (!ReflexHooks::isDlssgDetected())
                     {
-                        ImGui::Text("Please select DLSS Frame Generation in the game options\nYou might need to select "
-                                    "DLSS first");
+                        ImGui::Text("Please select DLSS Frame Generation in the game options\n"
+                                    "You might need to select DLSS first");
                     }
 
                     if (state.swapchainApi == DX12)
@@ -3812,7 +3812,7 @@ bool MenuCommon::RenderMenu()
                 }
 
                 // FSR-FG Inputs
-                if (state.swapchainApi == DX12 && !state.isWorkingAsNvngx &&
+                if (state.currentFGSwapchain != nullptr && !state.isWorkingAsNvngx &&
                     (state.activeFgInput == FGInput::FSRFG || state.activeFgInput == FGInput::FSRFG30))
                 {
                     SeparatorWithHelpMarker("Frame Generation (FSR-FG Inputs)", "Select FSR-FG in-game");
@@ -3839,7 +3839,8 @@ bool MenuCommon::RenderMenu()
                 }
 
                 // Streamline FG Inputs
-                if (state.swapchainApi == DX12 && !state.isWorkingAsNvngx && state.activeFgInput == FGInput::DLSSG)
+                if (state.currentFGSwapchain != nullptr && !state.isWorkingAsNvngx &&
+                    state.activeFgInput == FGInput::DLSSG)
                 {
                     SeparatorWithHelpMarker("Frame Generation (Streamline FG Inputs)", "Select DLSS FG in-game");
 
