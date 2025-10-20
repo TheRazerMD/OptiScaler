@@ -1054,6 +1054,10 @@ static void CheckQuirks()
     if (quirks & GameQuirk::UseFSR2PatternMatching && !Config::Instance()->Fsr2Pattern.has_value())
         Config::Instance()->Fsr2Pattern.set_volatile_value(true);
 
+    if (quirks & GameQuirk::AlwaysCaptureFSRFGSwapchain &&
+        !Config::Instance()->FGAlwaysCaptureFSRFGSwapchain.has_value())
+        Config::Instance()->FGAlwaysCaptureFSRFGSwapchain.set_volatile_value(true);
+
     State::Instance().gameQuirks = quirks;
 }
 

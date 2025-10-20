@@ -26,6 +26,7 @@ enum class GameQuirk : uint64_t
     DisableVsyncOverride,
     UseNtDllHooks,
     UseFSR2PatternMatching,
+    AlwaysCaptureFSRFGSwapchain,
 
     // Quirks that are applied deeper in code
     CyberpunkHudlessStateOverride,
@@ -68,6 +69,10 @@ static const QuirkEntry quirkTable[] = {
     // Use FSR2 Pattern Matching to fix broken FSR2 detection
     QUIRK_ENTRY("visionsofmana-win64-shipping.exe", GameQuirk::UseFSR2PatternMatching, GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("visionsofmana-wingdk-shipping.exe", GameQuirk::UseFSR2PatternMatching, GameQuirk::DisableDxgiSpoofing),
+
+    // Silent Hill f
+    QUIRK_ENTRY("shf-win64-shipping.exe", GameQuirk::AlwaysCaptureFSRFGSwapchain),
+    QUIRK_ENTRY("shf-wingdk-shipping.exe", GameQuirk::AlwaysCaptureFSRFGSwapchain),
 
     // Path of Exile 2
     QUIRK_ENTRY("pathofexile.exe", GameQuirk::LoadD3D12Manually),
@@ -309,6 +314,8 @@ static void printQuirks(flag_set<GameQuirk>& quirks)
         spdlog::info("Quirk: Using NTdll hooks instead of kernel ones");
     if (quirks & GameQuirk::UseFSR2PatternMatching)
         spdlog::info("Quirk: Use FSR2 pattern matching");
+    if (quirks & GameQuirk::AlwaysCaptureFSRFGSwapchain)
+        spdlog::info("Quirk: Always capture FSR-FG swapchain");
 
     return;
 }
