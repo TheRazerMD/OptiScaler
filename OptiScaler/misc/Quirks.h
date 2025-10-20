@@ -66,11 +66,8 @@ static const QuirkEntry quirkTable[] = {
 
     // Visions of Mana
     // Use FSR2 Pattern Matching to fix broken FSR2 detection
-
-    QUIRK_ENTRY("visionsofmana-win64-shipping.exe.exe", GameQuirk::UseFSR2PatternMatching,
-                GameQuirk::DisableDxgiSpoofing),
-    QUIRK_ENTRY("visionsofmana-wingdk-shipping.exe.exe", GameQuirk::UseFSR2PatternMatching,
-                GameQuirk::DisableDxgiSpoofing),
+    QUIRK_ENTRY("visionsofmana-win64-shipping.exe", GameQuirk::UseFSR2PatternMatching, GameQuirk::DisableDxgiSpoofing),
+    QUIRK_ENTRY("visionsofmana-wingdk-shipping.exe", GameQuirk::UseFSR2PatternMatching, GameQuirk::DisableDxgiSpoofing),
 
     // Path of Exile 2
     QUIRK_ENTRY("pathofexile.exe", GameQuirk::LoadD3D12Manually),
