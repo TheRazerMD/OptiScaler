@@ -136,6 +136,8 @@ void CheckForGPU()
             continue;
         }
 
+        Config::Instance()->Fsr4Update.set_volatile_value(false);
+
         State::Instance().skipSpoofing = true;
         result = adapter->GetDesc(&adapterDesc);
         State::Instance().skipSpoofing = false;
