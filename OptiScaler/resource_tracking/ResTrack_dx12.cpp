@@ -157,9 +157,9 @@ bool ResTrack_Dx12::CheckResource(ID3D12Resource* resource)
                       resDesc.Height <= scDesc.BufferDesc.Height + 32 &&
                       resDesc.Width >= scDesc.BufferDesc.Width - 32 && resDesc.Width <= scDesc.BufferDesc.Width + 32;
 
-        LOG_TRACK("Resource: {}x{} ({}), Swapchain: {}x{} ({}), Relaxed Result: {}", resDesc.Width, resDesc.Height,
-                  (UINT) resDesc.Format, scDesc.BufferDesc.Width, scDesc.BufferDesc.Height,
-                  (UINT) scDesc.BufferDesc.Format, result);
+        // LOG_TRACK("Resource: {}x{} ({}), Swapchain: {}x{} ({}), Relaxed Result: {}", resDesc.Width, resDesc.Height,
+        //           (UINT) resDesc.Format, scDesc.BufferDesc.Width, scDesc.BufferDesc.Height,
+        //           (UINT) scDesc.BufferDesc.Format, result);
 
         return result;
     }
@@ -1150,8 +1150,9 @@ void ResTrack_Dx12::hkSetGraphicsRootDescriptorTable(ID3D12GraphicsCommandList* 
                 fgPossibleHudless[fIndex].insert_or_assign(This, newMap);
             }
 
-            LOG_TRACK("CmdList: {:X}, AddRef Resource: {:X}, Desc: {:X}", (size_t) This,
-                      (size_t) capturedBuffer->buffer, BaseDescriptor.ptr);
+            LOG_TRACK("CmdList: {:X}, AddRef Resource: {:X}, Desc: {:X}, Format: {}", (size_t) This,
+                      (size_t) capturedBuffer->buffer, BaseDescriptor.ptr, (UINT) capturedBuffer->format);
+
             fgPossibleHudless[fIndex][This].insert_or_assign(capturedBuffer->buffer, *capturedBuffer);
         }
     } while (false);
@@ -1182,6 +1183,7 @@ void ResTrack_Dx12::hkOMSetRenderTargets(ID3D12GraphicsCommandList* This, UINT N
     {
         LOG_DEBUG_ONLY("Menu cmdlist: {} || fgCommandList: {}", This == MenuOverlayDx::MenuCommandList(),
                        IsFGCommandList(This));
+
         o_OMSetRenderTargets(This, NumRenderTargetDescriptors, pRenderTargetDescriptors,
                              RTsSingleHandleToDescriptorRange, pDepthStencilDescriptor);
         return;
@@ -1229,7 +1231,8 @@ void ResTrack_Dx12::hkOMSetRenderTargets(ID3D12GraphicsCommandList* This, UINT N
             {
                 if (Hudfix_Dx12::CheckForHudless(__FUNCTION__, This, capturedBuffer, capturedBuffer->state))
                 {
-                    LOG_TRACK("Hudless Resource: {:X}, Desc: {:X}", (size_t) capturedBuffer->buffer, handle.ptr);
+                    LOG_TRACK("CmdList: {:X}, Hudless Resource: {:X}, Format: {} Desc: {:X}", (size_t) This,
+                              (size_t) capturedBuffer->buffer, (UINT) capturedBuffer->format, handle.ptr);
                     break;
                 }
             }
