@@ -50,9 +50,17 @@ struct QuirkEntry
     std::initializer_list<GameQuirk> quirks;
 };
 
+// For regular exes
 #define QUIRK_ENTRY(name, ...)                                                                                         \
     {                                                                                                                  \
         name, { __VA_ARGS__ }                                                                                          \
+    }
+
+// For UE exes
+#define QUIRK_ENTRY_UE(name, ...)                                                                                      \
+    { #name "-win64-shipping.exe", { __VA_ARGS__ } },                                                                  \
+    {                                                                                                                  \
+        #name "-wingdk-shipping.exe", { __VA_ARGS__ }                                                                  \
     }
 
 // exeName has to be lowercase
@@ -67,12 +75,10 @@ static const QuirkEntry quirkTable[] = {
 
     // Visions of Mana
     // Use FSR2 Pattern Matching to fix broken FSR2 detection
-    QUIRK_ENTRY("visionsofmana-win64-shipping.exe", GameQuirk::UseFSR2PatternMatching, GameQuirk::DisableDxgiSpoofing),
-    QUIRK_ENTRY("visionsofmana-wingdk-shipping.exe", GameQuirk::UseFSR2PatternMatching, GameQuirk::DisableDxgiSpoofing),
+    QUIRK_ENTRY_UE(visionsofmana, GameQuirk::UseFSR2PatternMatching, GameQuirk::DisableDxgiSpoofing),
 
     // Silent Hill f
-    QUIRK_ENTRY("shf-win64-shipping.exe", GameQuirk::AlwaysCaptureFSRFGSwapchain),
-    QUIRK_ENTRY("shf-wingdk-shipping.exe", GameQuirk::AlwaysCaptureFSRFGSwapchain),
+    QUIRK_ENTRY_UE(shf, GameQuirk::AlwaysCaptureFSRFGSwapchain),
 
     // Path of Exile 2
     QUIRK_ENTRY("pathofexile.exe", GameQuirk::LoadD3D12Manually),
@@ -120,8 +126,8 @@ static const QuirkEntry quirkTable[] = {
 
     // The Callisto Protocol
     // FSR2 only, no spoof needed
-    QUIRK_ENTRY("thecallistoprotocol-win64-shipping.exe", GameQuirk::DisableUseFsrInputValues,
-                GameQuirk::DisableDxgiSpoofing, GameQuirk::DisableReactiveMasks, GameQuirk::ForceAutoExposure),
+    QUIRK_ENTRY_UE(thecallistoprotocol, GameQuirk::DisableUseFsrInputValues, GameQuirk::DisableDxgiSpoofing,
+                   GameQuirk::DisableReactiveMasks, GameQuirk::ForceAutoExposure),
 
     // HITMAN World of Assassination
     // SL spoof enough to unlock everything DLSS
@@ -135,7 +141,7 @@ static const QuirkEntry quirkTable[] = {
 
     // Returnal
     // no spoof needed for DLSS inputs, but no DLSSG and Reflex
-    QUIRK_ENTRY("returnal-win64-shipping.exe", GameQuirk::DisableDxgiSpoofing, GameQuirk::DontUseUnrealBarriers),
+    QUIRK_ENTRY_UE(returnal, GameQuirk::DisableDxgiSpoofing, GameQuirk::DontUseUnrealBarriers),
 
     // WUCHANG: Fallen Feathers
     // Skip 1 frame use of upscaler which cause crash
@@ -170,17 +176,17 @@ static const QuirkEntry quirkTable[] = {
     QUIRK_ENTRY("dyinglightgame_x64_rwdi.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("dyinglightgame_thebeast_x64_rwdi.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("observersystemredux.exe", GameQuirk::DisableDxgiSpoofing, GameQuirk::ForceAutoExposure),
-    QUIRK_ENTRY("sackboy-win64-shipping.exe", GameQuirk::DisableDxgiSpoofing, GameQuirk::ForceAutoExposure),
-    QUIRK_ENTRY("hellbladegame-win64-shipping.exe", GameQuirk::DisableDxgiSpoofing),
-    QUIRK_ENTRY("pumpkinjack-win64-shipping.exe", GameQuirk::DisableDxgiSpoofing, GameQuirk::ForceAutoExposure),
+    QUIRK_ENTRY_UE(sackboy, GameQuirk::DisableDxgiSpoofing, GameQuirk::ForceAutoExposure),
+    QUIRK_ENTRY_UE(hellbladegame, GameQuirk::DisableDxgiSpoofing),
+    QUIRK_ENTRY_UE(pumpkinjack, GameQuirk::DisableDxgiSpoofing, GameQuirk::ForceAutoExposure),
     QUIRK_ENTRY("metroexodus.exe", GameQuirk::DisableDxgiSpoofing, GameQuirk::ForceAutoExposure),
     QUIRK_ENTRY("ronin.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("dworigins.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("crysisremastered.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("crysis2remastered.exe", GameQuirk::DisableDxgiSpoofing),
-    QUIRK_ENTRY("dungeonhaven-win64-shipping.exe", GameQuirk::DisableDxgiSpoofing),
+    QUIRK_ENTRY_UE(dungeonhaven, GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("sekiro.exe", GameQuirk::DisableDxgiSpoofing),
-    QUIRK_ENTRY("medium-win64-shipping.exe", GameQuirk::DisableDxgiSpoofing),
+    QUIRK_ENTRY_UE(medium, GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("ninjagaiden4-steam.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("ninjagaiden4-wingdk.exe", GameQuirk::DisableDxgiSpoofing), // NG4 WinGDK
 
@@ -188,8 +194,8 @@ static const QuirkEntry quirkTable[] = {
     //
     // Tiny Tina's Wonderlands, Dead Island 2, The Outer Worlds: Spacer's Choice Edition
     QUIRK_ENTRY("wonderlands.exe", GameQuirk::DisableReactiveMasks, GameQuirk::DisableDxgiSpoofing),
-    QUIRK_ENTRY("deadisland-win64-shipping.exe", GameQuirk::DisableReactiveMasks, GameQuirk::DisableDxgiSpoofing),
-    QUIRK_ENTRY("indiana-win64-shipping.exe", GameQuirk::DisableReactiveMasks, GameQuirk::DisableDxgiSpoofing),
+    QUIRK_ENTRY_UE(deadisland, GameQuirk::DisableReactiveMasks, GameQuirk::DisableDxgiSpoofing),
+    QUIRK_ENTRY_UE(indiana, GameQuirk::DisableReactiveMasks, GameQuirk::DisableDxgiSpoofing),
 
     // Disable FSR2/3 inputs due to crashing/custom implementations
     //
@@ -198,30 +204,30 @@ static const QuirkEntry quirkTable[] = {
     // Rune Factory Guardians of Azuma, Supraworld, F1 Manager 2024, Keeper (+ WinGDK PaganIdol version)
     QUIRK_ENTRY("rdr2.exe", GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs),
     QUIRK_ENTRY("playrdr2.exe", GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs),
-    QUIRK_ENTRY("fmf2-win64-shipping.exe", GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs),
-    QUIRK_ENTRY("towers-win64-shipping.exe", GameQuirk::DisableFSR2Inputs,
-                GameQuirk::DisableFSR3Inputs), // Revenge of the Savage Planet
+    QUIRK_ENTRY_UE(fmf2, GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs),
+    QUIRK_ENTRY_UE(towers, GameQuirk::DisableFSR2Inputs,
+                   GameQuirk::DisableFSR3Inputs), // Revenge of the Savage Planet
     QUIRK_ENTRY("f1_22.exe", GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs),
-    QUIRK_ENTRY("metaleden-win64-shipping.exe", GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs),
-    QUIRK_ENTRY("bates-win64-shipping.exe", GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs),
+    QUIRK_ENTRY_UE(metaleden, GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs),
+    QUIRK_ENTRY_UE(bates, GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs),
     QUIRK_ENTRY("bloom&rage.exe", GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs),
-    QUIRK_ENTRY("bcg-win64-shipping.exe", GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs), // 171
+    QUIRK_ENTRY_UE(bcg, GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs), // 171
     QUIRK_ENTRY("flightsimulator.exe", GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs),
     QUIRK_ENTRY("outlaws.exe", GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs),
     QUIRK_ENTRY("outlaws_plus.exe", GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs),
-    QUIRK_ENTRY("banishers-win64-shipping.exe", GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs),
-    QUIRK_ENTRY("game-win64-shipping.exe", GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs), // Rune
-    QUIRK_ENTRY("supraworld-win64-shipping.exe", GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs),
+    QUIRK_ENTRY_UE(banishers, GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs),
+    QUIRK_ENTRY_UE(game, GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs), // Rune
+    QUIRK_ENTRY_UE(supraworld, GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs),
     QUIRK_ENTRY("f1manager24.exe", GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs),
-    QUIRK_ENTRY("keeper-win64-shipping.exe", GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs),
-    QUIRK_ENTRY("paganidol-wingdk-shipping.exe", GameQuirk::DisableFSR2Inputs,
-                GameQuirk::DisableFSR3Inputs), // Keeper WinGDK PaganIdol
+    QUIRK_ENTRY_UE(keeper, GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs),
+    QUIRK_ENTRY_UE(paganidol, GameQuirk::DisableFSR2Inputs,
+                   GameQuirk::DisableFSR3Inputs), // Keeper WinGDK PaganIdol
 
     // Self-explanatory
     //
     // The Persistence, Split Fiction, Minecraft Bedrock, Ghostwire: Tokyo, RoadCraft, STAR WARS Jedi:
     // Survivor, Nioh 2 – The Complete Edition
-    QUIRK_ENTRY("persistence-win64-shipping.exe", GameQuirk::ForceUnrealEngine),
+    QUIRK_ENTRY_UE(persistence, GameQuirk::ForceUnrealEngine),
     QUIRK_ENTRY("splitfiction.exe", GameQuirk::FastFeatureReset),
     QUIRK_ENTRY("minecraft.windows.exe", GameQuirk::KernelBaseHooks),
     QUIRK_ENTRY("gwt.exe", GameQuirk::ForceUnrealEngine),
