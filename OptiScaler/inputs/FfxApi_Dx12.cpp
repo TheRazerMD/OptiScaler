@@ -279,8 +279,9 @@ ffxReturnCode_t ffxCreateContext_Dx12(ffxContext* context, ffxCreateContextDescH
     // It would crash the games which uses swapchain for FG
     if (IsFGType(desc->type) &&
         (State::Instance().activeFgInput == FGInput::FSRFG ||
-         ((desc->type == 0x30005 || desc->type == 0x30006) && State::Instance().activeFgInput == FGInput::Upscaler &&
-          State::Instance().activeFgOutput != FGOutput::NoFG && State::Instance().activeFgOutput != FGOutput::Nukems)))
+         (Config::Instance()->FGAlwaysCaptureFSRFGSwapchain.value_or_default() &&
+          State::Instance().activeFgOutput != FGOutput::NoFG && State::Instance().activeFgOutput != FGOutput::Nukems &&
+          (desc->type == 0x30005 || desc->type == 0x30006))))
     {
         auto result = ffxCreateContext_Dx12FG(context, desc, memCb);
 

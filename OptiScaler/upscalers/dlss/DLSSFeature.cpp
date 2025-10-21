@@ -12,7 +12,7 @@ void DLSSFeature::ProcessEvaluateParams(NVSDK_NGX_Parameter* InParameters)
 
     // override sharpness
     if (Config::Instance()->OverrideSharpness.value_or_default() &&
-        !(State::Instance().swapchainApi != Vulkan && Config::Instance()->RcasEnabled.value_or_default()))
+        !(State::Instance().api != Vulkan && Config::Instance()->RcasEnabled.value_or_default()))
     {
         auto sharpness = Config::Instance()->Sharpness.value_or_default();
 
@@ -65,8 +65,7 @@ void DLSSFeature::ProcessInitParams(NVSDK_NGX_Parameter* InParameters)
     InParameters->Set(NVSDK_NGX_Parameter_DLSS_Feature_Create_Flags, featureFlags);
 
     // Resolution -----------------------------
-    if (State::Instance().swapchainApi != Vulkan && Config::Instance()->OutputScalingEnabled.value_or_default() &&
-        LowResMV())
+    if (State::Instance().api != Vulkan && Config::Instance()->OutputScalingEnabled.value_or_default() && LowResMV())
     {
         LOG_DEBUG("Output Scaling is active");
 

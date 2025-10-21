@@ -52,12 +52,18 @@ HRESULT FGHooks::CreateSwapChain(IDXGIFactory* pFactory, IUnknown* pDevice, DXGI
                                  IDXGISwapChain** ppSwapChain)
 {
     if (!CheckForFGStatus())
+    {
+        LOG_ERROR("Can't init FG Feature, invalid status!");
         return E_NOINTERFACE;
+    }
 
     // Check if it's Dx12
     ID3D12CommandQueue* cq = nullptr;
     if (pDevice->QueryInterface(IID_PPV_ARGS(&cq)) != S_OK)
+    {
+        LOG_ERROR("FG Feature requires D3D12 Command Queue!");
         return E_INVALIDARG;
+    }
 
     cq->Release();
 
@@ -115,12 +121,18 @@ HRESULT FGHooks::CreateSwapChainForHwnd(IDXGIFactory* pFactory, IUnknown* pDevic
                                         IDXGIOutput* pRestrictToOutput, IDXGISwapChain1** ppSwapChain)
 {
     if (!CheckForFGStatus())
+    {
+        LOG_ERROR("Can't init FG Feature, invalid status!");
         return E_NOINTERFACE;
+    }
 
     // Check if it's Dx12
     ID3D12CommandQueue* cq = nullptr;
     if (pDevice->QueryInterface(IID_PPV_ARGS(&cq)) != S_OK)
+    {
+        LOG_ERROR("FG Feature requires D3D12 Command Queue!");
         return E_INVALIDARG;
+    }
 
     cq->Release();
 

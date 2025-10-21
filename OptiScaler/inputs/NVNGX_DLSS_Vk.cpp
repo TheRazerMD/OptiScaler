@@ -134,7 +134,6 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_VULKAN_Init_Ext2(
         vkGIPA = vkGetInstanceProcAddr;
     }
 
-    State::Instance().api = Vulkan;
     State::Instance().currentVkDevice = InDevice;
 
     UpscalerTimeVk::Init(InDevice, InPD);
@@ -706,6 +705,7 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_VULKAN_CreateFeature1(VkDevice InDevice
         }
     }
 
+    State::Instance().api = Vulkan;
     auto deviceContext = VkContexts[handleId].feature.get();
     *OutHandle = deviceContext->Handle();
 

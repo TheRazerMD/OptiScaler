@@ -135,10 +135,12 @@ typedef struct HeapInfo
 #ifdef DEBUG_TRACKING
         TestResource(&setInfo);
 #endif
-
-        DetachFromOldResource(index);
-        info[index] = setInfo;
-        AttachToNewResource(index);
+        if (info[index].buffer != setInfo.buffer)
+        {
+            DetachFromOldResource(index);
+            info[index] = setInfo;
+            AttachToNewResource(index);
+        }
     }
 
     void SetByGpuHandle(SIZE_T gpuHandle, ResourceInfo setInfo) const
@@ -152,9 +154,12 @@ typedef struct HeapInfo
         TestResource(&setInfo);
 #endif
 
-        DetachFromOldResource(index);
-        info[index] = setInfo;
-        AttachToNewResource(index);
+        if (info[index].buffer != setInfo.buffer)
+        {
+            DetachFromOldResource(index);
+            info[index] = setInfo;
+            AttachToNewResource(index);
+        }
     }
 
     void ClearByCpuHandle(SIZE_T cpuHandle) const
@@ -168,6 +173,7 @@ typedef struct HeapInfo
         {
             LOG_TRACK("Resource: {:X}, Res: {}x{}, Format: {}", (size_t) info[index].buffer, info[index].width,
                       info[index].height, (UINT) info[index].format);
+
             DetachFromOldResource(index);
         }
 
@@ -186,6 +192,7 @@ typedef struct HeapInfo
         {
             LOG_TRACK("Resource: {:X}, Res: {}x{}, Format: {}", (size_t) info[index].buffer, info[index].width,
                       info[index].height, (UINT) info[index].format);
+
             DetachFromOldResource(index);
         }
 

@@ -79,7 +79,6 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D11_Init_Ext(unsigned long long InApp
     if (InDevice)
         D3D11Device = InDevice;
 
-    State::Instance().api = DX11;
     State::Instance().currentD3D11Device = InDevice;
     State::Instance().NvngxDx11Inited = true;
 
@@ -422,6 +421,7 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D11_CreateFeature(ID3D11DeviceContext
         }
     }
 
+    State::Instance().api = DX11;
     auto deviceContext = Dx11Contexts[handleId].feature.get();
     *OutHandle = deviceContext->Handle();
 

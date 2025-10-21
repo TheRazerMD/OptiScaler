@@ -583,7 +583,7 @@ void MenuOverlayDx::Present(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT 
     // Process window handle changed, update base
     if (MenuOverlayBase::Handle() != hWnd)
     {
-        LOG_DEBUG("Handle changed");
+        LOG_DEBUG("Handle changed {:X} -> {:X}", (size_t) MenuOverlayBase::Handle(), (size_t) hWnd);
 
         if (MenuOverlayBase::IsInited())
             MenuOverlayBase::Shutdown();

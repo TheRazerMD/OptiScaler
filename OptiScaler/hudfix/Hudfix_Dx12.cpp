@@ -329,11 +329,12 @@ void Hudfix_Dx12::HudlessFound(ID3D12GraphicsCommandList* cmdList)
 
     std::lock_guard<std::mutex> lock(_counterMutex);
 
-    if (_captureCounter[GetIndex()] > 1000)
+    auto index = GetIndex();
+    if (_captureCounter[index] > 1000)
         return;
 
     // Set it above 1000 to prvent capture
-    _captureCounter[GetIndex()] = 9999;
+    _captureCounter[index] = 9999;
 
     // auto fg = State::Instance().currentFG;
     // if (fg != nullptr)
@@ -583,13 +584,13 @@ bool Hudfix_Dx12::CheckForHudless(std::string callerName, ID3D12GraphicsCommandL
 
                 // Using state D3D12_RESOURCE_STATE_VIDEO_ENCODE_WRITE as skip flag
                 if (state != D3D12_RESOURCE_STATE_VIDEO_ENCODE_WRITE)
-                    ResourceBarrier(cmdList, resource->buffer, state, D3D12_RESOURCE_STATE_COPY_SOURCE);
+                    ResourceBarrier(cmdList, resource->buffer, resource->state, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
                 cmdList->CopyResource(_captureBuffer[fIndex], resource->buffer);
 
                 // Using state D3D12_RESOURCE_STATE_VIDEO_ENCODE_WRITE as skip flag
                 if (state != D3D12_RESOURCE_STATE_VIDEO_ENCODE_WRITE)
-                    ResourceBarrier(cmdList, resource->buffer, D3D12_RESOURCE_STATE_COPY_SOURCE, state);
+                    ResourceBarrier(cmdList, resource->buffer, D3D12_RESOURCE_STATE_COPY_SOURCE, resource->state);
 
                 LOG_DEBUG("Copy created");
             }
