@@ -157,7 +157,7 @@ static const QuirkEntry quirkTable[] = {
     // Collection, Warhammer 40,000: Darktide, Dying Light 2 Stay Human, Dying Light: The Beast, Observer: System Redux,
     // Sackboy: A Big Adventure, Hellblade: Senua's Sacrifice, Pumpkin Jack, Metro Exodus Enhanced Edition, Rise of the
     // Ronin, DYNASTY WARRIORS: ORIGINS, Crysis Remastered, Crysis 2 Remastered, Mortal Shell, Sekiro: Shadows Die
-    // Twice (for SekiroTSR mod), The Medium
+    // Twice (for SekiroTSR mod), The Medium, NINJA GAIDEN 4
     QUIRK_ENTRY("witcher3.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("alanwake2.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("crysis3remastered.exe", GameQuirk::DisableDxgiSpoofing),
@@ -181,6 +181,7 @@ static const QuirkEntry quirkTable[] = {
     QUIRK_ENTRY("dungeonhaven-win64-shipping.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("sekiro.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("medium-win64-shipping.exe", GameQuirk::DisableDxgiSpoofing),
+    QUIRK_ENTRY("ninjagaiden4-steam.exe", GameQuirk::DisableDxgiSpoofing),
 
     // FSR2 only, no spoof needed
     //
