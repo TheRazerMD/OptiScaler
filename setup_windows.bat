@@ -216,6 +216,11 @@ echo if "%%removeChoice%%"=="y" ^(
 echo    del OptiScaler.log
 echo    del OptiScaler.ini
 echo    del %selectedFilename%
+echo    del fakenvapi.dll
+echo    del fakenvapi.ini
+echo    del fakenvapi.log
+echo    del dlssg_to_fsr3_amd_is_better.dll
+echo    del dlssg_to_fsr3.log
 echo    del /Q D3D12_Optiscaler\*
 echo    rd D3D12_Optiscaler
 echo    del /Q DlssOverrides\*
