@@ -265,8 +265,6 @@ bool DLSSDFeatureDx12::Evaluate(ID3D12GraphicsCommandList* InCommandList, NVSDK_
     return true;
 }
 
-void DLSSDFeatureDx12::Shutdown(ID3D12Device* InDevice) {}
-
 DLSSDFeatureDx12::DLSSDFeatureDx12(unsigned int InHandleId, NVSDK_NGX_Parameter* InParameters)
     : IFeature(InHandleId, InParameters), IFeature_Dx12(InHandleId, InParameters),
       DLSSDFeature(InHandleId, InParameters)

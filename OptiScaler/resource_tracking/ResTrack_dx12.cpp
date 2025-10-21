@@ -314,7 +314,7 @@ HeapInfo* ResTrack_Dx12::GetHeapByCpuHandleCBV(SIZE_T cpuHandle)
             return heapInfo;
     }
 
-    for (size_t i = 0; i < fgHeapIndex; i++)
+    for (UINT i = 0; i < fgHeapIndex; i++)
     {
         if (fgHeaps[i]->active && fgHeaps[i]->cpuStart <= cpuHandle && fgHeaps[i]->cpuEnd > cpuHandle)
         {
@@ -340,7 +340,7 @@ HeapInfo* ResTrack_Dx12::GetHeapByCpuHandleRTV(SIZE_T cpuHandle)
             return heapInfo;
     }
 
-    for (size_t i = 0; i < fgHeapIndex; i++)
+    for (UINT i = 0; i < fgHeapIndex; i++)
     {
         if (fgHeaps[i]->active && fgHeaps[i]->cpuStart <= cpuHandle && fgHeaps[i]->cpuEnd > cpuHandle)
         {
@@ -366,7 +366,7 @@ HeapInfo* ResTrack_Dx12::GetHeapByCpuHandleSRV(SIZE_T cpuHandle)
             return heapInfo;
     }
 
-    for (size_t i = 0; i < fgHeapIndex; i++)
+    for (UINT i = 0; i < fgHeapIndex; i++)
     {
         if (fgHeaps[i]->active && fgHeaps[i]->cpuStart <= cpuHandle && fgHeaps[i]->cpuEnd > cpuHandle)
         {
@@ -392,7 +392,7 @@ HeapInfo* ResTrack_Dx12::GetHeapByCpuHandleUAV(SIZE_T cpuHandle)
             return heapInfo;
     }
 
-    for (size_t i = 0; i < fgHeapIndex; i++)
+    for (UINT i = 0; i < fgHeapIndex; i++)
     {
         if (fgHeaps[i]->active && fgHeaps[i]->cpuStart <= cpuHandle && fgHeaps[i]->cpuEnd > cpuHandle)
         {
@@ -422,7 +422,7 @@ HeapInfo* ResTrack_Dx12::GetHeapByCpuHandle(SIZE_T cpuHandle)
         }
     }
 
-    for (size_t i = 0; i < fgHeapIndex; i++)
+    for (UINT i = 0; i < fgHeapIndex; i++)
     {
         if (fgHeaps[i]->active && fgHeaps[i]->cpuStart <= cpuHandle && fgHeaps[i]->cpuEnd > cpuHandle)
         {
@@ -452,7 +452,7 @@ HeapInfo* ResTrack_Dx12::GetHeapByGpuHandleGR(SIZE_T gpuHandle)
         }
     }
 
-    for (size_t i = 0; i < fgHeapIndex; i++)
+    for (UINT i = 0; i < fgHeapIndex; i++)
     {
         if (fgHeaps[i]->active && fgHeaps[i]->gpuStart <= gpuHandle && fgHeaps[i]->gpuEnd > gpuHandle)
         {
@@ -485,7 +485,7 @@ HeapInfo* ResTrack_Dx12::GetHeapByGpuHandleCR(SIZE_T gpuHandle)
         }
     }
 
-    for (size_t i = 0; i < fgHeapIndex; i++)
+    for (UINT i = 0; i < fgHeapIndex; i++)
     {
         if (fgHeaps[i]->active && fgHeaps[i]->gpuStart <= gpuHandle && fgHeaps[i]->gpuEnd > gpuHandle)
         {

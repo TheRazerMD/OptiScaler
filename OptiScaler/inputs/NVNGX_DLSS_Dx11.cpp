@@ -489,10 +489,7 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D11_ReleaseFeature(NVSDK_NGX_Handle* 
         }
 
         if (deviceContext == State::Instance().currentFeature)
-        {
-            deviceContext->Shutdown();
             State::Instance().currentFeature = nullptr;
-        }
 
         Dx11Contexts[handleId].feature.reset();
         auto it = std::find_if(Dx11Contexts.begin(), Dx11Contexts.end(),

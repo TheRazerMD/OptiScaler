@@ -448,8 +448,8 @@ bool HC_Dx12::Dispatch(IDXGISwapChain3* sc, ID3D12CommandQueue* queue, ID3D12Res
     }
 
     InternalCompareParams constants {};
-    constants.DiffThreshold = 0.003;
-    constants.PinkAmount = 0.6;
+    constants.DiffThreshold = 0.003f;
+    constants.PinkAmount = 0.6f;
 
     BYTE* pCBDataBegin;
     CD3DX12_RANGE readRange(0, 0);
@@ -494,8 +494,8 @@ bool HC_Dx12::Dispatch(IDXGISwapChain3* sc, ID3D12CommandQueue* queue, ID3D12Res
     D3D12_VIEWPORT vp {};
     vp.TopLeftX = 0.0f;
     vp.TopLeftY = 0.0f;
-    vp.Width = outWidth;
-    vp.Height = outHeight;
+    vp.Width = static_cast<FLOAT>(outWidth);
+    vp.Height = static_cast<FLOAT>(outHeight);
     vp.MinDepth = 0.0f;
     vp.MaxDepth = 1.0f;
     _commandList[_counter]->RSSetViewports(1, &vp);

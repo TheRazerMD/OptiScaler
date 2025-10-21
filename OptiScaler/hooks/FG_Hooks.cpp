@@ -43,7 +43,10 @@ bool CheckForFGStatus()
     }
 
     if (State::Instance().activeFgOutput != FGOutput::FSRFG && State::Instance().activeFgOutput != FGOutput::XeFG)
+    {
+        LOG_WARN("FGOutput is not set to FSR-FG or XeFG");
         return false;
+    }
 
     return true;
 }
@@ -53,7 +56,7 @@ HRESULT FGHooks::CreateSwapChain(IDXGIFactory* pFactory, IUnknown* pDevice, DXGI
 {
     if (!CheckForFGStatus())
     {
-        LOG_ERROR("Can't init FG Feature, invalid status!");
+        LOG_WARN("Can't init FG Feature or invalid FGOutput setting!");
         return E_NOINTERFACE;
     }
 
@@ -122,7 +125,7 @@ HRESULT FGHooks::CreateSwapChainForHwnd(IDXGIFactory* pFactory, IUnknown* pDevic
 {
     if (!CheckForFGStatus())
     {
-        LOG_ERROR("Can't init FG Feature, invalid status!");
+        LOG_WARN("Can't init FG Feature or invalid FGOutput setting!");
         return E_NOINTERFACE;
     }
 

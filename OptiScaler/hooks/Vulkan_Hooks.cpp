@@ -266,8 +266,8 @@ static VkResult hkvkCreateSwapchainKHR(VkDevice device, const VkSwapchainCreateI
     if (result == VK_SUCCESS && device != VK_NULL_HANDLE && pCreateInfo != nullptr && *pSwapchain != VK_NULL_HANDLE &&
         !State::Instance().vulkanSkipHooks)
     {
-        State::Instance().screenWidth = pCreateInfo->imageExtent.width;
-        State::Instance().screenHeight = pCreateInfo->imageExtent.height;
+        State::Instance().screenWidth = static_cast<float>(pCreateInfo->imageExtent.width);
+        State::Instance().screenHeight = static_cast<float>(pCreateInfo->imageExtent.height);
 
         LOG_DEBUG("if (result == VK_SUCCESS && device != VK_NULL_HANDLE && pCreateInfo != nullptr && pSwapchain != "
                   "VK_NULL_HANDLE)");

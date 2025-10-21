@@ -16,7 +16,6 @@ bool DLSSDFeatureVk::Init(VkInstance InInstance, VkPhysicalDevice InPD, VkDevice
         return false;
     }
 
-    HRESULT result;
     NVSDK_NGX_Result nvResult;
     bool initResult = false;
 
@@ -113,8 +112,6 @@ bool DLSSDFeatureVk::Evaluate(VkCommandBuffer InCmdBuffer, NVSDK_NGX_Parameter* 
 
     return true;
 }
-
-void DLSSDFeatureVk::Shutdown(VkDevice InDevice) {}
 
 DLSSDFeatureVk::DLSSDFeatureVk(unsigned int InHandleId, NVSDK_NGX_Parameter* InParameters)
     : IFeature(InHandleId, InParameters), IFeature_Vk(InHandleId, InParameters), DLSSDFeature(InHandleId, InParameters)

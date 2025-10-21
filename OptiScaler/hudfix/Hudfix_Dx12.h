@@ -103,7 +103,7 @@ class Hudfix_Dx12
     static void UpscaleStart();
 
     // Trig for upscaling end
-    static void UpscaleEnd(UINT64 frameId, float lastFGFrameTime);
+    static void UpscaleEnd(UINT64 frameId, double lastFGFrameTime);
 
     // Trig for present start
     static void PresentStart();

@@ -95,8 +95,8 @@ class FSR31Feature : public virtual IFeature
     float _minDisOccAcc = -0.333f;
 
   public:
-    feature_version Version() final { return _version; }
-    std::string Name() const { return _name.c_str(); }
+    feature_version Version() override { return _version; }
+    std::string Name() const override { return _name.c_str(); }
 
     FSR31Feature(unsigned int InHandleId, NVSDK_NGX_Parameter* InParameters);
 

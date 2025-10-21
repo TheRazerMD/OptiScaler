@@ -8,8 +8,6 @@ void DLSSFeature::ProcessEvaluateParams(NVSDK_NGX_Parameter* InParameters)
 {
     LOG_FUNC();
 
-    float floatValue;
-
     // override sharpness
     if (Config::Instance()->OverrideSharpness.value_or_default() &&
         !(State::Instance().api != Vulkan && Config::Instance()->RcasEnabled.value_or_default()))
@@ -38,8 +36,6 @@ void DLSSFeature::ProcessEvaluateParams(NVSDK_NGX_Parameter* InParameters)
 void DLSSFeature::ProcessInitParams(NVSDK_NGX_Parameter* InParameters)
 {
     LOG_FUNC();
-
-    unsigned int uintValue;
 
     // Create flags -----------------------------
     unsigned int featureFlags = 0;
@@ -82,8 +78,8 @@ void DLSSFeature::ProcessInitParams(NVSDK_NGX_Parameter* InParameters)
             Config::Instance()->OutputScalingMultiplier.set_volatile_value(ssMulti);
         }
 
-        _targetWidth = DisplayWidth() * ssMulti;
-        _targetHeight = DisplayHeight() * ssMulti;
+        _targetWidth = static_cast<unsigned int>(DisplayWidth() * ssMulti);
+        _targetHeight = static_cast<unsigned int>(DisplayHeight() * ssMulti);
     }
     else
     {
@@ -218,16 +214,6 @@ DLSSFeature::DLSSFeature(unsigned int handleId, NVSDK_NGX_Parameter* InParameter
 }
 
 DLSSFeature::~DLSSFeature() {}
-
-void DLSSFeature::Shutdown()
-{
-    LOG_FUNC();
-
-    if (NVNGXProxy::NVNGXModule() != nullptr)
-        UnhookApis();
-
-    LOG_FUNC_RESULT(0);
-}
 
 float DLSSFeature::GetSharpness(const NVSDK_NGX_Parameter* InParameters)
 {

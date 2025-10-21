@@ -369,8 +369,8 @@ static HRESULT hkD3D11CreateDeviceAndSwapChain(IDXGIAdapter* pAdapter, D3D_DRIVE
         if (!Util::CheckForRealObject(__FUNCTION__, *ppDevice, (IUnknown**) &realDevice))
             realDevice = *ppDevice;
 
-        State::Instance().screenWidth = pSwapChainDesc->BufferDesc.Width;
-        State::Instance().screenHeight = pSwapChainDesc->BufferDesc.Height;
+        State::Instance().screenWidth = static_cast<float>(pSwapChainDesc->BufferDesc.Width);
+        State::Instance().screenHeight = static_cast<float>(pSwapChainDesc->BufferDesc.Height);
 
         LOG_DEBUG("Created new swapchain: {0:X}, hWnd: {1:X}", (UINT64) *ppSwapChain,
                   (UINT64) pSwapChainDesc->OutputWindow);

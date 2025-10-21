@@ -600,8 +600,8 @@ HRESULT STDMETHODCALLTYPE WrappedIDXGISwapChain4::ResizeBuffers(UINT BufferCount
 
     if (result == S_OK && State::Instance().currentFeature == nullptr)
     {
-        State::Instance().screenWidth = Width;
-        State::Instance().screenHeight = Height;
+        State::Instance().screenWidth = static_cast<float>(Width);
+        State::Instance().screenHeight = static_cast<float>(Height);
         State::Instance().lastMipBias = 100.0f;
         State::Instance().lastMipBiasMax = -100.0f;
     }
@@ -665,7 +665,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDXGISwapChain4::ResizeBuffers(UINT BufferCount
             bc = desc.BufferCount;
     }
 
-    for (size_t i = 0; i < bc; i++)
+    for (UINT i = 0; i < bc; i++)
     {
         IUnknown* buffer;
 
@@ -906,8 +906,8 @@ HRESULT STDMETHODCALLTYPE WrappedIDXGISwapChain4::ResizeBuffers1(UINT BufferCoun
 
     if (result == S_OK && State::Instance().currentFeature == nullptr)
     {
-        State::Instance().screenWidth = Width;
-        State::Instance().screenHeight = Height;
+        State::Instance().screenWidth = static_cast<float>(Width);
+        State::Instance().screenHeight = static_cast<float>(Height);
         State::Instance().lastMipBias = 100.0f;
         State::Instance().lastMipBiasMax = -100.0f;
     }
@@ -968,7 +968,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDXGISwapChain4::ResizeBuffers1(UINT BufferCoun
             bc = desc.BufferCount;
     }
 
-    for (size_t i = 0; i < bc; i++)
+    for (UINT i = 0; i < bc; i++)
     {
         IUnknown* buffer;
 

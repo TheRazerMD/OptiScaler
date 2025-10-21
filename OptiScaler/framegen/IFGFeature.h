@@ -26,7 +26,7 @@ struct FG_Constants
     // uint32_t maxRenderHeight;
 };
 
-typedef enum FG_ResourceType : uint32_t
+enum FG_ResourceType : uint32_t
 {
     Depth = 0,
     Velocity,
@@ -61,8 +61,8 @@ class IFGFeature
     float _cameraRight[BUFFER_COUNT][3] {};    ///< The camera right normalized vector in world space.
     float _cameraForward[BUFFER_COUNT][3] {};  ///< The camera forward normalized vector in world space.
     float _meterFactor[BUFFER_COUNT] = {};
-    float _ftDelta[BUFFER_COUNT] = {};
-    UINT _interpolationWidth[BUFFER_COUNT] = {};
+    double _ftDelta[BUFFER_COUNT] = {};
+    UINT64 _interpolationWidth[BUFFER_COUNT] = {};
     UINT _interpolationHeight[BUFFER_COUNT] = {};
     std::optional<UINT> _interpolationLeft[BUFFER_COUNT];
     std::optional<UINT> _interpolationTop[BUFFER_COUNT];
@@ -131,10 +131,10 @@ class IFGFeature
     void SetMVScale(float x, float y);
     void SetCameraValues(float nearValue, float farValue, float vFov, float aspectRatio, float meterFactor = 0.0f);
     void SetCameraData(float cameraPosition[3], float cameraUp[3], float cameraRight[3], float cameraForward[3]);
-    void SetFrameTimeDelta(float delta);
+    void SetFrameTimeDelta(double delta);
     void SetReset(UINT reset);
-    void SetInterpolationRect(UINT width, UINT height);
-    void GetInterpolationRect(UINT& width, UINT& height, int index = -1);
+    void SetInterpolationRect(UINT64 width, UINT height);
+    void GetInterpolationRect(UINT64& width, UINT& height, int index = -1);
     void SetInterpolationPos(UINT left, UINT top);
     void GetInterpolationPos(UINT& left, UINT& top, int index = -1);
 

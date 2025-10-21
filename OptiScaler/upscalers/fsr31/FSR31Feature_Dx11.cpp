@@ -469,11 +469,17 @@ bool FSR31FeatureDx11::Evaluate(ID3D11DeviceContext* DeviceContext, NVSDK_NGX_Pa
 
     if (InParameters->Get("FSR.upscaleSize.width", &params.upscaleSize.width) == NVSDK_NGX_Result_Success &&
         Config::Instance()->OutputScalingEnabled.value_or_default())
-        params.upscaleSize.width *= Config::Instance()->OutputScalingMultiplier.value_or_default();
+    {
+        params.upscaleSize.width *=
+            static_cast<uint32_t>(Config::Instance()->OutputScalingMultiplier.value_or_default());
+    }
 
     if (InParameters->Get("FSR.upscaleSize.height", &params.upscaleSize.height) == NVSDK_NGX_Result_Success &&
         Config::Instance()->OutputScalingEnabled.value_or_default())
-        params.upscaleSize.height *= Config::Instance()->OutputScalingMultiplier.value_or_default();
+    {
+        params.upscaleSize.height *=
+            static_cast<uint32_t>(Config::Instance()->OutputScalingMultiplier.value_or_default());
+    }
 
     LOG_DEBUG("Dispatch!!");
     auto result = ffxFsr3ContextDispatchUpscale(&_upscalerContext, &params);
@@ -693,8 +699,8 @@ bool FSR31FeatureDx11::InitFSR3(const NVSDK_NGX_Parameter* InParameters)
             Config::Instance()->OutputScalingMultiplier.set_volatile_value(ssMulti);
         }
 
-        _targetWidth = DisplayWidth() * ssMulti;
-        _targetHeight = DisplayHeight() * ssMulti;
+        _targetWidth = static_cast<unsigned int>(DisplayWidth() * ssMulti);
+        _targetHeight = static_cast<unsigned int>(DisplayHeight() * ssMulti);
     }
     else
     {

@@ -302,9 +302,11 @@ bool IFeature::UpdateOutputResolution(const NVSDK_NGX_Parameter* InParameters)
                  _targetHeight ||
              fsrDynamicOutputHeight != _displayHeight))
         {
-            _targetWidth = fsrDynamicOutputWidth * Config::Instance()->OutputScalingMultiplier.value_or_default();
+            _targetWidth = static_cast<unsigned int>(fsrDynamicOutputWidth *
+                                                     Config::Instance()->OutputScalingMultiplier.value_or_default());
             _displayWidth = fsrDynamicOutputWidth;
-            _targetHeight = fsrDynamicOutputHeight * Config::Instance()->OutputScalingMultiplier.value_or_default();
+            _targetHeight = static_cast<unsigned int>(fsrDynamicOutputHeight *
+                                                      Config::Instance()->OutputScalingMultiplier.value_or_default());
             _displayHeight = fsrDynamicOutputHeight;
 
             return true;

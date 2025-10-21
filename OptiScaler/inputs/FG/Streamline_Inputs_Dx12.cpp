@@ -133,13 +133,16 @@ bool Sl_Inputs_Dx12::evaluateState(ID3D12Device* device)
     if (infiniteDepth)
         fgConstants.flags |= FG_Flags::InfiniteDepth;
 
-    if (Config::Instance()->FGXeFGDepthInverted.value_or_default() != slConstsRef.depthInverted ||
-        Config::Instance()->FGXeFGJitteredMV.value_or_default() != slConstsRef.motionVectorsJittered ||
-        Config::Instance()->FGXeFGHighResMV.value_or_default() != slConstsRef.motionVectorsDilated)
+    if (Config::Instance()->FGXeFGDepthInverted.value_or_default() !=
+            (slConstsRef.depthInverted == sl::Boolean::eTrue) ||
+        Config::Instance()->FGXeFGJitteredMV.value_or_default() !=
+            (slConstsRef.motionVectorsJittered == sl::Boolean::eTrue) ||
+        Config::Instance()->FGXeFGHighResMV.value_or_default() !=
+            (slConstsRef.motionVectorsDilated == sl::Boolean::eTrue))
     {
-        Config::Instance()->FGXeFGDepthInverted = slConstsRef.depthInverted;
-        Config::Instance()->FGXeFGJitteredMV = slConstsRef.motionVectorsJittered;
-        Config::Instance()->FGXeFGHighResMV = slConstsRef.motionVectorsDilated;
+        Config::Instance()->FGXeFGDepthInverted = (slConstsRef.depthInverted == sl::Boolean::eTrue);
+        Config::Instance()->FGXeFGJitteredMV = (slConstsRef.motionVectorsJittered == sl::Boolean::eTrue);
+        Config::Instance()->FGXeFGHighResMV = (slConstsRef.motionVectorsDilated == sl::Boolean::eTrue);
         LOG_DEBUG("XeFG DepthInverted: {}", Config::Instance()->FGXeFGDepthInverted.value_or_default());
         LOG_DEBUG("XeFG JitteredMV: {}", Config::Instance()->FGXeFGJitteredMV.value_or_default());
         LOG_DEBUG("XeFG HighResMV: {}", Config::Instance()->FGXeFGHighResMV.value_or_default());
@@ -191,7 +194,7 @@ bool Sl_Inputs_Dx12::reportResource(const sl::ResourceTag& tag, ID3D12GraphicsCo
         // if (cmdBuffer != nullptr && validity == FG_ResourceValidity::ValidNow)
         //    validity = FG_ResourceValidity::ValidButMakeCopy;
 
-        auto width = tag.extent.width;
+        UINT64 width = tag.extent.width;
         auto height = tag.extent.height;
 
         if (!tag.extent)
@@ -237,7 +240,7 @@ bool Sl_Inputs_Dx12::reportResource(const sl::ResourceTag& tag, ID3D12GraphicsCo
 
         auto depthResource = (ID3D12Resource*) tag.resource->native;
 
-        auto width = tag.extent.width;
+        UINT64 width = tag.extent.width;
         auto height = tag.extent.height;
 
         if (!tag.extent)
@@ -269,7 +272,7 @@ bool Sl_Inputs_Dx12::reportResource(const sl::ResourceTag& tag, ID3D12GraphicsCo
 
         auto mvResource = (ID3D12Resource*) tag.resource->native;
 
-        auto width = tag.extent.width;
+        UINT64 width = tag.extent.width;
         auto height = tag.extent.height;
 
         if (!tag.extent)
@@ -304,7 +307,7 @@ bool Sl_Inputs_Dx12::reportResource(const sl::ResourceTag& tag, ID3D12GraphicsCo
 
         auto uiResource = (ID3D12Resource*) tag.resource->native;
 
-        auto width = tag.extent.width;
+        UINT64 width = tag.extent.width;
         auto height = tag.extent.height;
 
         if (!tag.extent)
@@ -343,7 +346,7 @@ bool Sl_Inputs_Dx12::reportResource(const sl::ResourceTag& tag, ID3D12GraphicsCo
 
         auto distortionFieldResource = (ID3D12Resource*) tag.resource->native;
 
-        auto width = tag.extent.width;
+        UINT64 width = tag.extent.width;
         auto height = tag.extent.height;
 
         if (!tag.extent)
@@ -488,7 +491,7 @@ bool Sl_Inputs_Dx12::dispatchFG()
 
     fgOutput->SetReset(slConstsRef.reset == sl::Boolean::eTrue);
 
-    fgOutput->SetFrameTimeDelta(State::Instance().lastFGFrameTime);
+    fgOutput->SetFrameTimeDelta(static_cast<float>(State::Instance().lastFGFrameTime));
 
     fgOutput->SetInterpolationRect(interpolationWidth, interpolationHeight);
     interpolationWidth = 0;

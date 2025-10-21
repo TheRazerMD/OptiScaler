@@ -16,16 +16,16 @@ class Sl_Inputs_Dx12
     std::mutex reportResourceMutex {};
 
     uint32_t lastConstantsFrameId = UINT32_MAX;
-    uint32_t lastPresentFrameId = 0;
+    uint64_t lastPresentFrameId = 0;
     uint32_t indexToFrameIdMapping[BUFFER_COUNT] {};
 
-    uint32_t mvsWidth = 0;
+    uint64_t mvsWidth = 0;
     uint32_t mvsHeight = 0;
 
     // TODO: add full position
     // uint32_t interpolationTop = 0;
     // uint32_t interpolationLeft = 0;
-    uint32_t interpolationWidth = 0;
+    uint64_t interpolationWidth = 0;
     uint32_t interpolationHeight = 0;
 
     std::optional<sl::Constants>* getFrameData(IFGFeature_Dx12* fgOutput);

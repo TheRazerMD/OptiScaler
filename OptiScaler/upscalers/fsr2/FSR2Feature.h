@@ -53,7 +53,7 @@ inline static void FfxLogCallback(FfxFsr2MsgType type, const wchar_t* message)
     // else if (type == FFX_FSR2_MESSAGE_TYPE_WARNING)
     //	LOG_WARN("FSR Runtime: {0}", str);
     // else
-    LOG_DEBUG("FSR Runtime: {0}", wstring_to_string(string));
+    LOG_DEBUG("FSR2 Runtime: {0}", wstring_to_string(string));
 }
 
 class FSR2Feature : public virtual IFeature
@@ -73,7 +73,7 @@ class FSR2Feature : public virtual IFeature
     double GetDeltaTime();
 
   public:
-    feature_version Version() final { return _version; }
+    feature_version Version() override { return _version; }
     std::string Name() const { return "FSR"; }
 
     FSR2Feature(unsigned int InHandleId, NVSDK_NGX_Parameter* InParameters) : IFeature(InHandleId, InParameters)

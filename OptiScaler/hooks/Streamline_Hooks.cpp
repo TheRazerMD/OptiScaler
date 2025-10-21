@@ -697,7 +697,7 @@ sl::Result StreamlineHooks::hkslPCLSetMarker(sl::PCLMarker marker, const sl::Fra
     if (marker == sl::PCLMarker::eSimulationStart && last_simulation_end_id >= frame && o_slGetNewFrameToken)
     {
         const uint64_t correction_offset = last_simulation_end_id - frame + 1;
-        uint32_t newFrameId = frame + correction_offset;
+        uint32_t newFrameId = static_cast<uint32_t>(frame + correction_offset);
 
         sl::FrameToken* newFramePointer {};
         auto result = o_slGetNewFrameToken(newFramePointer, &newFrameId);

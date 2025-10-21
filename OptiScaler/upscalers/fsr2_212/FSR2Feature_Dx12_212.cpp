@@ -560,8 +560,8 @@ bool FSR2FeatureDx12_212::InitFSR2(const NVSDK_NGX_Parameter* InParameters)
             Config::Instance()->OutputScalingMultiplier.set_volatile_value(ssMulti);
         }
 
-        _targetWidth = DisplayWidth() * ssMulti;
-        _targetHeight = DisplayHeight() * ssMulti;
+        _targetWidth = static_cast<unsigned int>(DisplayWidth() * ssMulti);
+        _targetHeight = static_cast<unsigned int>(DisplayHeight() * ssMulti);
     }
     else
     {

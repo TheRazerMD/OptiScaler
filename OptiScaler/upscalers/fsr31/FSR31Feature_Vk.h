@@ -19,6 +19,9 @@ class FSR31FeatureVk : public FSR31Feature, public IFeature_Vk
               NVSDK_NGX_Parameter* InParameters) override;
     bool Evaluate(VkCommandBuffer InCmdBuffer, NVSDK_NGX_Parameter* InParameters) override;
 
+    feature_version Version() override { return FSR31Feature::Version(); }
+    std::string Name() const override { return FSR31Feature::Name(); }
+
     ~FSR31FeatureVk()
     {
         if (State::Instance().isShuttingDown)

@@ -83,147 +83,147 @@ bool FeatureProvider_Dx12::ChangeFeature(std::string upscalerName, ID3D12Device*
                                          ID3D12GraphicsCommandList* cmdList, UINT handleId,
                                          NVSDK_NGX_Parameter* parameters, ContextData<IFeature_Dx12>* contextData)
 {
-    if (State::Instance().changeBackend[handleId])
+    if (!State::Instance().changeBackend[handleId])
+        return false;
+
+    if (State::Instance().newBackend == "" ||
+        (!Config::Instance()->DLSSEnabled.value_or_default() && State::Instance().newBackend == "dlss"))
+        State::Instance().newBackend = Config::Instance()->Dx12Upscaler.value_or_default();
+
+    contextData->changeBackendCounter++;
+
+    LOG_INFO("changeBackend is true, counter: {0}", contextData->changeBackendCounter);
+
+    // first release everything
+    if (contextData->changeBackendCounter == 1)
     {
-        if (State::Instance().newBackend == "" ||
-            (!Config::Instance()->DLSSEnabled.value_or_default() && State::Instance().newBackend == "dlss"))
-            State::Instance().newBackend = Config::Instance()->Dx12Upscaler.value_or_default();
-
-        contextData->changeBackendCounter++;
-
-        LOG_INFO("changeBackend is true, counter: {0}", contextData->changeBackendCounter);
-
-        // first release everything
-        if (contextData->changeBackendCounter == 1)
+        if (State::Instance().currentFG != nullptr && State::Instance().currentFG->IsActive() &&
+            State::Instance().activeFgInput == FGInput::Upscaler)
         {
-            if (State::Instance().currentFG != nullptr && State::Instance().currentFG->IsActive() &&
-                State::Instance().activeFgInput == FGInput::Upscaler)
+            State::Instance().currentFG->DestroyFGContext();
+            State::Instance().FGchanged = true;
+            State::Instance().ClearCapturedHudlesses = true;
+        }
+
+        if (contextData->feature != nullptr)
+        {
+            LOG_INFO("changing backend to {}", State::Instance().newBackend);
+
+            auto dc = contextData->feature.get();
+
+            if (State::Instance().newBackend != "dlssd" && State::Instance().newBackend != "dlss")
+                contextData->createParams = GetNGXParameters("OptiDx12");
+            else
+                contextData->createParams = parameters;
+
+            contextData->createParams->Set(NVSDK_NGX_Parameter_DLSS_Feature_Create_Flags, dc->GetFeatureFlags());
+            contextData->createParams->Set(NVSDK_NGX_Parameter_Width, dc->RenderWidth());
+            contextData->createParams->Set(NVSDK_NGX_Parameter_Height, dc->RenderHeight());
+            contextData->createParams->Set(NVSDK_NGX_Parameter_OutWidth, dc->DisplayWidth());
+            contextData->createParams->Set(NVSDK_NGX_Parameter_OutHeight, dc->DisplayHeight());
+            contextData->createParams->Set(NVSDK_NGX_Parameter_PerfQualityValue, dc->PerfQualityValue());
+
+            dc = nullptr;
+
+            if (State::Instance().gameQuirks & GameQuirk::FastFeatureReset)
             {
-                State::Instance().currentFG->DestroyFGContext();
-                State::Instance().FGchanged = true;
-                State::Instance().ClearCapturedHudlesses = true;
-            }
-
-            if (contextData->feature != nullptr)
-            {
-                LOG_INFO("changing backend to {}", State::Instance().newBackend);
-
-                auto dc = contextData->feature.get();
-
-                if (State::Instance().newBackend != "dlssd" && State::Instance().newBackend != "dlss")
-                    contextData->createParams = GetNGXParameters("OptiDx12");
-                else
-                    contextData->createParams = parameters;
-
-                contextData->createParams->Set(NVSDK_NGX_Parameter_DLSS_Feature_Create_Flags, dc->GetFeatureFlags());
-                contextData->createParams->Set(NVSDK_NGX_Parameter_Width, dc->RenderWidth());
-                contextData->createParams->Set(NVSDK_NGX_Parameter_Height, dc->RenderHeight());
-                contextData->createParams->Set(NVSDK_NGX_Parameter_OutWidth, dc->DisplayWidth());
-                contextData->createParams->Set(NVSDK_NGX_Parameter_OutHeight, dc->DisplayHeight());
-                contextData->createParams->Set(NVSDK_NGX_Parameter_PerfQualityValue, dc->PerfQualityValue());
-
-                dc = nullptr;
-
-                if (State::Instance().gameQuirks & GameQuirk::FastFeatureReset)
-                {
-                    LOG_DEBUG("sleeping before reset of current feature for 100ms (Fast Feature Reset)");
-                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                }
-                else
-                {
-                    LOG_DEBUG("sleeping before reset of current feature for 1000ms");
-                    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-                }
-
-                contextData->feature.reset();
-                contextData->feature = nullptr;
-
-                State::Instance().currentFeature = nullptr;
+                LOG_DEBUG("sleeping before reset of current feature for 100ms (Fast Feature Reset)");
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
             else
             {
-                LOG_ERROR("can't find handle {0} in Dx12Contexts!", handleId);
-
-                State::Instance().newBackend = "";
-                State::Instance().changeBackend[handleId] = false;
-
-                if (contextData->createParams != nullptr)
-                {
-                    free(contextData->createParams);
-                    contextData->createParams = nullptr;
-                }
-
-                contextData->changeBackendCounter = 0;
+                LOG_DEBUG("sleeping before reset of current feature for 1000ms");
+                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             }
-
-            return true;
-        }
-
-        // create new feature
-        if (contextData->changeBackendCounter == 2)
-        {
-            LOG_INFO("Creating new {} upscaler", State::Instance().newBackend);
 
             contextData->feature.reset();
+            contextData->feature = nullptr;
 
-            if (!GetFeature(State::Instance().newBackend, handleId, contextData->createParams, &contextData->feature))
-            {
-                LOG_ERROR("Upscaler can't created");
-                return false;
-            }
-
-            return true;
+            State::Instance().currentFeature = nullptr;
         }
-
-        // init feature
-        if (contextData->changeBackendCounter == 3)
+        else
         {
-            auto initResult = contextData->feature->Init(device, cmdList, contextData->createParams);
+            LOG_ERROR("can't find handle {0} in Dx12Contexts!", handleId);
 
-            contextData->changeBackendCounter = 0;
+            State::Instance().newBackend = "";
+            State::Instance().changeBackend[handleId] = false;
 
-            if (!initResult)
-            {
-                LOG_ERROR("init failed with {0} feature", State::Instance().newBackend);
-
-                if (State::Instance().newBackend != "dlssd")
-                {
-                    if (Config::Instance()->Dx12Upscaler == "dlss")
-                        State::Instance().newBackend = "xess";
-                    else
-                        State::Instance().newBackend = "fsr21";
-                }
-                else
-                {
-                    // Retry DLSSD
-                    State::Instance().newBackend = "dlssd";
-                }
-
-                State::Instance().changeBackend[handleId] = true;
-                return NVSDK_NGX_Result_Success;
-            }
-            else
-            {
-                LOG_INFO("init successful for {0}, upscaler changed", State::Instance().newBackend);
-
-                State::Instance().newBackend = "";
-                State::Instance().changeBackend[handleId] = false;
-            }
-
-            // if opti nvparam release it
-            int optiParam = 0;
-            if (contextData->createParams->Get("OptiScaler", &optiParam) == NVSDK_NGX_Result_Success && optiParam == 1)
+            if (contextData->createParams != nullptr)
             {
                 free(contextData->createParams);
                 contextData->createParams = nullptr;
             }
-        }
 
-        // if initial feature can't be inited
-        State::Instance().currentFeature = contextData->feature.get();
-        if (State::Instance().currentFG != nullptr && State::Instance().activeFgInput == FGInput::Upscaler)
-            State::Instance().currentFG->UpdateTarget();
+            contextData->changeBackendCounter = 0;
+        }
 
         return true;
     }
+
+    // create new feature
+    if (contextData->changeBackendCounter == 2)
+    {
+        LOG_INFO("Creating new {} upscaler", State::Instance().newBackend);
+
+        contextData->feature.reset();
+
+        if (!GetFeature(State::Instance().newBackend, handleId, contextData->createParams, &contextData->feature))
+        {
+            LOG_ERROR("Upscaler can't created");
+            return false;
+        }
+
+        return true;
+    }
+
+    // init feature
+    if (contextData->changeBackendCounter == 3)
+    {
+        auto initResult = contextData->feature->Init(device, cmdList, contextData->createParams);
+
+        contextData->changeBackendCounter = 0;
+
+        if (!initResult)
+        {
+            LOG_ERROR("init failed with {0} feature", State::Instance().newBackend);
+
+            if (State::Instance().newBackend != "dlssd")
+            {
+                if (Config::Instance()->Dx12Upscaler == "dlss")
+                    State::Instance().newBackend = "xess";
+                else
+                    State::Instance().newBackend = "fsr21";
+            }
+            else
+            {
+                // Retry DLSSD
+                State::Instance().newBackend = "dlssd";
+            }
+
+            State::Instance().changeBackend[handleId] = true;
+            return NVSDK_NGX_Result_Success;
+        }
+        else
+        {
+            LOG_INFO("init successful for {0}, upscaler changed", State::Instance().newBackend);
+
+            State::Instance().newBackend = "";
+            State::Instance().changeBackend[handleId] = false;
+        }
+
+        // if opti nvparam release it
+        int optiParam = 0;
+        if (contextData->createParams->Get("OptiScaler", &optiParam) == NVSDK_NGX_Result_Success && optiParam == 1)
+        {
+            free(contextData->createParams);
+            contextData->createParams = nullptr;
+        }
+    }
+
+    // if initial feature can't be inited
+    State::Instance().currentFeature = contextData->feature.get();
+    if (State::Instance().currentFG != nullptr && State::Instance().activeFgInput == FGInput::Upscaler)
+        State::Instance().currentFG->UpdateTarget();
+
+    return true;
 }

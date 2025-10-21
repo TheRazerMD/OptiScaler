@@ -230,8 +230,8 @@ bool XeSSFeature_Vk::Init(VkInstance InInstance, VkPhysicalDevice InPD, VkDevice
             Config::Instance()->OutputScalingMultiplier = ssMulti;
         }
 
-        _targetWidth = DisplayWidth() * ssMulti;
-        _targetHeight = DisplayHeight() * ssMulti;
+        _targetWidth = static_cast<unsigned int>(DisplayWidth() * ssMulti);
+        _targetHeight = static_cast<unsigned int>(DisplayHeight() * ssMulti);
     }
     else
     {

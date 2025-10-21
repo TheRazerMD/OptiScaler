@@ -8,8 +8,6 @@
 
 void DLSSDFeature::ProcessEvaluateParams(NVSDK_NGX_Parameter* InParameters)
 {
-    float floatValue;
-
     // override sharpness
     if (Config::Instance()->OverrideSharpness.value_or_default() &&
         !(State::Instance().api == DX12 && Config::Instance()->RcasEnabled.value_or_default()))
@@ -35,8 +33,6 @@ void DLSSDFeature::ProcessEvaluateParams(NVSDK_NGX_Parameter* InParameters)
 
 void DLSSDFeature::ProcessInitParams(NVSDK_NGX_Parameter* InParameters)
 {
-    unsigned int uintValue;
-
     // Create flags -----------------------------
     unsigned int featureFlags = 0;
 
@@ -76,8 +72,8 @@ void DLSSDFeature::ProcessInitParams(NVSDK_NGX_Parameter* InParameters)
             Config::Instance()->OutputScalingMultiplier.set_volatile_value(ssMulti);
         }
 
-        _targetWidth = DisplayWidth() * ssMulti;
-        _targetHeight = DisplayHeight() * ssMulti;
+        _targetWidth = static_cast<unsigned int>(DisplayWidth() * ssMulti);
+        _targetHeight = static_cast<unsigned int>(DisplayHeight() * ssMulti);
     }
     else
     {
@@ -208,8 +204,6 @@ DLSSDFeature::DLSSDFeature(unsigned int handleId, NVSDK_NGX_Parameter* InParamet
 }
 
 DLSSDFeature::~DLSSDFeature() {}
-
-void DLSSDFeature::Shutdown() {}
 
 float DLSSDFeature::GetSharpness(const NVSDK_NGX_Parameter* InParameters)
 {

@@ -10,13 +10,13 @@
 #include <dxgi1_6.h>
 #include <d3d12.h>
 
-typedef struct Dx12Resource
+struct Dx12Resource
 {
     FG_ResourceType type;
     ID3D12Resource* resource = nullptr;
     UINT top = 0;
     UINT left = 0;
-    UINT width = 0;
+    UINT64 width = 0;
     UINT height = 0;
     ID3D12GraphicsCommandList* cmdList = nullptr;
     D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;

@@ -20,8 +20,6 @@ void IFeature_Dx12::ResourceBarrier(ID3D12GraphicsCommandList* InCommandList, ID
 
 IFeature_Dx12::IFeature_Dx12(unsigned int InHandleId, NVSDK_NGX_Parameter* InParameters) {}
 
-void IFeature_Dx12::Shutdown() {}
-
 IFeature_Dx12::~IFeature_Dx12()
 {
     if (State::Instance().isShuttingDown)

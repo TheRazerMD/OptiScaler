@@ -42,7 +42,7 @@ HRESULT DxgiFactoryWrappedCalls::CreateSwapChain(IDXGIFactory* realFactory, Wrap
         if (pDesc != nullptr)
             LOG_DEBUG("Width: {}, Height: {}, Format: {}, Count: {}, Hwnd: {:X}, Windowed: {}, SkipWrapping: {}",
                       pDesc->BufferDesc.Width, pDesc->BufferDesc.Height, (UINT) pDesc->BufferDesc.Format,
-                      pDesc->BufferCount, (UINT) pDesc->OutputWindow, pDesc->Windowed, _skipFGSwapChainCreation);
+                      pDesc->BufferCount, (SIZE_T) pDesc->OutputWindow, pDesc->Windowed, _skipFGSwapChainCreation);
 
         State::Instance().skipDxgiLoadChecks = true;
         State::Instance().skipParentWrapping = true;
@@ -81,7 +81,7 @@ HRESULT DxgiFactoryWrappedCalls::CreateSwapChain(IDXGIFactory* realFactory, Wrap
 
     LOG_DEBUG("Width: {}, Height: {}, Format: {}, Count: {}, Flags: {:X}, Hwnd: {:X}, Windowed: {}, SkipWrapping: {}",
               pDesc->BufferDesc.Width, pDesc->BufferDesc.Height, (UINT) pDesc->BufferDesc.Format, pDesc->BufferCount,
-              pDesc->Flags, (UINT) pDesc->OutputWindow, pDesc->Windowed, _skipFGSwapChainCreation);
+              pDesc->Flags, (SIZE_T) pDesc->OutputWindow, pDesc->Windowed, _skipFGSwapChainCreation);
 
     if (State::Instance().activeFgOutput == FGOutput::XeFG &&
         Config::Instance()->FGXeFGForceBorderless.value_or_default())
@@ -176,8 +176,8 @@ HRESULT DxgiFactoryWrappedCalls::CreateSwapChain(IDXGIFactory* realFactory, Wrap
 
             if (Util::GetProcessWindow() == pDesc->OutputWindow)
             {
-                State::Instance().screenWidth = pDesc->BufferDesc.Width;
-                State::Instance().screenHeight = pDesc->BufferDesc.Height;
+                State::Instance().screenWidth = static_cast<float>(pDesc->BufferDesc.Width);
+                State::Instance().screenHeight = static_cast<float>(pDesc->BufferDesc.Height);
             }
 
             LOG_DEBUG("Created new swapchain: {0:X}, hWnd: {1:X}", (UINT64) *ppSwapChain, (UINT64) pDesc->OutputWindow);
@@ -364,8 +364,8 @@ HRESULT DxgiFactoryWrappedCalls::CreateSwapChainForHwnd(IDXGIFactory2* realFacto
 
             if (Util::GetProcessWindow() == hWnd)
             {
-                State::Instance().screenWidth = pDesc->Width;
-                State::Instance().screenHeight = pDesc->Height;
+                State::Instance().screenWidth = static_cast<float>(pDesc->Width);
+                State::Instance().screenHeight = static_cast<float>(pDesc->Height);
             }
 
             LOG_DEBUG("Created new swapchain: {0:X}, hWnd: {1:X}", (UINT64) *ppSwapChain, (UINT64) hWnd);
@@ -468,8 +468,8 @@ HRESULT DxgiFactoryWrappedCalls::CreateSwapChainForCoreWindow(IDXGIFactory2* rea
         if (!Util::CheckForRealObject(__FUNCTION__, pDevice, (IUnknown**) &readDevice))
             readDevice = pDevice;
 
-        State::Instance().screenWidth = pDesc->Width;
-        State::Instance().screenHeight = pDesc->Height;
+        State::Instance().screenWidth = static_cast<float>(pDesc->Width);
+        State::Instance().screenHeight = static_cast<float>(pDesc->Height);
 
         LOG_DEBUG("Created new swapchain: {0:X}, hWnd: {1:X}", (UINT64) *ppSwapChain, (UINT64) pWindow);
         *ppSwapChain = new WrappedIDXGISwapChain4(realSC, readDevice, (HWND) pWindow, pDesc->Flags, true);

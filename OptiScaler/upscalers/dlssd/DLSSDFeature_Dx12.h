@@ -13,7 +13,8 @@ class DLSSDFeatureDx12 : public DLSSDFeature, public IFeature_Dx12
               NVSDK_NGX_Parameter* InParameters) override;
     bool Evaluate(ID3D12GraphicsCommandList* InCommandList, NVSDK_NGX_Parameter* InParameters) override;
 
-    static void Shutdown(ID3D12Device* InDevice);
+    feature_version Version() override { return DLSSDFeature::Version(); }
+    std::string Name() const override { return DLSSDFeature::Name(); }
 
     DLSSDFeatureDx12(unsigned int InHandleId, NVSDK_NGX_Parameter* InParameters);
     ~DLSSDFeatureDx12();

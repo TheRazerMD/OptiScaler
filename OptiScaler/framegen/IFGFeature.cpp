@@ -177,18 +177,18 @@ void IFGFeature::SetCameraData(float cameraPosition[3], float cameraUp[3], float
     std::memcpy(_cameraForward[fIndex], cameraForward, 3 * sizeof(float));
 }
 
-void IFGFeature::SetFrameTimeDelta(float delta) { _ftDelta[GetIndex()] = delta; }
+void IFGFeature::SetFrameTimeDelta(double delta) { _ftDelta[GetIndex()] = delta; }
 
 void IFGFeature::SetReset(UINT reset) { _reset[GetIndex()] = reset; }
 
-void IFGFeature::SetInterpolationRect(UINT width, UINT height)
+void IFGFeature::SetInterpolationRect(UINT64 width, UINT height)
 {
     auto fIndex = GetIndex();
     _interpolationWidth[fIndex] = width;
     _interpolationHeight[fIndex] = height;
 }
 
-void IFGFeature::GetInterpolationRect(UINT& width, UINT& height, int index)
+void IFGFeature::GetInterpolationRect(UINT64& width, UINT& height, int index)
 {
     if (index < 0)
         index = GetIndex();

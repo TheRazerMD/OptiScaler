@@ -122,7 +122,5 @@ class IFeature
 
     IFeature(unsigned int InHandleId, NVSDK_NGX_Parameter* InParameters) { SetHandle(InHandleId); }
 
-    virtual void Shutdown() = 0;
-
     virtual ~IFeature() {}
 };

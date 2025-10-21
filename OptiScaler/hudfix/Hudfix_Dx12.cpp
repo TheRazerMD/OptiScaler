@@ -389,7 +389,7 @@ void Hudfix_Dx12::UpscaleStart()
     }
 }
 
-void Hudfix_Dx12::UpscaleEnd(UINT64 frameId, float lastFGFrameTime)
+void Hudfix_Dx12::UpscaleEnd(UINT64 frameId, double lastFGFrameTime)
 {
 
     // Update counter after upscaling so _upscaleCounter == _fgCounter check at IsResourceCheckActive will work
@@ -633,10 +633,10 @@ bool Hudfix_Dx12::CheckForHudless(std::string callerName, ID3D12GraphicsCommandL
 
                 if (scDesc.BufferDesc.Width > resource->width || scDesc.BufferDesc.Height > resource->height)
                 {
-                    srcBox.right = resource->width;
+                    srcBox.right = static_cast<UINT>(resource->width);
                     srcBox.bottom = resource->height;
                     UINT top = (scDesc.BufferDesc.Height - resource->height) / 2;
-                    UINT left = (scDesc.BufferDesc.Width - resource->width) / 2;
+                    UINT left = static_cast<UINT>((scDesc.BufferDesc.Width - resource->width) / 2);
 
                     cmdList->CopyTextureRegion(&dstLocation, left, top, 0, &srcLocation, &srcBox);
                 }
@@ -663,7 +663,8 @@ bool Hudfix_Dx12::CheckForHudless(std::string callerName, ID3D12GraphicsCommandL
         }
 
         auto fg = reinterpret_cast<IFGFeature_Dx12*>(State::Instance().currentFG);
-        UINT interpolationRectWidth, interpolationRectHeight = 0;
+        UINT64 interpolationRectWidth = 0;
+        UINT interpolationRectHeight = 0;
         if (fg != nullptr)
             fg->GetInterpolationRect(interpolationRectWidth, interpolationRectHeight);
 

@@ -743,10 +743,7 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D12_ReleaseFeature(NVSDK_NGX_Handle* 
     if (auto deviceContext = Dx12Contexts[handleId].feature.get(); deviceContext != nullptr)
     {
         if (deviceContext == State::Instance().currentFeature)
-        {
             State::Instance().currentFeature = nullptr;
-            deviceContext->Shutdown();
-        }
 
         Dx12Contexts[handleId].feature.reset();
         auto it = std::find_if(Dx12Contexts.begin(), Dx12Contexts.end(),

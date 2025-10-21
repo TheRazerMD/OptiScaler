@@ -195,7 +195,7 @@ bool FeatureProvider_Dx11::ChangeFeature(std::string upscalerName, ID3D11Device*
             {
                 State::Instance().newBackend = "";
                 State::Instance().changeBackend[handleId] = false;
-                return NVSDK_NGX_Result_Fail;
+                return false;
             }
         }
         else

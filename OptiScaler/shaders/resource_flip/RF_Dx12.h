@@ -29,7 +29,7 @@ class RF_Dx12
 
   public:
     bool Dispatch(ID3D12Device* InDevice, ID3D12GraphicsCommandList* InCmdList, ID3D12Resource* InResource,
-                  ID3D12Resource* OutResource, UINT width, UINT height, bool velocity);
+                  ID3D12Resource* OutResource, UINT64 width, UINT height, bool velocity);
 
     bool IsInit() const { return _init; }
 

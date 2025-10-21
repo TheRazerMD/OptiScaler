@@ -190,9 +190,9 @@ bool FSRFG_Dx12::Dispatch()
     int defaultWidth = 0;
     int defaultHeight = 0;
 
-    defaultLeft = hasSwapChainDesc ? (bufferWidth - _interpolationWidth[fIndex]) / 2 : 0;
+    defaultLeft = static_cast<int>(hasSwapChainDesc ? (bufferWidth - _interpolationWidth[fIndex]) / 2 : 0);
     defaultTop = hasSwapChainDesc ? (bufferHeight - _interpolationHeight[fIndex]) / 2 : 0;
-    defaultWidth = _interpolationWidth[fIndex];
+    defaultWidth = static_cast<int>(_interpolationWidth[fIndex]);
     defaultHeight = _interpolationHeight[fIndex];
 
     fgConfig.generationRect.left =
@@ -294,7 +294,7 @@ bool FSRFG_Dx12::Dispatch()
             dfgPrepare.renderSize = { State::Instance().currentFeature->RenderWidth(),
                                       State::Instance().currentFeature->RenderHeight() };
         else if (depth != nullptr)
-            dfgPrepare.renderSize = { depth->width, depth->height };
+            dfgPrepare.renderSize = { static_cast<uint32_t>(depth->width), depth->height };
         else
             dfgPrepare.renderSize = { dfgPrepare.depth.description.width, dfgPrepare.depth.description.height };
 
@@ -305,7 +305,7 @@ bool FSRFG_Dx12::Dispatch()
         dfgPrepare.cameraFar = _cameraFar[fIndex];
         dfgPrepare.cameraNear = _cameraNear[fIndex];
         dfgPrepare.cameraFovAngleVertical = _cameraVFov[fIndex];
-        dfgPrepare.frameTimeDelta = State::Instance().lastFGFrameTime; // _ftDelta[fIndex];
+        dfgPrepare.frameTimeDelta = static_cast<float>(State::Instance().lastFGFrameTime); // _ftDelta[fIndex];
         dfgPrepare.viewSpaceToMetersFactor = _meterFactor[fIndex];
 
         retCode = FfxApiProxy::D3D12_Dispatch(&_fgContext, &dfgPrepare.header);

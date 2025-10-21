@@ -33,7 +33,7 @@ static ankerl::unordered_dense::map<ID3D12Resource*, std::vector<ResourceInfo*>>
 static std::mutex _trMutex;
 static std::shared_mutex _heapMutex[1000];
 
-typedef struct HeapInfo
+struct HeapInfo
 {
     ID3D12DescriptorHeap* heap = nullptr;
     SIZE_T cpuStart = NULL;
@@ -59,7 +59,7 @@ typedef struct HeapInfo
         }
     }
 
-    void DetachFromOldResource(UINT index) const
+    void DetachFromOldResource(SIZE_T index) const
     {
         if (info[index].buffer == nullptr)
             return;
@@ -77,7 +77,7 @@ typedef struct HeapInfo
         }
     }
 
-    void AttachToNewResource(UINT index) const
+    void AttachToNewResource(SIZE_T index) const
     {
         std::scoped_lock lock(_trMutex);
         LOG_TRACK("Heap: {:X}, Index: {}, Resource: {:X}, Res: {}x{}, Format: {}", (size_t) this, index,
@@ -201,7 +201,7 @@ typedef struct HeapInfo
     }
 };
 
-typedef struct ResourceHeapInfo
+struct ResourceHeapInfo
 {
     SIZE_T cpuStart = NULL;
     SIZE_T gpuStart = NULL;

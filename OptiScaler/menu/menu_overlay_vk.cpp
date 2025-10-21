@@ -61,8 +61,8 @@ static void CreateVulkanObjects(VkDevice device, VkPhysicalDevice pd, VkInstance
     }
 
     ImGuiIO& io = ImGui::GetIO();
-    io.DisplaySize.x = pCreateInfo->imageExtent.width;
-    io.DisplaySize.y = pCreateInfo->imageExtent.height;
+    io.DisplaySize.x = static_cast<float>(pCreateInfo->imageExtent.width);
+    io.DisplaySize.y = static_cast<float>(pCreateInfo->imageExtent.height);
 
     VkResult result;
 
@@ -501,8 +501,8 @@ bool MenuOverlayVk::QueuePresent(VkQueue queue, VkPresentInfoKHR* pPresentInfo)
                     info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
                     info.renderPass = _vkRenderPass;
                     info.framebuffer = fd->Framebuffer;
-                    info.renderArea.extent.width = ImGui::GetIO().DisplaySize.x;
-                    info.renderArea.extent.height = ImGui::GetIO().DisplaySize.y;
+                    info.renderArea.extent.width = static_cast<uint32_t>(ImGui::GetIO().DisplaySize.x);
+                    info.renderArea.extent.height = static_cast<uint32_t>(ImGui::GetIO().DisplaySize.y);
                     vkCmdBeginRenderPass(fd->CommandBuffer, &info, VK_SUBPASS_CONTENTS_INLINE);
                 }
 

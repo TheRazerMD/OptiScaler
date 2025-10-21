@@ -156,7 +156,7 @@ template <class T, HasDefaultValue defaultState = WithDefault> class CustomOptio
     }
 };
 
-constexpr int UnboundKey = -1;
+constexpr inline int UnboundKey = -1;
 
 enum FpsOverlay : uint32_t
 {

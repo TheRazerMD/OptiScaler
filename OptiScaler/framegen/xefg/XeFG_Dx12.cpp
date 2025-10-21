@@ -157,7 +157,7 @@ xefg_swapchain_d3d12_resource_data_t XeFG_Dx12::GetResourceData(FG_ResourceType 
                                  : XEFG_SWAPCHAIN_RV_UNTIL_NEXT_PRESENT;
 
     resourceParam.resourceBase = { fResource->left, fResource->top };
-    resourceParam.resourceSize = { fResource->width, fResource->height };
+    resourceParam.resourceSize = { static_cast<uint32_t>(fResource->width), fResource->height };
     resourceParam.pResource = fResource->GetResource();
     resourceParam.incomingState = fResource->state;
 
@@ -556,9 +556,9 @@ bool XeFG_Dx12::Dispatch()
         std::swap(_cameraNear[fIndex], _cameraFar[fIndex]);
 
     if (_infiniteDepth && _cameraFar[fIndex] > _cameraNear[fIndex])
-        _cameraFar[fIndex] = INFINITE;
+        _cameraFar[fIndex] = INFINITY;
     else if (_infiniteDepth && _cameraNear[fIndex] > _cameraFar[fIndex])
-        _cameraNear[fIndex] = INFINITE;
+        _cameraNear[fIndex] = INFINITY;
 
     // Cyberpunk seems to be sending LH so do the same
     // it also sends some extra data in usually empty spots but no idea what that is
@@ -583,18 +583,20 @@ bool XeFG_Dx12::Dispatch()
     constData.motionVectorScaleX = _mvScaleX[fIndex];
     constData.motionVectorScaleY = _mvScaleY[fIndex];
     constData.resetHistory = _reset[fIndex];
-    constData.frameRenderTime = State::Instance().lastFGFrameTime;
+    constData.frameRenderTime = static_cast<float>(State::Instance().lastFGFrameTime);
 
     LOG_DEBUG("Reset: {}, FTDelta: {}", _reset[fIndex], constData.frameRenderTime);
 
-    auto result = XeFGProxy::TagFrameConstants()(_swapChainContext, _willDispatchFrame, &constData);
+    auto frameId = static_cast<uint32_t>(_willDispatchFrame);
+
+    auto result = XeFGProxy::TagFrameConstants()(_swapChainContext, frameId, &constData);
     if (result != XEFG_SWAPCHAIN_RESULT_SUCCESS)
     {
         LOG_ERROR("TagFrameConstants error: {} ({})", magic_enum::enum_name(result), (UINT) result);
         return false;
     }
 
-    result = XeFGProxy::SetPresentId()(_swapChainContext, _willDispatchFrame);
+    result = XeFGProxy::SetPresentId()(_swapChainContext, frameId);
     if (result != XEFG_SWAPCHAIN_RESULT_SUCCESS)
     {
         LOG_ERROR("SetPresentId error: {} ({})", magic_enum::enum_name(result), (UINT) result);
@@ -640,10 +642,10 @@ bool XeFG_Dx12::Dispatch()
         backbuffer.type = XEFG_SWAPCHAIN_RES_BACKBUFFER;
         backbuffer.validity = XEFG_SWAPCHAIN_RV_UNTIL_NEXT_PRESENT;
         backbuffer.resourceBase = { left, top };
-        backbuffer.resourceSize = { _interpolationWidth[fIndex], _interpolationHeight[fIndex] };
+        backbuffer.resourceSize = { static_cast<uint32_t>(_interpolationWidth[fIndex]), _interpolationHeight[fIndex] };
 
-        auto result = XeFGProxy::D3D12TagFrameResource()(_swapChainContext, (ID3D12CommandList*) 1, _willDispatchFrame,
-                                                         &backbuffer);
+        auto result =
+            XeFGProxy::D3D12TagFrameResource()(_swapChainContext, (ID3D12CommandList*) 1, frameId, &backbuffer);
 
         if (result != XEFG_SWAPCHAIN_RESULT_SUCCESS)
         {
@@ -1001,8 +1003,9 @@ void XeFG_Dx12::SetResource(Dx12Resource* inputResource)
         resourceParam.incomingState = D3D12_RESOURCE_STATE_COPY_DEST;
     }
 
-    auto result =
-        XeFGProxy::D3D12TagFrameResource()(_swapChainContext, fResource->cmdList, _frameCount, &resourceParam);
+    auto frameId = static_cast<uint32_t>(_frameCount);
+    auto result = XeFGProxy::D3D12TagFrameResource()(_swapChainContext, fResource->cmdList, frameId, &resourceParam);
+
     if (result != XEFG_SWAPCHAIN_RESULT_SUCCESS)
     {
         LOG_ERROR("D3D12TagFrameResource {} error: {} ({})", magic_enum::enum_name(type), magic_enum::enum_name(result),

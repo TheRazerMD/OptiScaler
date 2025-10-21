@@ -268,11 +268,11 @@ void* ReflexHooks::getHookedReflex(unsigned int InterfaceId)
     {                                                                                                                  \
         double name##Pos = (double) (frameReport.name##StartTime - start) / rangeNs;                                   \
         double name##Length = (double) (frameReport.name##EndTime - frameReport.name##StartTime) / rangeNs;            \
-        timingData[TimingType::type##] = TimingEntry { .position = name##Pos, .length = name##Length };                \
+        timingData[TimingType::type] = TimingEntry { .position = name##Pos, .length = name##Length };                  \
     }                                                                                                                  \
     else                                                                                                               \
     {                                                                                                                  \
-        timingData[TimingType::type##].reset();                                                                        \
+        timingData[TimingType::type].reset();                                                                          \
     }
 
 bool ReflexHooks::updateTimingData()
@@ -313,7 +313,7 @@ bool ReflexHooks::updateTimingData()
     if (end < start)
         return false;
 
-    double rangeNs = end - start;
+    double rangeNs = static_cast<double>(end - start);
 
     timingData[TimingType::TimeRange] = TimingEntry { .position = 0, .length = rangeNs };
     UPDATE_TIMING_ENTRY(sim, Simulation)

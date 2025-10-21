@@ -1,4 +1,5 @@
 #pragma once
+
 #include "Config.h"
 
 typedef uint64_t (*PFN_getModelBlob)(uint32_t preset, uint64_t unknown, uint64_t* source, uint64_t* size);

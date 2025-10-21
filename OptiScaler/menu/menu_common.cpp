@@ -662,7 +662,7 @@ class Keybind
             break;
         }
 
-        LPARAM lParam = (scanCode & 0xFF) << 16;
+        LONG lParam = (scanCode & 0xFF) << 16;
         if (scanCode & 0xE000)
             lParam |= 1 << 24;
 
@@ -792,7 +792,7 @@ LRESULT MenuCommon::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     }
 
     if (!lastKey && msg == WM_KEYUP)
-        lastKey = wParam;
+        lastKey = static_cast<int>(wParam);
 
     if (!inputMenu)
         inputMenu = msg == WM_KEYUP && wParam == Config::Instance()->ShortcutKey.value_or_default();
@@ -1606,9 +1606,9 @@ bool MenuCommon::RenderMenu()
 
             float windowAlpha = 1.0f;
             if (auto diff = now - splashStart; diff < fadeTime)
-                windowAlpha = diff / fadeTime;
+                windowAlpha = static_cast<float>(diff / fadeTime);
             else if (auto diff = splashLimit - now; diff < fadeTime)
-                windowAlpha = diff / fadeTime;
+                windowAlpha = static_cast<float>(diff / fadeTime);
 
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, windowAlpha);
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12, 8));
@@ -1634,7 +1634,7 @@ bool MenuCommon::RenderMenu()
                 ImGui::Text(
                     "OptiScaler - %s for menu",
                     Keybind::KeyNameFromVirtualKeyCode(Config::Instance()->ShortcutKey.value_or_default()).c_str());
-                ImGui::TextColored(toneMapColor(ImVec4(1.0, 1.0, 1.0, 0.7)), splashMessage.c_str());
+                ImGui::TextColored(toneMapColor(ImVec4(1.0f, 1.0f, 1.0f, 0.7f)), splashMessage.c_str());
 
                 splashSize = ImGui::GetWindowSize();
 
@@ -1750,8 +1750,8 @@ bool MenuCommon::RenderMenu()
         frameRate = 1000.0 / frameTime;
         frameTimesCalculated = true;
 
-        float lastFT = state.frameTimes.empty() ? 0.0f : state.frameTimes.back();
-        float lastUT = state.upscaleTimes.empty() ? 0.0f : state.upscaleTimes.back();
+        float lastFT = static_cast<float>(state.frameTimes.empty() ? 0.0f : state.frameTimes.back());
+        float lastUT = static_cast<float>(state.upscaleTimes.empty() ? 0.0f : state.upscaleTimes.back());
         gFrameTimes.Push(lastFT);
         gUpscalerTimes.Push(lastUT);
 
@@ -1988,9 +1988,9 @@ bool MenuCommon::RenderMenu()
             if (Config::Instance()->FpsOverlayType.value_or_default() >= FpsOverlay_ReflexTimings)
             {
                 constexpr auto delayBetweenPollsMs = 500;
-                static auto previousPoll = 0;
+                static auto previousPoll = 0.0;
                 static bool gotData = false;
-                if (previousPoll == 0 || previousPoll + delayBetweenPollsMs < now)
+                if (previousPoll <= 0.001 || previousPoll + delayBetweenPollsMs < now)
                 {
                     gotData = ReflexHooks::updateTimingData();
                     previousPoll = now;
@@ -2019,11 +2019,13 @@ bool MenuCommon::RenderMenu()
                         auto toneMappedColor = State::Instance().isHdrActive ? toneMapColor(color) : color;
 
                         auto& timing = timingData[type].value();
-                        float duration = timing.length * rangeInNs / 1000;
+                        float duration = static_cast<float>(timing.length * rangeInNs / 1000.0);
                         ImGui::TextColored(toneMappedColor, "%-12s %4.1fms", desc, duration);
                         auto leftLimit = ImGui::GetItemRectMin().x + offsetForText * fpsScale;
-                        auto start = leftLimit + (ImGui::GetItemRectMin().x + maxWidth - leftLimit) * timing.position;
-                        auto end = start + (ImGui::GetItemRectMin().x + maxWidth - leftLimit) * timing.length;
+                        auto start = static_cast<float>(leftLimit + (ImGui::GetItemRectMin().x + maxWidth - leftLimit) *
+                                                                        timing.position);
+                        auto end = static_cast<float>(start + (ImGui::GetItemRectMin().x + maxWidth - leftLimit) *
+                                                                  timing.length);
                         auto pos = ImVec2(start, ImGui::GetItemRectMin().y);
                         auto size = ImVec2(end, ImGui::GetItemRectMax().y);
                         drawList->AddRectFilled(pos, size, ImGui::ColorConvertFloat4ToU32(toneMappedColor));
@@ -2180,9 +2182,9 @@ bool MenuCommon::RenderMenu()
                 ImGui::Spacing();
 
                 if (Config::Instance()->UseHQFont.value_or_default())
-                    ImGui::PushFontSize(std::round(fontSize * Config::Instance()->MenuScale.value_or_default() * 3.0));
+                    ImGui::PushFontSize(std::round(fontSize * Config::Instance()->MenuScale.value_or_default() * 3.0f));
                 else
-                    ImGui::SetWindowFontScale(Config::Instance()->MenuScale.value_or_default() * 3.0);
+                    ImGui::SetWindowFontScale(Config::Instance()->MenuScale.value_or_default() * 3.0f);
 
                 if (state.nvngxExists || state.nvngxReplacement.has_value() ||
                     (state.libxessExists || XeSSProxy::Module() != nullptr))
@@ -2242,9 +2244,9 @@ bool MenuCommon::RenderMenu()
                 ImGui::Spacing();
 
                 if (Config::Instance()->UseHQFont.value_or_default())
-                    ImGui::PushFontSize(std::round(fontSize * Config::Instance()->MenuScale.value_or_default() * 3.0));
+                    ImGui::PushFontSize(std::round(fontSize * Config::Instance()->MenuScale.value_or_default() * 3.0f));
                 else
-                    ImGui::SetWindowFontScale(Config::Instance()->MenuScale.value_or_default() * 3.0);
+                    ImGui::SetWindowFontScale(Config::Instance()->MenuScale.value_or_default() * 3.0f);
 
                 ImGui::Text("%s is active but not currently used by the game\nPlease enter the game",
                             currentFeature->Name().c_str());
@@ -3293,7 +3295,8 @@ bool MenuCommon::RenderMenu()
 
                                     ImGui::PushItemWidth(115.0f * Config::Instance()->MenuScale.value_or_default());
                                     auto fptSafetyMargin = Config::Instance()->FGFPTSafetyMarginInMs.value_or_default();
-                                    if (ImGui::InputFloat("Safety Margins in ms", &fptSafetyMargin, 0.01, 0.1, "%.2f"))
+                                    if (ImGui::InputFloat("Safety Margins in ms", &fptSafetyMargin, 0.01f, 0.1f,
+                                                          "%.2f"))
                                         Config::Instance()->FGFPTSafetyMarginInMs = fptSafetyMargin;
                                     ShowHelpMarker("Safety margins in millisecons\n"
                                                    "FSR default value: 0.1ms\n"
@@ -5182,12 +5185,17 @@ bool MenuCommon::RenderMenu()
                 if (_displayWidth == 0)
                 {
                     if (Config::Instance()->OutputScalingEnabled.value_or_default())
-                        _displayWidth = state.currentFeature->DisplayWidth() *
-                                        Config::Instance()->OutputScalingMultiplier.value_or_default();
+                    {
+                        _displayWidth =
+                            static_cast<uint32_t>(state.currentFeature->DisplayWidth() *
+                                                  Config::Instance()->OutputScalingMultiplier.value_or_default());
+                    }
                     else
+                    {
                         _displayWidth = state.currentFeature->DisplayWidth();
+                    }
 
-                    _renderWidth = _displayWidth / 3.0f;
+                    _renderWidth = static_cast<uint32_t>(_displayWidth / 3.0f);
                     _mipmapUpscalerQuality = 0;
                     _mipmapUpscalerRatio = 3.0f;
                     _mipBiasCalculated = log2((float) _renderWidth / (float) _displayWidth);
@@ -5203,13 +5211,18 @@ bool MenuCommon::RenderMenu()
                         if (_displayWidth <= 0)
                         {
                             if (Config::Instance()->OutputScalingEnabled.value_or_default())
-                                _displayWidth = state.currentFeature->DisplayWidth() *
-                                                Config::Instance()->OutputScalingMultiplier.value_or_default();
+                            {
+                                _displayWidth = static_cast<uint32_t>(
+                                    state.currentFeature->DisplayWidth() *
+                                    Config::Instance()->OutputScalingMultiplier.value_or_default());
+                            }
                             else
+                            {
                                 _displayWidth = state.currentFeature->DisplayWidth();
+                            }
                         }
 
-                        _renderWidth = _displayWidth / _mipmapUpscalerRatio;
+                        _renderWidth = static_cast<uint32_t>(_displayWidth / _mipmapUpscalerRatio);
                         _mipBiasCalculated = log2((float) _renderWidth / (float) _displayWidth);
                     }
 
@@ -5263,7 +5276,7 @@ bool MenuCommon::RenderMenu()
                                 else
                                     _mipmapUpscalerRatio = fr[n];
 
-                                _renderWidth = _displayWidth / _mipmapUpscalerRatio;
+                                _renderWidth = static_cast<uint32_t>(_displayWidth / _mipmapUpscalerRatio);
                                 _mipBiasCalculated = log2((float) _renderWidth / (float) _displayWidth);
                             }
                         }
@@ -5277,7 +5290,7 @@ bool MenuCommon::RenderMenu()
                     auto maxLimit = Config::Instance()->ExtendedLimits.value_or_default() ? 6.0f : 3.0f;
                     if (ImGui::SliderFloat("Upscaler Ratio", &_mipmapUpscalerRatio, minLimit, maxLimit, "%.2f"))
                     {
-                        _renderWidth = _displayWidth / _mipmapUpscalerRatio;
+                        _renderWidth = static_cast<uint32_t>(_displayWidth / _mipmapUpscalerRatio);
                         _mipBiasCalculated = log2((float) _renderWidth / (float) _displayWidth);
                     }
 

@@ -2,12 +2,13 @@
 
 #include "pch.h"
 
-#include <d3d12.h>
 #include <sl.h>
 #include <sl1.h>
 #include <sl_dlss_g.h>
 #include <sl_pcl.h>
 #include <sl_reflex.h>
+
+#include <d3d12.h>
 #include "include/sl.param/parameters.h"
 
 struct Adapter

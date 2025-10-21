@@ -231,7 +231,7 @@ bool Bias_Dx12::Dispatch(ID3D12Device* InDevice, ID3D12GraphicsCommandList* InCm
     UINT dispatchWidth = 0;
     UINT dispatchHeight = 0;
 
-    dispatchWidth = (inDesc.Width + InNumThreadsX - 1) / InNumThreadsX;
+    dispatchWidth = static_cast<UINT>((inDesc.Width + InNumThreadsX - 1) / InNumThreadsX);
     dispatchHeight = (inDesc.Height + InNumThreadsY - 1) / InNumThreadsY;
 
     InCmdList->Dispatch(dispatchWidth, dispatchHeight, 1);

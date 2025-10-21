@@ -698,7 +698,7 @@ static Fsr3::FfxErrorCode hkffxFsr3ConfigureFrameGeneration(void* context, Fsr3:
             fg->ResetCounters();
         }
 
-        UINT width = 0;
+        UINT64 width = 0;
         UINT height = 0;
         UINT left = 0;
         UINT top = 0;
@@ -781,7 +781,7 @@ static Fsr3::FfxErrorCode hkffxSetFrameGenerationConfigToSwapchainDX12(Fsr3::Ffx
             fg->ResetCounters();
         }
 
-        UINT width = 0;
+        UINT64 width = 0;
         UINT height = 0;
         UINT left = 0;
         UINT top = 0;

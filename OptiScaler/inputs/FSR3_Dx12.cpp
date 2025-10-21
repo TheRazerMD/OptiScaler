@@ -51,7 +51,7 @@ static bool _nvnxgInited = false;
 static bool _skipCreate = false;
 static bool _skipDispatch = false;
 static bool _skipDestroy = false;
-static float qualityRatios[] = { 1.0, 1.5, 1.7, 2.0, 3.0 };
+static float qualityRatios[] = { 1.0f, 1.5f, 1.7f, 2.0f, 3.0f };
 
 static D3D12_RESOURCE_STATES GetD3D12State(Fsr3::FfxResourceStates state)
 {
@@ -200,7 +200,7 @@ static std::optional<float> GetQualityOverrideRatioFfx(const Fsr3::FfxFsr3Upscal
     return output;
 }
 
-typedef struct dummyDevice
+struct dummyDevice
 {
     uint32_t dummy0[5];
     size_t dummy1[32];

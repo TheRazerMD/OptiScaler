@@ -604,11 +604,17 @@ bool FSR31FeatureVk::Evaluate(VkCommandBuffer InCmdBuffer, NVSDK_NGX_Parameter* 
 
     if (InParameters->Get("FSR.upscaleSize.width", &params.upscaleSize.width) == NVSDK_NGX_Result_Success &&
         Config::Instance()->OutputScalingEnabled.value_or_default())
-        params.upscaleSize.width *= Config::Instance()->OutputScalingMultiplier.value_or_default();
+    {
+        params.upscaleSize.width *=
+            static_cast<uint32_t>(Config::Instance()->OutputScalingMultiplier.value_or_default());
+    }
 
     if (InParameters->Get("FSR.upscaleSize.height", &params.upscaleSize.height) == NVSDK_NGX_Result_Success &&
         Config::Instance()->OutputScalingEnabled.value_or_default())
-        params.upscaleSize.height *= Config::Instance()->OutputScalingMultiplier.value_or_default();
+    {
+        params.upscaleSize.height *=
+            static_cast<uint32_t>(Config::Instance()->OutputScalingMultiplier.value_or_default());
+    }
 
     LOG_DEBUG("Dispatch!!");
     auto result = FfxApiProxy::VULKAN_Dispatch()(&_context, &params.header);

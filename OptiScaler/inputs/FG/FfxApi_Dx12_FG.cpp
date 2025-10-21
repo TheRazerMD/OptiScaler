@@ -553,7 +553,7 @@ ffxReturnCode_t ffxConfigure_Dx12FG(ffxContext* context, ffxConfigureDescHeader*
 
         if (fg->FrameGenerationContext() != nullptr && crDesc->distortionField.resource != nullptr)
         {
-            UINT width = 0;
+            UINT64 width = 0;
             UINT height = 0;
             UINT left = 0;
             UINT top = 0;
@@ -639,7 +639,7 @@ ffxReturnCode_t ffxConfigure_Dx12FG(ffxContext* context, ffxConfigureDescHeader*
 
         if (fg->FrameGenerationContext() != nullptr && crDesc->uiResource.resource != nullptr)
         {
-            UINT width = 0;
+            UINT64 width = 0;
             UINT height = 0;
             UINT left = 0;
             UINT top = 0;
@@ -901,7 +901,7 @@ ffxReturnCode_t ffxDispatch_Dx12FG(ffxContext* context, ffxDispatchDescHeader* d
         }
 
         // Camera Values
-        UINT dispWidth = 0;
+        UINT64 dispWidth = 0;
         UINT dispHeight = 0;
         fg->GetInterpolationRect(dispWidth, dispHeight);
         auto aspectRatio = (float) dispWidth / (float) dispHeight;
