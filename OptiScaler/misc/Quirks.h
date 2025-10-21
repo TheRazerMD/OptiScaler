@@ -182,7 +182,7 @@ static const QuirkEntry quirkTable[] = {
     //
     // Red Dead Redemption 2, Forgive Me Father 2, Revenge of the Savage Planet, F1 22, Metal Eden, Until Dawn, Bloom
     // and Rage, 171, Microsoft Flight Simulator (2020) - MSFS2020, Star Wars: Outlaws, Banishers: Ghosts of New Eden,
-    // Rune Factory Guardians of Azuma, Supraworld, F1 Manager 2024
+    // Rune Factory Guardians of Azuma, Supraworld, F1 Manager 2024, Keeper (+ WinGDK PaganIdol version)
     QUIRK_ENTRY("rdr2.exe", GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs),
     QUIRK_ENTRY("playrdr2.exe", GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs),
     QUIRK_ENTRY("fmf2-win64-shipping.exe", GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs),
@@ -200,6 +200,9 @@ static const QuirkEntry quirkTable[] = {
     QUIRK_ENTRY("game-win64-shipping.exe", GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs), // Rune
     QUIRK_ENTRY("supraworld-win64-shipping.exe", GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs),
     QUIRK_ENTRY("f1manager24.exe", GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs),
+    QUIRK_ENTRY("keeper-win64-shipping.exe", GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs),
+    QUIRK_ENTRY("paganidol-wingdk-shipping.exe", GameQuirk::DisableFSR2Inputs,
+                GameQuirk::DisableFSR3Inputs), // Keeper WinGDK PaganIdol
 
     // Self-explanatory
     //
