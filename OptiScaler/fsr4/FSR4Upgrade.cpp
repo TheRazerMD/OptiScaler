@@ -136,14 +136,15 @@ void CheckForGPU()
             continue;
         }
 
-        Config::Instance()->Fsr4Update.set_volatile_value(false);
-
         State::Instance().skipSpoofing = true;
         result = adapter->GetDesc(&adapterDesc);
         State::Instance().skipSpoofing = false;
 
         if (result == S_OK && adapterDesc.VendorId != VendorId::Microsoft)
         {
+            if (!Config::Instance()->Fsr4Update.has_value() || !Config::Instance()->Fsr4Update.value())
+                Config::Instance()->Fsr4Update.set_volatile_value(false);
+
             std::wstring szName(adapterDesc.Description);
             std::string descStr = std::format("Adapter: {}, VRAM: {} MB", wstring_to_string(szName),
                                               adapterDesc.DedicatedVideoMemory / (1024 * 1024));
