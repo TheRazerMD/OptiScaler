@@ -1,8 +1,16 @@
 #include "pch.h"
+
 #include "Config.h"
+
 #include "Util.h"
+
 #include "nvapi/fakenvapi.h"
 #include <hooks/Streamline_Hooks.h>
+
+#include <SimpleIni.h>
+
+static CSimpleIniA ini;
+static CSimpleIniA fakenvapiIni;
 
 static inline int64_t GetTicks()
 {

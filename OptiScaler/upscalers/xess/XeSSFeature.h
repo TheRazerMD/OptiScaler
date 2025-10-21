@@ -1,5 +1,7 @@
 #pragma once
+
 #include <upscalers/IFeature.h>
+
 #include <proxies/XeSS_Proxy.h>
 
 #include <string>

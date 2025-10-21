@@ -1,9 +1,11 @@
 #pragma once
+
 #include "pch.h"
+
 #include "State.h"
+
 #include <optional>
 #include <filesystem>
-#include <SimpleIni.h>
 
 enum HasDefaultValue
 {
@@ -496,8 +498,6 @@ class Config
     inline static Config* _config;
     inline static std::vector<std::string> _log;
 
-    CSimpleIniA ini;
-    CSimpleIniA fakenvapiIni;
     std::filesystem::path absoluteFileName;
     std::wstring fileName = L"OptiScaler.ini";
 

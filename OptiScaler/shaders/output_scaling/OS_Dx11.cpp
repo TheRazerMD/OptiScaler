@@ -17,6 +17,8 @@
 
 #include <Config.h>
 
+#pragma warning(disable : 4244)
+
 inline static DXGI_FORMAT TranslateTypelessFormats(DXGI_FORMAT format)
 {
     switch (format)
