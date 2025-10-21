@@ -138,17 +138,20 @@ bool ResTrack_Dx12::CheckResource(ID3D12Resource* resource)
     if (State::Instance().currentSwapchain == nullptr || State::Instance().isShuttingDown)
         return false;
 
+    auto resDesc = resource->GetDesc();
+
+    if (resDesc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D)
+        return false;
+
+    if (State::Instance().frameCount == 0)
+        return false;
+
     DXGI_SWAP_CHAIN_DESC scDesc {};
     if (State::Instance().currentSwapchain->GetDesc(&scDesc) != S_OK)
     {
         LOG_WARN("Can't get swapchain desc!");
         return false;
     }
-
-    auto resDesc = resource->GetDesc();
-
-    if (resDesc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D)
-        return false;
 
     if (resDesc.Height != scDesc.BufferDesc.Height || resDesc.Width != scDesc.BufferDesc.Width)
     {

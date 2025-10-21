@@ -237,6 +237,7 @@ static HRESULT LocalPresent(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT 
             fakenvapi::reportFGPresent(pSwapChain, fg != nullptr && fg->IsActive(), _frameCounter % 2);
 
         _frameCounter++;
+        State::Instance().frameCount = _frameCounter;
     }
 
     LOG_DEBUG("Calling original present");
