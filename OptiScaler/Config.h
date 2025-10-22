@@ -394,6 +394,7 @@ class Config
     CustomOptional<bool> FGUIPremultipliedAlpha { true };
     CustomOptional<bool> FGDisableHudless { false };
     CustomOptional<bool> FGDisableUI { true };
+    CustomOptional<bool> FGSkipReset { false };
 
     // OptiFG
     CustomOptional<bool> FGEnabled { false };

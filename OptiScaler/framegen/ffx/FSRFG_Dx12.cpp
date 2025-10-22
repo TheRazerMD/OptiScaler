@@ -333,7 +333,10 @@ ffxReturnCode_t FSRFG_Dx12::DispatchCallback(ffxDispatchDescFrameGeneration* par
 {
     const int fIndex = params->frameID % BUFFER_COUNT;
 
+    if (!Config::Instance()->FGSkipReset.value_or_default())
     params->reset = (_reset[fIndex] != 0);
+    else
+        params->reset = 0;
 
     LOG_DEBUG("frameID: {}, commandList: {:X}, numGeneratedFrames: {}", params->frameID, (size_t) params->commandList,
               params->numGeneratedFrames);

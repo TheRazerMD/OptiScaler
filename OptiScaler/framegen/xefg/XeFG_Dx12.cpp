@@ -582,7 +582,12 @@ bool XeFG_Dx12::Dispatch()
     constData.jitterOffsetY = _jitterY[fIndex];
     constData.motionVectorScaleX = _mvScaleX[fIndex];
     constData.motionVectorScaleY = _mvScaleY[fIndex];
+
+    if (!Config::Instance()->FGSkipReset.value_or_default())
     constData.resetHistory = _reset[fIndex];
+    else
+        constData.resetHistory = false;
+
     constData.frameRenderTime = static_cast<float>(State::Instance().lastFGFrameTime);
 
     LOG_DEBUG("Reset: {}, FTDelta: {}", _reset[fIndex], constData.frameRenderTime);

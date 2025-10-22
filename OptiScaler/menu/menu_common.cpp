@@ -3098,6 +3098,7 @@ bool MenuCommon::RenderMenu()
                         if (fgOutput)
                         {
                             ImGui::BeginDisabled(!fgOutput->IsActive());
+
                             const auto isUsingUIAny = fgOutput->IsUsingUIAny();
                             const auto isUsingHudlessAny = fgOutput->IsUsingHudlessAny();
 
@@ -3129,19 +3130,35 @@ bool MenuCommon::RenderMenu()
                             ImGui::EndDisabled();
 
                             ImGui::BeginDisabled(!isUsingUIAny /*|| !isUsingHudlessAny*/);
+
                             if (bool drawUIOverFG = Config::Instance()->FGDrawUIOverFG.value_or_default();
                                 ImGui::Checkbox("Draw UI over FG", &drawUIOverFG))
+                            {
                                 Config::Instance()->FGDrawUIOverFG = drawUIOverFG;
+                            }
+
                             ImGui::EndDisabled();
 
                             ImGui::SameLine();
 
                             ImGui::BeginDisabled(!isUsingUIAny);
+
                             if (bool uiPremultipliedAlpha =
                                     Config::Instance()->FGUIPremultipliedAlpha.value_or_default();
                                 ImGui::Checkbox("UI Premult. alpha", &uiPremultipliedAlpha))
+                            {
                                 Config::Instance()->FGUIPremultipliedAlpha = uiPremultipliedAlpha;
+                            }
+
                             ImGui::EndDisabled();
+
+                            if (bool skipReset = Config::Instance()->FGSkipReset.value_or_default();
+                                ImGui::Checkbox("Skip Reset", &skipReset))
+                            {
+                                Config::Instance()->FGSkipReset = skipReset;
+                            }
+
+                            ShowHelpMarker("Don't use reset signals from FG Inputs");
 
                             ImGui::EndDisabled();
                         }

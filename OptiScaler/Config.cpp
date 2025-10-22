@@ -102,6 +102,7 @@ bool Config::Reload(std::filesystem::path iniPath)
             FGUIPremultipliedAlpha.set_from_config(readBool("FrameGen", "UIPremultipliedAlpha"));
             FGDisableHudless.set_from_config(readBool("FrameGen", "DisableHudless"));
             FGDisableUI.set_from_config(readBool("FrameGen", "DisableUI"));
+            FGSkipReset.set_from_config(readBool("FrameGen", "SkipReset"));
         }
 
         // FSR FG
@@ -670,6 +671,7 @@ bool Config::SaveIni()
         ini.SetValue("FrameGen", "DisableHudless",
                      GetBoolValue(Instance()->FGDisableHudless.value_for_config()).c_str());
         ini.SetValue("FrameGen", "DisableUI", GetBoolValue(Instance()->FGDisableUI.value_for_config()).c_str());
+        ini.SetValue("FrameGen", "SkipReset", GetBoolValue(Instance()->FGSkipReset.value_for_config()).c_str());
     }
 
     // FSR FG output
