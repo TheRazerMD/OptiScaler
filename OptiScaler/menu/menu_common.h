@@ -52,7 +52,7 @@ class MenuCommon
     inline static UINT64 _frameCount = 0;
 
     // reflex
-    inline static float _limitFps = INFINITY;
+    inline static float _limitFps = std::numeric_limits<float>::infinity();
 
     // fsr3x
     inline static int _fsr3xIndex = -1;

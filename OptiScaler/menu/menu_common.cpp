@@ -4036,7 +4036,7 @@ bool MenuCommon::RenderMenu()
                     }
 
                     // set initial value
-                    if (_limitFps == INFINITY)
+                    if (std::isinf(_limitFps))
                         _limitFps = Config::Instance()->FramerateLimit.value_or_default();
 
                     ImGui::SliderFloat("FPS Limit", &_limitFps, 0, 200, "%.0f");

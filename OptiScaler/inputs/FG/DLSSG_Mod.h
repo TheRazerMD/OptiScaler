@@ -282,7 +282,7 @@ class DLSSGMod
 
                     InParameters->Set("DLSSG.CameraFar", cameraFar);
                 }
-                else if (cameraFar == INFINITY)
+                else if (std::isinf(cameraFar))
                 {
                     cameraFar = 100000.0f;
                     InParameters->Set("DLSSG.CameraFar", cameraFar);
@@ -499,7 +499,7 @@ class DLSSGMod
 
                     InParameters->Set("DLSSG.CameraFar", cameraFar);
                 }
-                else if (cameraFar == INFINITY)
+                else if (std::isinf(cameraFar))
                 {
                     cameraFar = 10000;
                     InParameters->Set("DLSSG.CameraFar", cameraFar);
