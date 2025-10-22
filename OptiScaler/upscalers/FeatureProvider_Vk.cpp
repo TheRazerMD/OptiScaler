@@ -50,6 +50,14 @@ bool FeatureProvider_Vk::GetFeature(std::string upscalerName, UINT handleId, NVS
                 *feature = std::make_unique<DLSSDFeatureVk>(handleId, parameters);
                 break;
             }
+            else
+            {
+                *feature = std::make_unique<FSR2FeatureVk>(handleId, parameters);
+            }
+        }
+        else
+        {
+            *feature = std::make_unique<FSR2FeatureVk>(handleId, parameters);
         }
 
     } while (false);

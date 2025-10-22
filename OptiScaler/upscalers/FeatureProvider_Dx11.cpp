@@ -68,6 +68,14 @@ bool FeatureProvider_Dx11::GetFeature(std::string upscalerName, UINT handleId, N
                 *feature = std::make_unique<DLSSDFeatureDx11>(handleId, parameters);
                 break;
             }
+            else
+            {
+                *feature = std::make_unique<FSR2FeatureDx11>(handleId, parameters);
+            }
+        }
+        else
+        {
+            *feature = std::make_unique<FSR2FeatureDx11>(handleId, parameters);
         }
 
     } while (false);
