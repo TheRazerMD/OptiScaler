@@ -3396,28 +3396,25 @@ bool MenuCommon::RenderMenu()
 
                             if (state.isHdrActive)
                             {
-                                DXGI_SWAP_CHAIN_DESC scDesc {};
-                                if (state.currentSwapchain->GetDesc(&scDesc) == S_OK)
+                                // DXGI_FORMAT_R32G32B32A32_TYPELESS = 1
+                                // DXGI_FORMAT_R32G32B32A32_FLOAT
+                                // DXGI_FORMAT_R32G32B32A32_UINT
+                                // DXGI_FORMAT_R32G32B32A32_SINT
+                                // DXGI_FORMAT_R32G32B32_TYPELESS
+                                // DXGI_FORMAT_R32G32B32_FLOAT
+                                // DXGI_FORMAT_R32G32B32_UINT
+                                // DXGI_FORMAT_R32G32B32_SINT
+                                // DXGI_FORMAT_R16G16B16A16_TYPELESS
+                                // DXGI_FORMAT_R16G16B16A16_FLOAT
+                                // DXGI_FORMAT_R16G16B16A16_UNORM
+                                // DXGI_FORMAT_R16G16B16A16_UINT
+                                // DXGI_FORMAT_R16G16B16A16_SNORM
+                                // DXGI_FORMAT_R16G16B16A16_SINT = 14
+                                if (state.currentSwapchainDesc.BufferDesc.Format > 0 &&
+                                    state.currentSwapchainDesc.BufferDesc.Format < 15)
                                 {
-                                    // DXGI_FORMAT_R32G32B32A32_TYPELESS = 1
-                                    // DXGI_FORMAT_R32G32B32A32_FLOAT
-                                    // DXGI_FORMAT_R32G32B32A32_UINT
-                                    // DXGI_FORMAT_R32G32B32A32_SINT
-                                    // DXGI_FORMAT_R32G32B32_TYPELESS
-                                    // DXGI_FORMAT_R32G32B32_FLOAT
-                                    // DXGI_FORMAT_R32G32B32_UINT
-                                    // DXGI_FORMAT_R32G32B32_SINT
-                                    // DXGI_FORMAT_R16G16B16A16_TYPELESS
-                                    // DXGI_FORMAT_R16G16B16A16_FLOAT
-                                    // DXGI_FORMAT_R16G16B16A16_UNORM
-                                    // DXGI_FORMAT_R16G16B16A16_UINT
-                                    // DXGI_FORMAT_R16G16B16A16_SNORM
-                                    // DXGI_FORMAT_R16G16B16A16_SINT = 14
-                                    if (scDesc.BufferDesc.Format > 0 && scDesc.BufferDesc.Format < 15)
-                                    {
-                                        cantActivate = true;
-                                        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.f), "XeFG only supports HDR10");
-                                    }
+                                    cantActivate = true;
+                                    ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.f), "XeFG only supports HDR10");
                                 }
                             }
                         }

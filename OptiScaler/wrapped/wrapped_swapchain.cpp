@@ -59,6 +59,10 @@ static HRESULT LocalPresent(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT 
             State::Instance().lastFGFrameTime = ftDelta;
 
         LOG_DEBUG("SyncInterval: {}, Flags: {:X}, Frametime: {:0.3f} ms", SyncInterval, Flags, ftDelta);
+
+        // Update swapchain info evey frame
+        if (pSwapChain->GetDesc(&State::Instance().currentSwapchainDesc) != S_OK)
+            LOG_WARN("Can't get swapchain desc!");
     }
 
     ID3D11Device* device = nullptr;

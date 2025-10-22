@@ -228,12 +228,7 @@ bool Hudfix_Dx12::CheckResource(ResourceInfo* resource)
         return true;
     }
 
-    DXGI_SWAP_CHAIN_DESC scDesc {};
-    if (State::Instance().currentSwapchain->GetDesc(&scDesc) != S_OK)
-    {
-        LOG_WARN("Can't get swapchain desc!");
-        return false;
-    }
+    auto& s = State::Instance();
 
     // There are all these chacks because looks like ResTracker is still missing some resources
     // Need check more docs about D3D12 resource/heap usage
@@ -246,12 +241,15 @@ bool Hudfix_Dx12::CheckResource(ResourceInfo* resource)
     auto resDesc = resource->buffer->GetDesc();
 
     // dimensions not match
-    if (resDesc.Height != scDesc.BufferDesc.Height || resDesc.Width != scDesc.BufferDesc.Width)
+    if (resDesc.Height != s.currentSwapchainDesc.BufferDesc.Height ||
+        resDesc.Width != s.currentSwapchainDesc.BufferDesc.Width)
     {
         // Extended size check
         if (!(Config::Instance()->FGRelaxedResolutionCheck.value_or_default() &&
-              resDesc.Height >= scDesc.BufferDesc.Height - 32 && resDesc.Height <= scDesc.BufferDesc.Height + 32 &&
-              resDesc.Width >= scDesc.BufferDesc.Width - 32 && resDesc.Width <= scDesc.BufferDesc.Width + 32))
+              resDesc.Height >= s.currentSwapchainDesc.BufferDesc.Height - 32 &&
+              resDesc.Height <= s.currentSwapchainDesc.BufferDesc.Height + 32 &&
+              resDesc.Width >= s.currentSwapchainDesc.BufferDesc.Width - 32 &&
+              resDesc.Width <= s.currentSwapchainDesc.BufferDesc.Width + 32))
         {
             return false;
         }
@@ -269,11 +267,12 @@ bool Hudfix_Dx12::CheckResource(ResourceInfo* resource)
     }
 
     // format match
-    if (resDesc.Format == scDesc.BufferDesc.Format)
+    if (resDesc.Format == s.currentSwapchainDesc.BufferDesc.Format)
     {
         LOG_DEBUG("Width: {}/{}, Height: {}/{}, Format: {}/{}, Resource: {:X}, convertFormat: {} -> TRUE",
-                  resDesc.Width, scDesc.BufferDesc.Width, resDesc.Height, scDesc.BufferDesc.Height,
-                  (UINT) resDesc.Format, (UINT) scDesc.BufferDesc.Format, (size_t) resource->buffer,
+                  resDesc.Width, s.currentSwapchainDesc.BufferDesc.Width, resDesc.Height,
+                  s.currentSwapchainDesc.BufferDesc.Height, (UINT) resDesc.Format,
+                  (UINT) s.currentSwapchainDesc.BufferDesc.Format, (size_t) resource->buffer,
                   Config::Instance()->FGHUDFixExtended.value_or_default());
 
         return true;
@@ -294,25 +293,26 @@ bool Hudfix_Dx12::CheckResource(ResourceInfo* resource)
          resDesc.Format == DXGI_FORMAT_R8G8B8A8_UNORM || resDesc.Format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB ||
          resDesc.Format == DXGI_FORMAT_B8G8R8A8_TYPELESS || resDesc.Format == DXGI_FORMAT_B8G8R8A8_UNORM ||
          resDesc.Format == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB) &&
-        (scDesc.BufferDesc.Format == DXGI_FORMAT_R10G10B10A2_UNORM ||
-         scDesc.BufferDesc.Format == DXGI_FORMAT_R10G10B10A2_TYPELESS ||
-         scDesc.BufferDesc.Format == DXGI_FORMAT_R16G16B16A16_FLOAT ||
-         scDesc.BufferDesc.Format == DXGI_FORMAT_R16G16B16A16_TYPELESS ||
-         scDesc.BufferDesc.Format == DXGI_FORMAT_R11G11B10_FLOAT ||
-         scDesc.BufferDesc.Format == DXGI_FORMAT_R32G32B32A32_FLOAT ||
-         scDesc.BufferDesc.Format == DXGI_FORMAT_R32G32B32A32_TYPELESS ||
-         scDesc.BufferDesc.Format == DXGI_FORMAT_R32G32B32_FLOAT ||
-         scDesc.BufferDesc.Format == DXGI_FORMAT_R32G32B32_TYPELESS ||
-         scDesc.BufferDesc.Format == DXGI_FORMAT_R8G8B8A8_TYPELESS ||
-         scDesc.BufferDesc.Format == DXGI_FORMAT_R8G8B8A8_UNORM ||
-         scDesc.BufferDesc.Format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB ||
-         scDesc.BufferDesc.Format == DXGI_FORMAT_B8G8R8A8_TYPELESS ||
-         scDesc.BufferDesc.Format == DXGI_FORMAT_B8G8R8A8_UNORM ||
-         scDesc.BufferDesc.Format == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB))
+        (s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_R10G10B10A2_UNORM ||
+         s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_R10G10B10A2_TYPELESS ||
+         s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_R16G16B16A16_FLOAT ||
+         s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_R16G16B16A16_TYPELESS ||
+         s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_R11G11B10_FLOAT ||
+         s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_R32G32B32A32_FLOAT ||
+         s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_R32G32B32A32_TYPELESS ||
+         s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_R32G32B32_FLOAT ||
+         s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_R32G32B32_TYPELESS ||
+         s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_R8G8B8A8_TYPELESS ||
+         s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_R8G8B8A8_UNORM ||
+         s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB ||
+         s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_B8G8R8A8_TYPELESS ||
+         s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_B8G8R8A8_UNORM ||
+         s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB))
     {
         LOG_DEBUG("Width: {}/{}, Height: {}/{}, Format: {}/{}, Resource: {:X}, convertFormat: {} -> TRUE",
-                  resDesc.Width, scDesc.BufferDesc.Width, resDesc.Height, scDesc.BufferDesc.Height,
-                  (UINT) resDesc.Format, (UINT) scDesc.BufferDesc.Format, (size_t) resource->buffer,
+                  resDesc.Width, s.currentSwapchainDesc.BufferDesc.Width, resDesc.Height,
+                  s.currentSwapchainDesc.BufferDesc.Height, (UINT) resDesc.Format,
+                  (UINT) s.currentSwapchainDesc.BufferDesc.Format, (size_t) resource->buffer,
                   Config::Instance()->FGHUDFixExtended.value_or_default());
 
         return true;
@@ -438,7 +438,9 @@ bool Hudfix_Dx12::SkipHudlessChecks() { return _skipHudlessChecks; }
 bool Hudfix_Dx12::CheckForHudless(std::string callerName, ID3D12GraphicsCommandList* cmdList, ResourceInfo* resource,
                                   D3D12_RESOURCE_STATES state, bool ignoreBlocked)
 {
-    if (State::Instance().currentFG == nullptr)
+    auto& s = State::Instance();
+
+    if (s.currentFG == nullptr)
         return false;
 
     if (!IsResourceCheckActive())
@@ -449,7 +451,7 @@ bool Hudfix_Dx12::CheckForHudless(std::string callerName, ID3D12GraphicsCommandL
         if (!CheckResource(resource))
             break;
 
-        CapturedHudlessInfo* capturedHudlessInfo = &State::Instance().CapturedHudlesses[resource->buffer];
+        CapturedHudlessInfo* capturedHudlessInfo = &s.CapturedHudlesses[resource->buffer];
         if (capturedHudlessInfo != nullptr && !capturedHudlessInfo->enabled)
         {
             LOG_DEBUG("Skipping {:X}, disabled from captured hudless list!", (size_t) resource->buffer);
@@ -457,7 +459,7 @@ bool Hudfix_Dx12::CheckForHudless(std::string callerName, ID3D12GraphicsCommandL
         }
 
         DXGI_SWAP_CHAIN_DESC scDesc {};
-        if (State::Instance().currentSwapchain->GetDesc(&scDesc) != S_OK)
+        if (s.currentSwapchain->GetDesc(&scDesc) != S_OK)
         {
             LOG_WARN("Can't get swapchain desc!");
             break;
@@ -577,7 +579,7 @@ bool Hudfix_Dx12::CheckForHudless(std::string callerName, ID3D12GraphicsCommandL
         // Make a copy of resource to capture current state
         if (!resource->extended)
         {
-            if (CreateBufferResource(State::Instance().currentD3D12Device, resource, D3D12_RESOURCE_STATE_COPY_DEST,
+            if (CreateBufferResource(s.currentD3D12Device, resource, D3D12_RESOURCE_STATE_COPY_DEST,
                                      &_captureBuffer[fIndex]))
             {
                 LOG_DEBUG("Create a copy of resource: {:X}", (size_t) resource->buffer);
@@ -603,9 +605,9 @@ bool Hudfix_Dx12::CheckForHudless(std::string callerName, ID3D12GraphicsCommandL
         }
         else
         {
-            if (CreateBufferResourceWithSize(State::Instance().currentD3D12Device, resource,
-                                             D3D12_RESOURCE_STATE_COPY_DEST, &_captureBuffer[fIndex],
-                                             scDesc.BufferDesc.Width, scDesc.BufferDesc.Height))
+            if (CreateBufferResourceWithSize(s.currentD3D12Device, resource, D3D12_RESOURCE_STATE_COPY_DEST,
+                                             &_captureBuffer[fIndex], scDesc.BufferDesc.Width,
+                                             scDesc.BufferDesc.Height))
             {
                 LOG_DEBUG("Create a copy of resource: {:X}", (size_t) resource->buffer);
 
@@ -662,7 +664,7 @@ bool Hudfix_Dx12::CheckForHudless(std::string callerName, ID3D12GraphicsCommandL
             }
         }
 
-        auto fg = reinterpret_cast<IFGFeature_Dx12*>(State::Instance().currentFG);
+        auto fg = reinterpret_cast<IFGFeature_Dx12*>(s.currentFG);
         UINT64 interpolationRectWidth = 0;
         UINT interpolationRectHeight = 0;
         if (fg != nullptr)
@@ -672,25 +674,16 @@ bool Hudfix_Dx12::CheckForHudless(std::string callerName, ID3D12GraphicsCommandL
         uint32_t top = 0;
 
         // use swapchain buffer info
-        DXGI_SWAP_CHAIN_DESC scDesc1 {};
-        if (State::Instance().currentSwapchain->GetDesc(&scDesc1) == S_OK)
-        {
-            LOG_DEBUG("SwapChain Res: {}x{}, Upscaler Display Res: {}x{}", scDesc1.BufferDesc.Width,
-                      scDesc1.BufferDesc.Height, interpolationRectWidth, interpolationRectHeight);
+        LOG_DEBUG("SwapChain Res: {}x{}, Upscaler Display Res: {}x{}", s.currentSwapchainDesc.BufferDesc.Width,
+                  s.currentSwapchainDesc.BufferDesc.Height, interpolationRectWidth, interpolationRectHeight);
 
-            auto calculatedLeft = ((int) scDesc1.BufferDesc.Width - (int) interpolationRectWidth) / 2;
-            if (calculatedLeft > 0)
-                left = Config::Instance()->FGRectLeft.value_or(calculatedLeft);
+        auto calculatedLeft = ((int) s.currentSwapchainDesc.BufferDesc.Width - (int) interpolationRectWidth) / 2;
+        if (calculatedLeft > 0)
+            left = Config::Instance()->FGRectLeft.value_or(calculatedLeft);
 
-            auto calculatedTop = ((int) scDesc1.BufferDesc.Height - (int) interpolationRectHeight) / 2;
-            if (calculatedTop > 0)
-                top = Config::Instance()->FGRectTop.value_or(calculatedTop);
-        }
-        else
-        {
-            left = Config::Instance()->FGRectLeft.value_or(0);
-            top = Config::Instance()->FGRectTop.value_or(0);
-        }
+        auto calculatedTop = ((int) s.currentSwapchainDesc.BufferDesc.Height - (int) interpolationRectHeight) / 2;
+        if (calculatedTop > 0)
+            top = Config::Instance()->FGRectTop.value_or(calculatedTop);
 
         // needs conversion?
         if (resource->format != scDesc.BufferDesc.Format)
@@ -704,14 +697,13 @@ bool Hudfix_Dx12::CheckForHudless(std::string callerName, ID3D12GraphicsCommandL
                     delete _formatTransfer[fIndex];
 
                 _formatTransfer[fIndex] = nullptr;
-                State::Instance().skipHeapCapture = true;
-                _formatTransfer[fIndex] =
-                    new FT_Dx12("FormatTransfer", State::Instance().currentD3D12Device, scDesc.BufferDesc.Format);
-                State::Instance().skipHeapCapture = false;
+                s.skipHeapCapture = true;
+                _formatTransfer[fIndex] = new FT_Dx12("FormatTransfer", s.currentD3D12Device, scDesc.BufferDesc.Format);
+                s.skipHeapCapture = false;
             }
 
             if (_formatTransfer[fIndex] != nullptr &&
-                _formatTransfer[fIndex]->CreateBufferResource(State::Instance().currentD3D12Device, resource->buffer,
+                _formatTransfer[fIndex]->CreateBufferResource(s.currentD3D12Device, resource->buffer,
                                                               D3D12_RESOURCE_STATE_UNORDERED_ACCESS))
             {
                 // This will prevent resource tracker to check these operations
@@ -720,7 +712,7 @@ bool Hudfix_Dx12::CheckForHudless(std::string callerName, ID3D12GraphicsCommandL
 
                 ResourceBarrier(cmdList, _captureBuffer[fIndex], D3D12_RESOURCE_STATE_COPY_DEST,
                                 D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-                _formatTransfer[fIndex]->Dispatch(State::Instance().currentD3D12Device, cmdList, _captureBuffer[fIndex],
+                _formatTransfer[fIndex]->Dispatch(s.currentD3D12Device, cmdList, _captureBuffer[fIndex],
                                                   _formatTransfer[fIndex]->Buffer());
                 ResourceBarrier(cmdList, _captureBuffer[fIndex], D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
                                 D3D12_RESOURCE_STATE_COPY_DEST);
@@ -774,11 +766,11 @@ bool Hudfix_Dx12::CheckForHudless(std::string callerName, ID3D12GraphicsCommandL
             }
         }
 
-        if (State::Instance().FGcaptureResources)
+        if (s.FGcaptureResources)
         {
             std::lock_guard<std::mutex> lock(_captureMutex);
             _captureList.insert(resource->buffer);
-            State::Instance().FGcapturedResourceCount = _captureList.size();
+            s.FGcapturedResourceCount = _captureList.size();
         }
 
         LOG_DEBUG("Calling FG with hudless");
@@ -791,7 +783,7 @@ bool Hudfix_Dx12::CheckForHudless(std::string callerName, ID3D12GraphicsCommandL
         if (capturedHudlessInfo != nullptr)
             capturedHudlessInfo->usageCount++;
         else
-            State::Instance().CapturedHudlesses[resource->buffer] = {};
+            s.CapturedHudlesses[resource->buffer] = {};
 
         return true;
 

@@ -135,7 +135,7 @@ static thread_local HeapCacheTLS cacheCR;
 
 bool ResTrack_Dx12::CheckResource(ID3D12Resource* resource)
 {
-    if (State::Instance().currentSwapchain == nullptr || State::Instance().isShuttingDown)
+    if (State::Instance().isShuttingDown)
         return false;
 
     auto resDesc = resource->GetDesc();
@@ -146,19 +146,16 @@ bool ResTrack_Dx12::CheckResource(ID3D12Resource* resource)
     if (State::Instance().frameCount == 0)
         return false;
 
-    DXGI_SWAP_CHAIN_DESC scDesc {};
-    if (State::Instance().currentSwapchain->GetDesc(&scDesc) != S_OK)
-    {
-        LOG_WARN("Can't get swapchain desc!");
-        return false;
-    }
+    auto& s = State::Instance();
 
-    if (resDesc.Height != scDesc.BufferDesc.Height || resDesc.Width != scDesc.BufferDesc.Width)
+    if (resDesc.Height != s.currentSwapchainDesc.BufferDesc.Height ||
+        resDesc.Width != s.currentSwapchainDesc.BufferDesc.Width)
     {
         auto result = Config::Instance()->FGRelaxedResolutionCheck.value_or_default() &&
-                      resDesc.Height >= scDesc.BufferDesc.Height - 32 &&
-                      resDesc.Height <= scDesc.BufferDesc.Height + 32 &&
-                      resDesc.Width >= scDesc.BufferDesc.Width - 32 && resDesc.Width <= scDesc.BufferDesc.Width + 32;
+                      resDesc.Height >= s.currentSwapchainDesc.BufferDesc.Height - 32 &&
+                      resDesc.Height <= s.currentSwapchainDesc.BufferDesc.Height + 32 &&
+                      resDesc.Width >= s.currentSwapchainDesc.BufferDesc.Width - 32 &&
+                      resDesc.Width <= s.currentSwapchainDesc.BufferDesc.Width + 32;
 
         // LOG_TRACK("Resource: {}x{} ({}), Swapchain: {}x{} ({}), Relaxed Result: {}", resDesc.Width, resDesc.Height,
         //           (UINT) resDesc.Format, scDesc.BufferDesc.Width, scDesc.BufferDesc.Height,

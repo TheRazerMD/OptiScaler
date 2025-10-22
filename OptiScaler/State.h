@@ -233,6 +233,7 @@ class State
     ID3D11Device* currentD3D11Device = nullptr;
     ID3D12CommandQueue* currentCommandQueue = nullptr;
     VkDevice currentVkDevice = nullptr;
+    DXGI_SWAP_CHAIN_DESC currentSwapchainDesc {};
 
     std::vector<ID3D12Device*> d3d12Devices;
     std::vector<ID3D11Device*> d3d11Devices;

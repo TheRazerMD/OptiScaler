@@ -163,6 +163,8 @@ ffxReturnCode_t ffxCreateContext_Dx12FG(ffxContext* context, ffxCreateContextDes
 
     LOG_DEBUG("");
 
+    auto& s = State::Instance();
+
     if (desc->type == FFX_API_CREATE_CONTEXT_DESC_TYPE_FRAMEGENERATION)
     {
         ffxCreateContextDescHeader* next = nullptr;
@@ -180,14 +182,14 @@ ffxReturnCode_t ffxCreateContext_Dx12FG(ffxContext* context, ffxCreateContextDes
             }
         }
 
-        if (_device != nullptr && State::Instance().currentFG != nullptr)
+        if (_device != nullptr && s.currentFG != nullptr)
         {
-            if (State::Instance().currentFG->FrameGenerationContext() != nullptr)
+            if (s.currentFG->FrameGenerationContext() != nullptr)
             {
                 LOG_INFO("There is already an active FG context: {:X}, destroying it.",
-                         (size_t) State::Instance().currentFG->FrameGenerationContext());
+                         (size_t) s.currentFG->FrameGenerationContext());
 
-                State::Instance().currentFG->DestroyFGContext();
+                s.currentFG->DestroyFGContext();
             }
 
             auto ccDesc = (ffxCreateContextDescFrameGeneration*) desc;
@@ -223,7 +225,7 @@ ffxReturnCode_t ffxCreateContext_Dx12FG(ffxContext* context, ffxCreateContextDes
             LOG_DEBUG("XeFG HighResMV: {}", Config::Instance()->FGXeFGHighResMV.value_or_default());
             Config::Instance()->SaveXeFG();
 
-            State::Instance().currentFG->CreateContext(_device, _fgConst);
+            s.currentFG->CreateContext(_device, _fgConst);
 
             *context = (ffxContext) fgContext;
             return FFX_API_RETURN_OK;
@@ -233,16 +235,15 @@ ffxReturnCode_t ffxCreateContext_Dx12FG(ffxContext* context, ffxCreateContextDes
     {
         auto cDesc = (ffxCreateContextDescFrameGenerationSwapChainWrapDX12*) desc;
 
-        if (State::Instance().currentFG != nullptr && State::Instance().currentFGSwapchain != nullptr)
+        if (s.currentFG != nullptr && s.currentFGSwapchain != nullptr)
         {
-            *context = (ffxContext) scContext; // State::Instance().currentFG->SwapchainContext();
-            *cDesc->swapchain = (IDXGISwapChain4*) State::Instance().currentFGSwapchain;
+            *context = (ffxContext) scContext; // s.currentFG->SwapchainContext();
+            *cDesc->swapchain = (IDXGISwapChain4*) s.currentFGSwapchain;
             return FFX_API_RETURN_OK;
         }
         else
         {
-            LOG_ERROR("currentFG: {:X}, currentFGSwapchain: {:X}", (size_t) State::Instance().currentFG,
-                      (size_t) State::Instance().currentFGSwapchain);
+            LOG_ERROR("currentFG: {:X}, currentFGSwapchain: {:X}", (size_t) s.currentFG, (size_t) s.currentFGSwapchain);
             return FFX_API_RETURN_ERROR_RUNTIME_ERROR;
         }
     }
@@ -256,7 +257,7 @@ ffxReturnCode_t ffxCreateContext_Dx12FG(ffxContext* context, ffxCreateContextDes
         {
             LOG_INFO("Swapchain created");
 
-            if (State::Instance().currentFG != nullptr && State::Instance().currentFGSwapchain != nullptr)
+            if (s.currentFG != nullptr && s.currentFGSwapchain != nullptr)
             {
                 *context = (ffxContext) scContext;
                 return FFX_API_RETURN_OK;
@@ -264,7 +265,7 @@ ffxReturnCode_t ffxCreateContext_Dx12FG(ffxContext* context, ffxCreateContextDes
             else
             {
                 LOG_ERROR("FG Swapchain creation error, currentFG: {:X}, currentFGSwapchain: {:X}",
-                          (size_t) State::Instance().currentFG, (size_t) State::Instance().currentFGSwapchain);
+                          (size_t) s.currentFG, (size_t) s.currentFGSwapchain);
             }
         }
         else
@@ -293,7 +294,7 @@ ffxReturnCode_t ffxCreateContext_Dx12FG(ffxContext* context, ffxCreateContextDes
         {
             LOG_INFO("Swapchain created");
 
-            if (State::Instance().currentFG != nullptr && State::Instance().currentFGSwapchain != nullptr)
+            if (s.currentFG != nullptr && s.currentFGSwapchain != nullptr)
             {
                 *context = (ffxContext) scContext;
                 return FFX_API_RETURN_OK;
@@ -301,7 +302,7 @@ ffxReturnCode_t ffxCreateContext_Dx12FG(ffxContext* context, ffxCreateContextDes
             else
             {
                 LOG_ERROR("FG Swapchain creation error, currentFG: {:X}, currentFGSwapchain: {:X}",
-                          (size_t) State::Instance().currentFG, (size_t) State::Instance().currentFGSwapchain);
+                          (size_t) s.currentFG, (size_t) s.currentFGSwapchain);
             }
         }
         else
@@ -372,7 +373,8 @@ ffxReturnCode_t ffxConfigure_Dx12FG(ffxContext* context, ffxConfigureDescHeader*
     return (ffxReturnCode_t) 0xFFFFFFFF;
 #endif
 
-    auto fg = State::Instance().currentFG;
+    auto& s = State::Instance();
+    auto fg = s.currentFG;
 
     if (fg == nullptr)
     {
@@ -399,7 +401,7 @@ ffxReturnCode_t ffxConfigure_Dx12FG(ffxContext* context, ffxConfigureDescHeader*
         LOG_DEBUG("FFX_API_CONFIGURE_DESC_TYPE_FRAMEGENERATION frameID: {}, enabled: {} ", cDesc->frameID,
                   cDesc->frameGenerationEnabled);
 
-        State::Instance().FSRFGInputActive = cDesc->frameGenerationEnabled;
+        s.FSRFGInputActive = cDesc->frameGenerationEnabled;
 
         if (cDesc->frameGenerationEnabled && !fg->IsActive() && Config::Instance()->FGEnabled.value_or_default())
         {
@@ -422,11 +424,8 @@ ffxReturnCode_t ffxConfigure_Dx12FG(ffxContext* context, ffxConfigureDescHeader*
 
         if (width == 0)
         {
-            DXGI_SWAP_CHAIN_DESC scDesc {};
-            State::Instance().currentFGSwapchain->GetDesc(&scDesc);
-
-            width = scDesc.BufferDesc.Width;
-            height = scDesc.BufferDesc.Height;
+            width = s.currentSwapchainDesc.BufferDesc.Width;
+            height = s.currentSwapchainDesc.BufferDesc.Height;
             top = 0;
             left = 0;
         }
@@ -563,11 +562,8 @@ ffxReturnCode_t ffxConfigure_Dx12FG(ffxContext* context, ffxConfigureDescHeader*
 
             if (width == 0)
             {
-                DXGI_SWAP_CHAIN_DESC scDesc {};
-                State::Instance().currentFGSwapchain->GetDesc(&scDesc);
-
-                width = scDesc.BufferDesc.Width;
-                height = scDesc.BufferDesc.Height;
+                width = s.currentSwapchainDesc.BufferDesc.Width;
+                height = s.currentSwapchainDesc.BufferDesc.Height;
                 top = 0;
                 left = 0;
             }
@@ -649,11 +645,8 @@ ffxReturnCode_t ffxConfigure_Dx12FG(ffxContext* context, ffxConfigureDescHeader*
 
             if (width == 0)
             {
-                DXGI_SWAP_CHAIN_DESC scDesc {};
-                State::Instance().currentFGSwapchain->GetDesc(&scDesc);
-
-                width = scDesc.BufferDesc.Width;
-                height = scDesc.BufferDesc.Height;
+                width = s.currentSwapchainDesc.BufferDesc.Width;
+                height = s.currentSwapchainDesc.BufferDesc.Height;
                 top = 0;
                 left = 0;
             }
@@ -805,7 +798,8 @@ ffxReturnCode_t ffxDispatch_Dx12FG(ffxContext* context, ffxDispatchDescHeader* d
     return (ffxReturnCode_t) 0xFFFFFFFF;
 #endif
 
-    auto fg = State::Instance().currentFG;
+    auto& s = State::Instance();
+    auto fg = s.currentFG;
 
     if (fg == nullptr)
     {
@@ -817,7 +811,6 @@ ffxReturnCode_t ffxDispatch_Dx12FG(ffxContext* context, ffxDispatchDescHeader* d
     {
         auto cdDesc = (ffxDispatchDescFrameGeneration*) desc;
 
-        auto fg = State::Instance().currentFG;
         if (fg != nullptr)
         {
             fg->SetInterpolationPos(cdDesc->generationRect.left, cdDesc->generationRect.top);
@@ -833,11 +826,8 @@ ffxReturnCode_t ffxDispatch_Dx12FG(ffxContext* context, ffxDispatchDescHeader* d
 
                 if (width == 0)
                 {
-                    DXGI_SWAP_CHAIN_DESC scDesc {};
-                    State::Instance().currentFGSwapchain->GetDesc(&scDesc);
-
-                    width = scDesc.BufferDesc.Width;
-                    height = scDesc.BufferDesc.Height;
+                    width = s.currentSwapchainDesc.BufferDesc.Width;
+                    height = s.currentSwapchainDesc.BufferDesc.Height;
                     top = 0;
                     left = 0;
                 }
@@ -874,7 +864,7 @@ ffxReturnCode_t ffxDispatch_Dx12FG(ffxContext* context, ffxDispatchDescHeader* d
             }
         }
 
-        auto device = _device == nullptr ? State::Instance().currentD3D12Device : _device;
+        auto device = _device == nullptr ? s.currentD3D12Device : _device;
         fg->EvaluateState(device, _fgConst);
 
         if (!fg->IsActive() || fg->IsPaused())

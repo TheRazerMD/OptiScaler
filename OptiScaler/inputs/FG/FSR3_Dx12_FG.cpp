@@ -417,18 +417,16 @@ static Fsr3::FfxErrorCode hkffxRegisterFrameinterpolationUiResourceDX12(Fsr3::Ff
 {
     LOG_DEBUG("UiResource found 1: {:X}", (size_t) uiResource.resource);
 
-    auto fg = State::Instance().currentFG;
+    auto& s = State::Instance();
+    auto fg = s.currentFG;
 
     if (fg->FrameGenerationContext() != nullptr && uiResource.resource != nullptr)
     {
         UINT width = 0;
         UINT height = 0;
 
-        DXGI_SWAP_CHAIN_DESC scDesc {};
-        State::Instance().currentFGSwapchain->GetDesc(&scDesc);
-
-        width = scDesc.BufferDesc.Width;
-        height = scDesc.BufferDesc.Height;
+        width = s.currentSwapchainDesc.BufferDesc.Width;
+        height = s.currentSwapchainDesc.BufferDesc.Height;
 
         Dx12Resource ui {};
         ui.cmdList = nullptr; // Not sure about this
@@ -569,7 +567,8 @@ static Fsr3::FfxErrorCode hkffxFrameInterpolationDispatch(FfxFrameInterpolationC
     if (context == nullptr || params == nullptr)
         return Fsr3::FFX_ERROR_INVALID_ARGUMENT;
 
-    auto fg = State::Instance().currentFG;
+    auto& s = State::Instance();
+    auto fg = s.currentFG;
 
     if (fg == nullptr)
     {
@@ -595,11 +594,8 @@ static Fsr3::FfxErrorCode hkffxFrameInterpolationDispatch(FfxFrameInterpolationC
 
         if (width == 0)
         {
-            DXGI_SWAP_CHAIN_DESC scDesc {};
-            State::Instance().currentFGSwapchain->GetDesc(&scDesc);
-
-            width = scDesc.BufferDesc.Width;
-            height = scDesc.BufferDesc.Height;
+            width = s.currentSwapchainDesc.BufferDesc.Width;
+            height = s.currentSwapchainDesc.BufferDesc.Height;
             top = 0;
             left = 0;
         }
@@ -627,11 +623,8 @@ static Fsr3::FfxErrorCode hkffxFrameInterpolationDispatch(FfxFrameInterpolationC
 
         if (width == 0)
         {
-            DXGI_SWAP_CHAIN_DESC scDesc {};
-            State::Instance().currentFGSwapchain->GetDesc(&scDesc);
-
-            width = scDesc.BufferDesc.Width;
-            height = scDesc.BufferDesc.Height;
+            width = s.currentSwapchainDesc.BufferDesc.Width;
+            height = s.currentSwapchainDesc.BufferDesc.Height;
             top = 0;
             left = 0;
         }
@@ -673,7 +666,8 @@ static Fsr3::FfxErrorCode hkffxFsr3ConfigureFrameGeneration(void* context, Fsr3:
     if (context == nullptr || config == nullptr)
         return Fsr3::FFX_ERROR_INVALID_ARGUMENT;
 
-    auto fg = State::Instance().currentFG;
+    auto& s = State::Instance();
+    auto fg = s.currentFG;
 
     if (fg == nullptr)
     {
@@ -685,7 +679,7 @@ static Fsr3::FfxErrorCode hkffxFsr3ConfigureFrameGeneration(void* context, Fsr3:
     {
         LOG_DEBUG("frameGenerationEnabled: {} ", config->frameGenerationEnabled);
 
-        State::Instance().FSRFGInputActive = config->frameGenerationEnabled;
+        s.FSRFGInputActive = config->frameGenerationEnabled;
 
         if (config->frameGenerationEnabled && !fg->IsActive() && Config::Instance()->FGEnabled.value_or_default())
         {
@@ -708,11 +702,8 @@ static Fsr3::FfxErrorCode hkffxFsr3ConfigureFrameGeneration(void* context, Fsr3:
 
         if (width == 0)
         {
-            DXGI_SWAP_CHAIN_DESC scDesc {};
-            State::Instance().currentFGSwapchain->GetDesc(&scDesc);
-
-            width = scDesc.BufferDesc.Width;
-            height = scDesc.BufferDesc.Height;
+            width = s.currentSwapchainDesc.BufferDesc.Width;
+            height = s.currentSwapchainDesc.BufferDesc.Height;
             top = 0;
             left = 0;
         }
@@ -756,7 +747,8 @@ static Fsr3::FfxErrorCode hkffxSetFrameGenerationConfigToSwapchainDX12(Fsr3::Ffx
     if (config == nullptr)
         return Fsr3::FFX_ERROR_INVALID_ARGUMENT;
 
-    auto fg = State::Instance().currentFG;
+    auto& s = State::Instance();
+    auto fg = s.currentFG;
 
     if (fg == nullptr)
     {
@@ -768,7 +760,7 @@ static Fsr3::FfxErrorCode hkffxSetFrameGenerationConfigToSwapchainDX12(Fsr3::Ffx
     {
         LOG_DEBUG("frameGenerationEnabled: {} ", config->frameGenerationEnabled);
 
-        State::Instance().FSRFGInputActive = config->frameGenerationEnabled;
+        s.FSRFGInputActive = config->frameGenerationEnabled;
 
         if (config->frameGenerationEnabled && !fg->IsActive() && Config::Instance()->FGEnabled.value_or_default())
         {
@@ -791,11 +783,8 @@ static Fsr3::FfxErrorCode hkffxSetFrameGenerationConfigToSwapchainDX12(Fsr3::Ffx
 
         if (width == 0)
         {
-            DXGI_SWAP_CHAIN_DESC scDesc {};
-            State::Instance().currentFGSwapchain->GetDesc(&scDesc);
-
-            width = scDesc.BufferDesc.Width;
-            height = scDesc.BufferDesc.Height;
+            width = s.currentSwapchainDesc.BufferDesc.Width;
+            height = s.currentSwapchainDesc.BufferDesc.Height;
             top = 0;
             left = 0;
         }
