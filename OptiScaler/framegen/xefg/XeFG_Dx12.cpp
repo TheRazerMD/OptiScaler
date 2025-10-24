@@ -598,6 +598,11 @@ bool XeFG_Dx12::Dispatch()
     if (result != XEFG_SWAPCHAIN_RESULT_SUCCESS)
     {
         LOG_ERROR("TagFrameConstants error: {} ({})", magic_enum::enum_name(result), (UINT) result);
+
+        State::Instance().FGchanged = true;
+        UpdateTarget();
+        Deactivate();
+
         return false;
     }
 
@@ -605,6 +610,11 @@ bool XeFG_Dx12::Dispatch()
     if (result != XEFG_SWAPCHAIN_RESULT_SUCCESS)
     {
         LOG_ERROR("SetPresentId error: {} ({})", magic_enum::enum_name(result), (UINT) result);
+
+        State::Instance().FGchanged = true;
+        UpdateTarget();
+        Deactivate();
+
         return false;
     }
 
@@ -655,6 +665,10 @@ bool XeFG_Dx12::Dispatch()
         if (result != XEFG_SWAPCHAIN_RESULT_SUCCESS)
         {
             LOG_ERROR("D3D12TagFrameResource Backbuffer error: {} ({})", magic_enum::enum_name(result), (UINT) result);
+
+            State::Instance().FGchanged = true;
+            UpdateTarget();
+            Deactivate();
         }
     }
 
@@ -1014,7 +1028,12 @@ void XeFG_Dx12::SetResource(Dx12Resource* inputResource)
     if (result != XEFG_SWAPCHAIN_RESULT_SUCCESS)
     {
         LOG_ERROR("D3D12TagFrameResource {} error: {} ({})", magic_enum::enum_name(type), magic_enum::enum_name(result),
-                  (UINT) result);
+                  (int32_t) result);
+
+        State::Instance().FGchanged = true;
+        UpdateTarget();
+        Deactivate();
+
         return;
     }
 
