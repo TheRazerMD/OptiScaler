@@ -415,8 +415,8 @@ class Config
     CustomOptional<int> FGHUDLimit { 1 };
     CustomOptional<bool> FGHUDFixExtended { false };
     CustomOptional<bool> FGImmediateCapture { false };
-    CustomOptional<bool> FGDontUseSwapchainBuffers { true };
-    CustomOptional<bool> FGRelaxedResolutionCheck { true };
+    CustomOptional<bool> FGDontUseSwapchainBuffers { false };
+    CustomOptional<bool> FGRelaxedResolutionCheck { false };
 
     // OptiFG - Resource Tracking
     CustomOptional<bool> FGAlwaysTrackHeaps { false };
