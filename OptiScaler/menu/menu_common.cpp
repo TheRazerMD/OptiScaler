@@ -2901,7 +2901,7 @@ bool MenuCommon::RenderMenu()
                 //    fgInputDesc[optiFgIndex] = "Old overlay menu is unsupported";
                 //}
                 // else if (state.swapchainApi != DX12)
-                if (state.currentFGSwapchain == nullptr || state.api != DX12)
+                if (state.api != DX12)
                 {
                     disabledMaskInput[optiFgIndex] = true;
                     fgInputDesc[optiFgIndex] = "Unsupported API";
@@ -2938,7 +2938,7 @@ bool MenuCommon::RenderMenu()
                     if (Config::Instance()->FGInput.value_or_default() == FGInput::DLSSG)
                         Config::Instance()->FGInput.reset();
                 }
-                else if (state.currentFGSwapchain == nullptr)
+                else if (State::Instance().swapchainApi == API::DX11)
                 {
                     disabledMaskInput[dlssgInputIndex] = true;
                     fgInputDesc[dlssgInputIndex] = "Unsupported API";
@@ -2946,10 +2946,17 @@ bool MenuCommon::RenderMenu()
 
                 // FSRFG inputs requirements
                 auto constexpr fsrfgInputIndex = (uint32_t) FGInput::FSRFG;
-                if (state.currentFGSwapchain == nullptr)
+                if (State::Instance().swapchainApi != API::DX12)
                 {
                     disabledMaskInput[fsrfgInputIndex] = true;
                     fgInputDesc[fsrfgInputIndex] = "Unsupported API";
+                }
+
+                auto constexpr fsrfg30InputIndex = (uint32_t) FGInput::FSRFG30;
+                if (State::Instance().swapchainApi != API::DX12)
+                {
+                    disabledMaskInput[fsrfg30InputIndex] = true;
+                    fgInputDesc[fsrfg30InputIndex] = "Unsupported API";
                 }
 
                 constexpr auto fgInputOptionsCount = sizeof(fgInputOptions) / sizeof(char*);
@@ -3011,7 +3018,7 @@ bool MenuCommon::RenderMenu()
                 // FSR FG / XeFG output requirements
                 auto constexpr fsrfgOutputIndex = (uint32_t) FGOutput::FSRFG;
                 auto constexpr xefgOutputIndex = (uint32_t) FGOutput::XeFG;
-                if (state.currentFGSwapchain == nullptr)
+                if (state.swapchainApi != API::DX12)
                 {
                     disabledMaskOutput[fsrfgOutputIndex] = true;
                     fgOutputDesc[fsrfgOutputIndex] = "Unsupported API";
@@ -3025,7 +3032,6 @@ bool MenuCommon::RenderMenu()
                     Config::Instance()->FGOutput =
                         Config::Instance()->FGOutput.value_or_default(); // need to have a value before combo
 
-                if (state.currentFGSwapchain != nullptr)
                 {
                     ImGui::SeparatorText("Frame Generation");
 
