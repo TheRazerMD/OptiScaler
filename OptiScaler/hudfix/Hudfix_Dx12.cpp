@@ -217,7 +217,7 @@ bool Hudfix_Dx12::CheckCapture()
     return true;
 }
 
-bool Hudfix_Dx12::CheckResource(ResourceInfo* resource)
+bool Hudfix_Dx12::CheckResource(std::string caller, ResourceInfo* resource)
 {
     if (resource == nullptr || resource->buffer == nullptr || State::Instance().isShuttingDown)
         return false;
@@ -269,7 +269,7 @@ bool Hudfix_Dx12::CheckResource(ResourceInfo* resource)
     // format match
     if (resDesc.Format == s.currentSwapchainDesc.BufferDesc.Format)
     {
-        LOG_DEBUG("Width: {}/{}, Height: {}/{}, Format: {}/{}, Resource: {:X}, convertFormat: {} -> TRUE",
+        LOG_DEBUG("{} Width: {}/{}, Height: {}/{}, Format: {}/{}, Resource: {:X}, convertFormat: {} -> TRUE", caller,
                   resDesc.Width, s.currentSwapchainDesc.BufferDesc.Width, resDesc.Height,
                   s.currentSwapchainDesc.BufferDesc.Height, (UINT) resDesc.Format,
                   (UINT) s.currentSwapchainDesc.BufferDesc.Format, (size_t) resource->buffer,
@@ -309,7 +309,7 @@ bool Hudfix_Dx12::CheckResource(ResourceInfo* resource)
          s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_B8G8R8A8_UNORM ||
          s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB))
     {
-        LOG_DEBUG("Width: {}/{}, Height: {}/{}, Format: {}/{}, Resource: {:X}, convertFormat: {} -> TRUE",
+        LOG_DEBUG("{} Width: {}/{}, Height: {}/{}, Format: {}/{}, Resource: {:X}, convertFormat: {} -> TRUE", caller,
                   resDesc.Width, s.currentSwapchainDesc.BufferDesc.Width, resDesc.Height,
                   s.currentSwapchainDesc.BufferDesc.Height, (UINT) resDesc.Format,
                   (UINT) s.currentSwapchainDesc.BufferDesc.Format, (size_t) resource->buffer,
@@ -471,7 +471,7 @@ bool Hudfix_Dx12::CheckForHudless(std::string callerName, ID3D12GraphicsCommandL
 
     do
     {
-        if (!CheckResource(resource))
+        if (!CheckResource(callerName, resource))
             break;
 
         CapturedHudlessInfo* capturedHudlessInfo = &s.CapturedHudlesses[resource->buffer];
