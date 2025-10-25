@@ -131,7 +131,10 @@ HRESULT DxgiFactoryWrappedCalls::CreateSwapChain(IDXGIFactory* realFactory, Wrap
         _skipFGSwapChainCreation = false;
 
         if (FGSCResult == S_OK)
+        {
+            State::Instance().currentSwapchainDesc = *pDesc;
             return FGSCResult;
+        }
     }
 
     HRESULT result = E_FAIL;
@@ -169,6 +172,7 @@ HRESULT DxgiFactoryWrappedCalls::CreateSwapChain(IDXGIFactory* realFactory, Wrap
                 realSC = *ppSwapChain;
 
             State::Instance().currentRealSwapchain = realSC;
+            State::Instance().currentSwapchainDesc = *pDesc;
 
             IUnknown* realDevice = nullptr;
             if (!Util::CheckForRealObject(__FUNCTION__, pDevice, (IUnknown**) &realDevice))
@@ -316,7 +320,10 @@ HRESULT DxgiFactoryWrappedCalls::CreateSwapChainForHwnd(IDXGIFactory2* realFacto
         _skipFGSwapChainCreation = false;
 
         if (FGSCResult == S_OK)
+        {
+            ((IDXGISwapChain*) *ppSwapChain)->GetDesc(&State::Instance().currentSwapchainDesc);
             return FGSCResult;
+        }
     }
 
     HRESULT result = E_FAIL;
@@ -357,6 +364,7 @@ HRESULT DxgiFactoryWrappedCalls::CreateSwapChainForHwnd(IDXGIFactory2* realFacto
                 realSC = *ppSwapChain;
 
             State::Instance().currentRealSwapchain = realSC;
+            realSC->GetDesc(&State::Instance().currentSwapchainDesc);
 
             IUnknown* readDevice = nullptr;
             if (!Util::CheckForRealObject(__FUNCTION__, pDevice, (IUnknown**) &readDevice))
@@ -463,6 +471,7 @@ HRESULT DxgiFactoryWrappedCalls::CreateSwapChainForCoreWindow(IDXGIFactory2* rea
             realSC = *ppSwapChain;
 
         State::Instance().currentRealSwapchain = realSC;
+        realSC->GetDesc(&State::Instance().currentSwapchainDesc);
 
         IUnknown* readDevice = nullptr;
         if (!Util::CheckForRealObject(__FUNCTION__, pDevice, (IUnknown**) &readDevice))

@@ -143,9 +143,6 @@ bool ResTrack_Dx12::CheckResource(ID3D12Resource* resource)
     if (resDesc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D)
         return false;
 
-    if (State::Instance().frameCount == 0)
-        return false;
-
     auto& s = State::Instance();
 
     if (resDesc.Height != s.currentSwapchainDesc.BufferDesc.Height ||
@@ -517,32 +514,40 @@ bool ResTrack_Dx12::IsHudFixActive()
 {
     if (!Config::Instance()->FGEnabled.value_or_default() || !Config::Instance()->FGHUDFix.value_or_default())
     {
+        LOG_TRACK(
+            "!Config::Instance()->FGEnabled.value_or_default() || !Config::Instance()->FGHUDFix.value_or_default()");
         return false;
     }
 
     if (State::Instance().currentFG == nullptr || State::Instance().currentFeature == nullptr ||
         State::Instance().FGchanged)
     {
+        LOG_TRACK("State::Instance().currentFG == nullptr || State::Instance().currentFeature == nullptr || "
+                  "State::Instance().FGchanged");
         return false;
     }
 
     if (!State::Instance().currentFG->IsActive())
     {
+        LOG_TRACK("!State::Instance().currentFG->IsActive()");
         return false;
     }
 
     if (!_presentDone)
     {
+        LOG_TRACK("!_presentDone");
         return false;
     }
 
     if (Hudfix_Dx12::SkipHudlessChecks())
     {
+        LOG_TRACK("!Hudfix_Dx12::SkipHudlessChecks()");
         return false;
     }
 
     if (!Hudfix_Dx12::IsResourceCheckActive())
     {
+        // LOG_TRACK("!Hudfix_Dx12::IsResourceCheckActive()");
         return false;
     }
 

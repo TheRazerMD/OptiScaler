@@ -235,7 +235,10 @@ HRESULT DxgiFactoryHooks::CreateSwapChain(IDXGIFactory* realFactory, IUnknown* p
             _skipFGSwapChainCreation = false;
 
             if (FGSCResult == S_OK)
+            {
+                State::Instance().currentSwapchainDesc = *pDesc;
                 return FGSCResult;
+            }
         }
     }
     else
@@ -272,6 +275,8 @@ HRESULT DxgiFactoryHooks::CreateSwapChain(IDXGIFactory* realFactory, IUnknown* p
 
         if (result == S_OK)
         {
+            State::Instance().currentSwapchainDesc = *pDesc;
+
             // Check for SL proxy
             IDXGISwapChain* realSC = nullptr;
             if (!Util::CheckForRealObject(__FUNCTION__, *ppSwapChain, (IUnknown**) &realSC))
@@ -430,7 +435,10 @@ HRESULT DxgiFactoryHooks::CreateSwapChainForHwnd(IDXGIFactory2* realFactory, IUn
             _skipFGSwapChainCreation = false;
 
             if (FGSCResult == S_OK)
+            {
+                ((IDXGISwapChain*) *ppSwapChain)->GetDesc(&State::Instance().currentSwapchainDesc);
                 return FGSCResult;
+            }
         }
     }
     else
@@ -486,6 +494,8 @@ HRESULT DxgiFactoryHooks::CreateSwapChainForHwnd(IDXGIFactory2* realFactory, IUn
                 State::Instance().screenWidth = static_cast<float>(pDesc->Width);
                 State::Instance().screenHeight = static_cast<float>(pDesc->Height);
             }
+
+            realSC->GetDesc(&State::Instance().currentSwapchainDesc);
 
             LOG_DEBUG("Created new swapchain: {0:X}, hWnd: {1:X}", (uintptr_t) *ppSwapChain, (uintptr_t) hWnd);
             *ppSwapChain = new WrappedIDXGISwapChain4(realSC, readDevice, hWnd, pDesc->Flags, false);
@@ -591,6 +601,8 @@ HRESULT DxgiFactoryHooks::CreateSwapChainForCoreWindow(IDXGIFactory2* realFactor
         IUnknown* readDevice = nullptr;
         if (!Util::CheckForRealObject(__FUNCTION__, pDevice, (IUnknown**) &readDevice))
             readDevice = pDevice;
+
+        realSC->GetDesc(&State::Instance().currentSwapchainDesc);
 
         State::Instance().screenWidth = static_cast<float>(pDesc->Width);
         State::Instance().screenHeight = static_cast<float>(pDesc->Height);
