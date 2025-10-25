@@ -215,7 +215,8 @@ static HRESULT hkD3D12CreateDevice(IDXGIAdapter* pAdapter, D3D_FEATURE_LEVEL Min
         //    ResTrack_Dx12::ReleaseHooks();
         // }
 
-        _lastAdapterLuid = desc.AdapterLuid;
+        // _lastAdapterLuid = desc.AdapterLuid;
+
         HookToDevice(State::Instance().currentD3D12Device);
         _d3d12Captured = true;
 
@@ -520,59 +521,56 @@ static void hkCreateSampler(ID3D12Device* device, const D3D12_SAMPLER_DESC* pDes
 
 static void HookToDevice(ID3D12Device* InDevice)
 {
-    if (InDevice == nullptr)
+    if (o_CreateSampler != nullptr || InDevice == nullptr)
         return;
 
-    if (o_CreateSampler == nullptr)
+    LOG_DEBUG("Dx12");
+
+    // Get the vtable pointer
+    PVOID* pVTable = *(PVOID**) InDevice;
+
+    ID3D12Device* realDevice = nullptr;
+    if (Util::CheckForRealObject(__FUNCTION__, InDevice, (IUnknown**) &realDevice))
+        pVTable = *(PVOID**) realDevice;
+
+    // hudless
+    o_D3D12DeviceRelease = (PFN_Release) pVTable[2];
+    o_CreateSampler = (PFN_CreateSampler) pVTable[22];
+    o_CheckFeatureSupport = (PFN_CheckFeatureSupport) pVTable[13];
+    o_GetResourceAllocationInfo = (PFN_GetResourceAllocationInfo) pVTable[25];
+    o_CreateCommittedResource = (PFN_CreateCommittedResource) pVTable[27];
+    o_CreatePlacedResource = (PFN_CreatePlacedResource) pVTable[29];
+
+    // Apply the detour
+    if (o_CreateSampler != nullptr)
     {
-        LOG_DEBUG("Dx12");
+        DetourTransactionBegin();
+        DetourUpdateThread(GetCurrentThread());
 
-        // Get the vtable pointer
-        PVOID* pVTable = *(PVOID**) InDevice;
-
-        ID3D12Device* realDevice = nullptr;
-        if (Util::CheckForRealObject(__FUNCTION__, InDevice, (IUnknown**) &realDevice))
-            pVTable = *(PVOID**) realDevice;
-
-        // hudless
-        o_D3D12DeviceRelease = (PFN_Release) pVTable[2];
-        o_CreateSampler = (PFN_CreateSampler) pVTable[22];
-        o_CheckFeatureSupport = (PFN_CheckFeatureSupport) pVTable[13];
-        o_GetResourceAllocationInfo = (PFN_GetResourceAllocationInfo) pVTable[25];
-        o_CreateCommittedResource = (PFN_CreateCommittedResource) pVTable[27];
-        o_CreatePlacedResource = (PFN_CreatePlacedResource) pVTable[29];
-
-        // Apply the detour
         if (o_CreateSampler != nullptr)
+            DetourAttach(&(PVOID&) o_CreateSampler, hkCreateSampler);
+
+        if (Config::Instance()->UESpoofIntelAtomics64.value_or_default())
         {
-            DetourTransactionBegin();
-            DetourUpdateThread(GetCurrentThread());
+            if (o_CheckFeatureSupport != nullptr)
+                DetourAttach(&(PVOID&) o_CheckFeatureSupport, hkCheckFeatureSupport);
 
-            if (o_CreateSampler != nullptr)
-                DetourAttach(&(PVOID&) o_CreateSampler, hkCreateSampler);
+            if (o_CreateCommittedResource != nullptr)
+                DetourAttach(&(PVOID&) o_CreateCommittedResource, hkCreateCommittedResource);
 
-            if (Config::Instance()->UESpoofIntelAtomics64.value_or_default())
-            {
-                if (o_CheckFeatureSupport != nullptr)
-                    DetourAttach(&(PVOID&) o_CheckFeatureSupport, hkCheckFeatureSupport);
+            if (o_CreatePlacedResource != nullptr)
+                DetourAttach(&(PVOID&) o_CreatePlacedResource, hkCreatePlacedResource);
 
-                if (o_CreateCommittedResource != nullptr)
-                    DetourAttach(&(PVOID&) o_CreateCommittedResource, hkCreateCommittedResource);
+            if (o_D3D12DeviceRelease != nullptr)
+                DetourAttach(&(PVOID&) o_D3D12DeviceRelease, hkD3D12DeviceRelease);
 
-                if (o_CreatePlacedResource != nullptr)
-                    DetourAttach(&(PVOID&) o_CreatePlacedResource, hkCreatePlacedResource);
-
-                if (o_D3D12DeviceRelease != nullptr)
-                    DetourAttach(&(PVOID&) o_D3D12DeviceRelease, hkD3D12DeviceRelease);
-
-                // This does not work but luckily
-                // UE works without Intel Extension for it
-                // if (o_GetResourceAllocationInfo != nullptr)
-                //    DetourAttach(&(PVOID&) o_GetResourceAllocationInfo, hkGetResourceAllocationInfo);
-            }
-
-            DetourTransactionCommit();
+            // This does not work but luckily
+            // UE works without Intel Extension for it
+            // if (o_GetResourceAllocationInfo != nullptr)
+            //    DetourAttach(&(PVOID&) o_GetResourceAllocationInfo, hkGetResourceAllocationInfo);
         }
+
+        DetourTransactionCommit();
     }
 
     if (State::Instance().activeFgInput != FGInput::Nukems)
