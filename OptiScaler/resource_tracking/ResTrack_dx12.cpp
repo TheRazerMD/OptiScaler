@@ -1692,11 +1692,11 @@ void ResTrack_Dx12::HookCommandList(ID3D12Device* InDevice)
                     if (o_OMSetRenderTargets != nullptr)
                         DetourAttach(&(PVOID&) o_OMSetRenderTargets, hkOMSetRenderTargets);
 
-                    if (o_SetGraphicsRootDescriptorTable != nullptr)
-                        DetourAttach(&(PVOID&) o_SetGraphicsRootDescriptorTable, hkSetGraphicsRootDescriptorTable);
+                    // if (o_SetGraphicsRootDescriptorTable != nullptr)
+                    //     DetourAttach(&(PVOID&) o_SetGraphicsRootDescriptorTable, hkSetGraphicsRootDescriptorTable);
 
-                    if (o_SetComputeRootDescriptorTable != nullptr)
-                        DetourAttach(&(PVOID&) o_SetComputeRootDescriptorTable, hkSetComputeRootDescriptorTable);
+                    // if (o_SetComputeRootDescriptorTable != nullptr)
+                    //     DetourAttach(&(PVOID&) o_SetComputeRootDescriptorTable, hkSetComputeRootDescriptorTable);
 
                     if (o_DrawIndexedInstanced != nullptr)
                         DetourAttach(&(PVOID&) o_DrawIndexedInstanced, hkDrawIndexedInstanced);
