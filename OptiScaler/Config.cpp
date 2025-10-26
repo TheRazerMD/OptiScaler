@@ -141,6 +141,8 @@ bool Config::Reload(std::filesystem::path iniPath)
             FGHudfixDisableDispatch.set_from_config(readBool("OptiFG", "HudfixDisableDispatch"));
             FGHudfixDisableDI.set_from_config(readBool("OptiFG", "HudfixDisableDI"));
             FGHudfixDisableDII.set_from_config(readBool("OptiFG", "HudfixDisableDII"));
+            FGHudfixDisableSCR.set_from_config(readBool("OptiFG", "HudfixDisableSCR"));
+            FGHudfixDisableSGR.set_from_config(readBool("OptiFG", "HudfixDisableSGR"));
 
             FGEnableDepthScale.set_from_config(readBool("OptiFG", "EnableDepthScale"));
             FGDepthScaleMax.set_from_config(readFloat("OptiFG", "DepthScaleMax"));
@@ -752,6 +754,10 @@ bool Config::SaveIni()
                      GetBoolValue(Instance()->FGHudfixDisableDI.value_for_config()).c_str());
         ini.SetValue("OptiFG", "HudfixDisableDII",
                      GetBoolValue(Instance()->FGHudfixDisableDII.value_for_config()).c_str());
+        ini.SetValue("OptiFG", "HudfixDisableSCR",
+                     GetBoolValue(Instance()->FGHudfixDisableSCR.value_for_config()).c_str());
+        ini.SetValue("OptiFG", "HudfixDisableSGR",
+                     GetBoolValue(Instance()->FGHudfixDisableSGR.value_for_config()).c_str());
 
         ini.SetValue("OptiFG", "EnableDepthScale",
                      GetBoolValue(Instance()->FGEnableDepthScale.value_for_config()).c_str());

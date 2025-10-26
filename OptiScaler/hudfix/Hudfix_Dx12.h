@@ -25,6 +25,8 @@ enum CaptureInfo
     CreateUAV = 4,
     OMSetRTV = 8,
     Upscaler = 16,
+    SetCR = 32,
+    SetGR = 64,
     Dispatch = 256,
     DrawInstanced = 512,
     DrawIndexedInstanced = 1024,

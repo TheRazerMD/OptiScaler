@@ -424,6 +424,8 @@ class Config
     CustomOptional<bool> FGHudfixDisableDispatch { false };
     CustomOptional<bool> FGHudfixDisableDI { false };
     CustomOptional<bool> FGHudfixDisableDII { false };
+    CustomOptional<bool> FGHudfixDisableSCR { true };
+    CustomOptional<bool> FGHudfixDisableSGR { true };
 
     // OptiFG - Resource Tracking
     CustomOptional<bool> FGAlwaysTrackHeaps { false };

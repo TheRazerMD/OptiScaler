@@ -1113,7 +1113,8 @@ void ResTrack_Dx12::hkCopyDescriptorsSimple(ID3D12Device* This, UINT NumDescript
 void ResTrack_Dx12::hkSetGraphicsRootDescriptorTable(ID3D12GraphicsCommandList* This, UINT RootParameterIndex,
                                                      D3D12_GPU_DESCRIPTOR_HANDLE BaseDescriptor)
 {
-    if (BaseDescriptor.ptr == 0 || !IsHudFixActive() || Hudfix_Dx12::SkipHudlessChecks())
+    if (Config::Instance()->FGHudfixDisableSGR.value_or_default() || BaseDescriptor.ptr == 0 || !IsHudFixActive() ||
+        Hudfix_Dx12::SkipHudlessChecks())
     {
         o_SetGraphicsRootDescriptorTable(This, RootParameterIndex, BaseDescriptor);
         return;
@@ -1145,6 +1146,7 @@ void ResTrack_Dx12::hkSetGraphicsRootDescriptorTable(ID3D12GraphicsCommandList* 
     }
 
     capturedBuffer->state = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+    capturedBuffer->captureInfo = CaptureInfo::SetGR;
 
     do
     {
@@ -1286,7 +1288,8 @@ void ResTrack_Dx12::hkOMSetRenderTargets(ID3D12GraphicsCommandList* This, UINT N
 void ResTrack_Dx12::hkSetComputeRootDescriptorTable(ID3D12GraphicsCommandList* This, UINT RootParameterIndex,
                                                     D3D12_GPU_DESCRIPTOR_HANDLE BaseDescriptor)
 {
-    if (BaseDescriptor.ptr == 0 || !IsHudFixActive() || Hudfix_Dx12::SkipHudlessChecks())
+    if (Config::Instance()->FGHudfixDisableSCR.value_or_default() || BaseDescriptor.ptr == 0 || !IsHudFixActive() ||
+        Hudfix_Dx12::SkipHudlessChecks())
     {
         o_SetComputeRootDescriptorTable(This, RootParameterIndex, BaseDescriptor);
         return;
@@ -1325,6 +1328,8 @@ void ResTrack_Dx12::hkSetComputeRootDescriptorTable(ID3D12GraphicsCommandList* T
         capturedBuffer->state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
     else
         capturedBuffer->state = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+
+    capturedBuffer->captureInfo = CaptureInfo::SetCR;
 
     do
     {
@@ -1719,11 +1724,11 @@ void ResTrack_Dx12::HookCommandList(ID3D12Device* InDevice)
                     if (o_OMSetRenderTargets != nullptr)
                         DetourAttach(&(PVOID&) o_OMSetRenderTargets, hkOMSetRenderTargets);
 
-                    // if (o_SetGraphicsRootDescriptorTable != nullptr)
-                    //     DetourAttach(&(PVOID&) o_SetGraphicsRootDescriptorTable, hkSetGraphicsRootDescriptorTable);
+                    if (o_SetGraphicsRootDescriptorTable != nullptr)
+                        DetourAttach(&(PVOID&) o_SetGraphicsRootDescriptorTable, hkSetGraphicsRootDescriptorTable);
 
-                    // if (o_SetComputeRootDescriptorTable != nullptr)
-                    //     DetourAttach(&(PVOID&) o_SetComputeRootDescriptorTable, hkSetComputeRootDescriptorTable);
+                    if (o_SetComputeRootDescriptorTable != nullptr)
+                        DetourAttach(&(PVOID&) o_SetComputeRootDescriptorTable, hkSetComputeRootDescriptorTable);
 
                     if (o_DrawIndexedInstanced != nullptr)
                         DetourAttach(&(PVOID&) o_DrawIndexedInstanced, hkDrawIndexedInstanced);

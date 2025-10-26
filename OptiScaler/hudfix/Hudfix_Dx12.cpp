@@ -217,13 +217,43 @@ bool Hudfix_Dx12::CheckCapture()
     return true;
 }
 
-static std::string captureInfoSrcNames[] = {
-    "None", "RTV", "SRV", "", "UAV", "", "", "", "OM", "", "", "", "", "", "", "Ups",
-};
+inline static std::string GetSourceString(UINT source)
+{
+    switch (source)
+    {
+    case CaptureInfo::CreateRTV:
+        return "RTV";
+    case CaptureInfo::CreateSRV:
+        return "SRV";
+    case CaptureInfo::CreateUAV:
+        return "UAV";
+    case CaptureInfo::OMSetRTV:
+        return "OM";
+    case CaptureInfo::Upscaler:
+        return "Ups";
+    case CaptureInfo::SetCR:
+        return "SCR";
+    case CaptureInfo::SetGR:
+        return "SGR";
+    default:
+        return "???";
+    }
+}
 
-static std::string captureInfoDspNames[] = {
-    "None", "Dispatch", "DrawInstanced", "", "DrawIndexedInstanced",
-};
+inline static std::string GetDispatchString(UINT source)
+{
+    switch (source)
+    {
+    case CaptureInfo::DrawInstanced:
+        return "DI";
+    case CaptureInfo::DrawIndexedInstanced:
+        return "DII";
+    case CaptureInfo::Dispatch:
+        return "Disp";
+    default:
+        return "???";
+    }
+}
 
 bool Hudfix_Dx12::CheckResource(ResourceInfo* resource)
 {
@@ -278,18 +308,13 @@ bool Hudfix_Dx12::CheckResource(ResourceInfo* resource)
     auto source = resource->captureInfo & 0xFF;
     auto dispatcher = resource->captureInfo & 0xFF00;
 
-    if (dispatcher == 0)
-        caller = captureInfoSrcNames[source];
-    else
-        caller = std::format("{}->{}", captureInfoSrcNames[source], captureInfoDspNames[dispatcher >> 8]);
-
     // format match
     if (resDesc.Format == s.currentSwapchainDesc.BufferDesc.Format)
     {
-        LOG_DEBUG("{} Width: {}/{}, Height: {}/{}, Format: {}/{}, Resource: {:X}, convertFormat: {} -> TRUE", caller,
-                  resDesc.Width, s.currentSwapchainDesc.BufferDesc.Width, resDesc.Height,
-                  s.currentSwapchainDesc.BufferDesc.Height, (UINT) resDesc.Format,
-                  (UINT) s.currentSwapchainDesc.BufferDesc.Format, (size_t) resource->buffer,
+        LOG_DEBUG("{}->{} Width: {}/{}, Height: {}/{}, Format: {}/{}, Resource: {:X}, convertFormat: {} -> TRUE",
+                  GetSourceString(source), GetDispatchString(dispatcher), resDesc.Width,
+                  s.currentSwapchainDesc.BufferDesc.Width, resDesc.Height, s.currentSwapchainDesc.BufferDesc.Height,
+                  (UINT) resDesc.Format, (UINT) s.currentSwapchainDesc.BufferDesc.Format, (size_t) resource->buffer,
                   Config::Instance()->FGHUDFixExtended.value_or_default());
 
         return true;
@@ -326,10 +351,10 @@ bool Hudfix_Dx12::CheckResource(ResourceInfo* resource)
          s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_B8G8R8A8_UNORM ||
          s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB))
     {
-        LOG_DEBUG("{} Width: {}/{}, Height: {}/{}, Format: {}/{}, Resource: {:X}, convertFormat: {} -> TRUE", caller,
-                  resDesc.Width, s.currentSwapchainDesc.BufferDesc.Width, resDesc.Height,
-                  s.currentSwapchainDesc.BufferDesc.Height, (UINT) resDesc.Format,
-                  (UINT) s.currentSwapchainDesc.BufferDesc.Format, (size_t) resource->buffer,
+        LOG_DEBUG("{}->{} Width: {}/{}, Height: {}/{}, Format: {}/{}, Resource: {:X}, convertFormat: {} -> TRUE",
+                  GetSourceString(source), GetDispatchString(dispatcher), resDesc.Width,
+                  s.currentSwapchainDesc.BufferDesc.Width, resDesc.Height, s.currentSwapchainDesc.BufferDesc.Height,
+                  (UINT) resDesc.Format, (UINT) s.currentSwapchainDesc.BufferDesc.Format, (size_t) resource->buffer,
                   Config::Instance()->FGHUDFixExtended.value_or_default());
 
         return true;

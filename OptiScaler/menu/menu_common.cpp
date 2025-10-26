@@ -112,14 +112,6 @@ static std::vector<std::string> splashText = { "Cope smarter, not harder",
                                                "AI can't outslop this",
                                                "<Your funny text goes here>" };
 
-static std::string captureInfoSrcNames[] = {
-    "None", "RTV", "SRV", "", "UAV", "", "", "", "OM", "", "", "", "", "", "", "Ups",
-};
-
-static std::string captureInfoDspNames[] = {
-    "None", "Disp", "DI", "", "DII",
-};
-
 static ImVec2 updateNoticePosition(-1000.0f, -1000.0f);
 static ImVec2 updateNoticeSize(0.0f, 0.0f);
 static double updateNoticeStart = 0.0;
@@ -1413,6 +1405,44 @@ static void MenuSizeCheck(ImGuiIO io)
 
         if (Config::Instance()->MenuScale.value() > 2.0f)
             Config::Instance()->MenuScale = 2.0f;
+    }
+}
+
+inline static std::string GetSourceString(UINT source)
+{
+    switch (source)
+    {
+    case 1:
+        return "RTV";
+    case 2:
+        return "SRV";
+    case 4:
+        return "UAV";
+    case 8:
+        return "OM";
+    case 16:
+        return "Ups";
+    case 32:
+        return "SCR";
+    case 64:
+        return "SGR";
+    default:
+        return "???";
+    }
+}
+
+inline static std::string GetDispatchString(UINT source)
+{
+    switch (source)
+    {
+    case 512:
+        return "DI";
+    case 1024:
+        return "DII";
+    case 256:
+        return "Disp";
+    default:
+        return "???";
     }
 }
 
@@ -3723,6 +3753,22 @@ bool MenuCommon::RenderMenu()
                                 ShowHelpMarker("Disable tracking of OMSetRenderTargets\n"
                                                "This might help filtering of wrong hudless resources");
 
+                                auto disableSCR = config->FGHudfixDisableSCR.value_or_default();
+                                if (ImGui::Checkbox("Disable SCR Tracking", &disableSCR))
+                                    config->FGHudfixDisableSCR = disableSCR;
+                                ShowHelpMarker("Disable tracking of SetComputeRootDescriptorTable\n"
+                                               "This might help filtering of wrong hudless resources");
+
+                                ImGui::SameLine(0.0f, 16.0f);
+
+                                auto disableSGR = config->FGHudfixDisableSGR.value_or_default();
+                                if (ImGui::Checkbox("Disable SGR Tracking", &disableSGR))
+                                    config->FGHudfixDisableSGR = disableSGR;
+                                ShowHelpMarker("Disable tracking of SetGraphicsRootDescriptorTable\n"
+                                               "This might help filtering of wrong hudless resources");
+
+                                ImGui::Spacing();
+
                                 auto disableDI = config->FGHudfixDisableDI.value_or_default();
                                 if (ImGui::Checkbox("Disable DI Tracking", &disableDI))
                                     config->FGHudfixDisableDI = disableDI;
@@ -5394,8 +5440,8 @@ bool MenuCommon::RenderMenu()
                             ImGui::TableSetColumnIndex(0);
 
                             ImGui::Text("%08x, %s->%s, Count: %llu, %s", (size_t) it->first,
-                                        captureInfoSrcNames[it->second.captureInfo & 0xFF].c_str(),
-                                        captureInfoDspNames[(it->second.captureInfo & 0xFF00) >> 8].c_str(),
+                                        GetSourceString(it->second.captureInfo & 0xFF).c_str(),
+                                        GetDispatchString(it->second.captureInfo & 0xFF00).c_str(),
                                         it->second.usageCount, it->second.enabled ? "Active" : "Passive");
 
                             ImGui::TableSetColumnIndex(1);
