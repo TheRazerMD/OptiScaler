@@ -217,7 +217,15 @@ bool Hudfix_Dx12::CheckCapture()
     return true;
 }
 
-bool Hudfix_Dx12::CheckResource(std::string caller, ResourceInfo* resource)
+static std::string captureInfoSrcNames[] = {
+    "None", "RTV", "SRV", "", "UAV", "", "", "", "OM", "", "", "", "", "", "", "Ups",
+};
+
+static std::string captureInfoDspNames[] = {
+    "None", "Dispatch", "DrawInstanced", "", "DrawIndexedInstanced",
+};
+
+bool Hudfix_Dx12::CheckResource(ResourceInfo* resource)
 {
     if (resource == nullptr || resource->buffer == nullptr || State::Instance().isShuttingDown)
         return false;
@@ -265,6 +273,15 @@ bool Hudfix_Dx12::CheckResource(std::string caller, ResourceInfo* resource)
     {
         return false;
     }
+
+    std::string caller;
+    auto source = resource->captureInfo & 0xFF;
+    auto dispatcher = resource->captureInfo & 0xFF00;
+
+    if (dispatcher == 0)
+        caller = captureInfoSrcNames[source];
+    else
+        caller = std::format("{}->{}", captureInfoSrcNames[source], captureInfoDspNames[dispatcher >> 8]);
 
     // format match
     if (resDesc.Format == s.currentSwapchainDesc.BufferDesc.Format)
@@ -458,7 +475,7 @@ bool Hudfix_Dx12::IsResourceCheckActive()
 
 bool Hudfix_Dx12::SkipHudlessChecks() { return _skipHudlessChecks; }
 
-bool Hudfix_Dx12::CheckForHudless(std::string callerName, ID3D12GraphicsCommandList* cmdList, ResourceInfo* resource,
+bool Hudfix_Dx12::CheckForHudless(ID3D12GraphicsCommandList* cmdList, ResourceInfo* resource,
                                   D3D12_RESOURCE_STATES state, bool ignoreBlocked)
 {
     auto& s = State::Instance();
@@ -471,7 +488,7 @@ bool Hudfix_Dx12::CheckForHudless(std::string callerName, ID3D12GraphicsCommandL
 
     do
     {
-        if (!CheckResource(callerName, resource))
+        if (!CheckResource(resource))
             break;
 
         CapturedHudlessInfo* capturedHudlessInfo = &s.CapturedHudlesses[resource->buffer];
@@ -806,7 +823,12 @@ bool Hudfix_Dx12::CheckForHudless(std::string callerName, ID3D12GraphicsCommandL
         if (capturedHudlessInfo != nullptr)
             capturedHudlessInfo->usageCount++;
         else
+        {
             s.CapturedHudlesses[resource->buffer] = {};
+            capturedHudlessInfo = &s.CapturedHudlesses[resource->buffer];
+        }
+
+        capturedHudlessInfo->captureInfo = resource->captureInfo;
 
         return true;
 

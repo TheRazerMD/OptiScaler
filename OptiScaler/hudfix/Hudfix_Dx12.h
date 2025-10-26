@@ -17,6 +17,19 @@ enum ResourceType
     UAV
 };
 
+enum CaptureInfo
+{
+    None = 0,
+    CreateRTV = 1,
+    CreateSRV = 2,
+    CreateUAV = 4,
+    OMSetRTV = 8,
+    Upscaler = 16,
+    Dispatch = 256,
+    DrawInstanced = 512,
+    DrawIndexedInstanced = 1024,
+};
+
 typedef struct ResourceInfo
 {
     ID3D12Resource* buffer = nullptr;
@@ -28,6 +41,7 @@ typedef struct ResourceInfo
     ResourceType type = SRV;
     double lastUsedFrame = 0;
     bool extended = false;
+    UINT captureInfo = 0;
 } resource_info;
 
 typedef struct HudlessInfo
@@ -121,9 +135,10 @@ class Hudfix_Dx12
     static bool SkipHudlessChecks();
 
     // Check resource for hudless
-    static bool CheckForHudless(std::string callerName, ID3D12GraphicsCommandList* cmdList, ResourceInfo* resource,
-                                D3D12_RESOURCE_STATES state, bool ignoreBlocked = false);
-    static bool CheckResource(std::string caller, ResourceInfo* resource);
+    static bool CheckForHudless(ID3D12GraphicsCommandList* cmdList, ResourceInfo* resource, D3D12_RESOURCE_STATES state,
+                                bool ignoreBlocked = false);
+
+    static bool CheckResource(ResourceInfo* resource);
 
     // Reset frame counters
     static void ResetCounters();

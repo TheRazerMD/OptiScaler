@@ -262,8 +262,9 @@ void UpscalerInputsDx12::UpscaleEnd(ID3D12GraphicsCommandList* InCmdList, NVSDK_
             info.format = desc.Format;
             info.flags = desc.Flags;
             info.type = UAV;
+            info.captureInfo = CaptureInfo::Upscaler;
 
-            Hudfix_Dx12::CheckForHudless(__FUNCTION__, InCmdList, &info,
+            Hudfix_Dx12::CheckForHudless(InCmdList, &info,
                                          (D3D12_RESOURCE_STATES) Config::Instance()->OutputResourceBarrier.value_or(
                                              D3D12_RESOURCE_STATE_UNORDERED_ACCESS),
                                          true);

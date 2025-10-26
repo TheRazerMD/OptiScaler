@@ -50,6 +50,7 @@ enum class FGOutput : uint32_t
 typedef struct CapturedHudlessInfo
 {
     UINT64 usageCount = 1;
+    UINT captureInfo = 0;
     bool enabled = true;
 } captured_hudless_info;
 

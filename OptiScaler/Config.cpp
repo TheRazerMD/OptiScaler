@@ -134,6 +134,13 @@ bool Config::Reload(std::filesystem::path iniPath)
             FGResourceBlocking.set_from_config(readBool("OptiFG", "ResourceBlocking"));
             FGMakeDepthCopy.set_from_config(readBool("OptiFG", "MakeDepthCopy"));
             FGMakeMVCopy.set_from_config(readBool("OptiFG", "MakeMVCopy"));
+            FGHudfixDisableRTV.set_from_config(readBool("OptiFG", "HudfixDisableRTV"));
+            FGHudfixDisableSRV.set_from_config(readBool("OptiFG", "HudfixDisableSRV"));
+            FGHudfixDisableUAV.set_from_config(readBool("OptiFG", "HudfixDisableUAV"));
+            FGHudfixDisableOM.set_from_config(readBool("OptiFG", "HudfixDisableOM"));
+            FGHudfixDisableDispatch.set_from_config(readBool("OptiFG", "HudfixDisableDispatch"));
+            FGHudfixDisableDI.set_from_config(readBool("OptiFG", "HudfixDisableDI"));
+            FGHudfixDisableDII.set_from_config(readBool("OptiFG", "HudfixDisableDII"));
 
             FGEnableDepthScale.set_from_config(readBool("OptiFG", "EnableDepthScale"));
             FGDepthScaleMax.set_from_config(readFloat("OptiFG", "DepthScaleMax"));
@@ -730,6 +737,21 @@ bool Config::SaveIni()
                      GetBoolValue(Instance()->FGResourceBlocking.value_for_config()).c_str());
         ini.SetValue("OptiFG", "MakeDepthCopy", GetBoolValue(Instance()->FGMakeDepthCopy.value_for_config()).c_str());
         ini.SetValue("OptiFG", "MakeMVCopy", GetBoolValue(Instance()->FGMakeMVCopy.value_for_config()).c_str());
+
+        ini.SetValue("OptiFG", "HudfixDisableRTV",
+                     GetBoolValue(Instance()->FGHudfixDisableRTV.value_for_config()).c_str());
+        ini.SetValue("OptiFG", "HudfixDisableSRV",
+                     GetBoolValue(Instance()->FGHudfixDisableSRV.value_for_config()).c_str());
+        ini.SetValue("OptiFG", "HudfixDisableUAV",
+                     GetBoolValue(Instance()->FGHudfixDisableUAV.value_for_config()).c_str());
+        ini.SetValue("OptiFG", "HudfixDisableOM",
+                     GetBoolValue(Instance()->FGHudfixDisableOM.value_for_config()).c_str());
+        ini.SetValue("OptiFG", "HudfixDisableDispatch",
+                     GetBoolValue(Instance()->FGHudfixDisableDispatch.value_for_config()).c_str());
+        ini.SetValue("OptiFG", "HudfixDisableDI",
+                     GetBoolValue(Instance()->FGHudfixDisableDI.value_for_config()).c_str());
+        ini.SetValue("OptiFG", "HudfixDisableDII",
+                     GetBoolValue(Instance()->FGHudfixDisableDII.value_for_config()).c_str());
 
         ini.SetValue("OptiFG", "EnableDepthScale",
                      GetBoolValue(Instance()->FGEnableDepthScale.value_for_config()).c_str());

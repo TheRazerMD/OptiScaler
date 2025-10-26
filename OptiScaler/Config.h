@@ -417,6 +417,13 @@ class Config
     CustomOptional<bool> FGImmediateCapture { false };
     CustomOptional<bool> FGDontUseSwapchainBuffers { false };
     CustomOptional<bool> FGRelaxedResolutionCheck { false };
+    CustomOptional<bool> FGHudfixDisableRTV { false };
+    CustomOptional<bool> FGHudfixDisableSRV { false };
+    CustomOptional<bool> FGHudfixDisableUAV { false };
+    CustomOptional<bool> FGHudfixDisableOM { false };
+    CustomOptional<bool> FGHudfixDisableDispatch { false };
+    CustomOptional<bool> FGHudfixDisableDI { false };
+    CustomOptional<bool> FGHudfixDisableDII { false };
 
     // OptiFG - Resource Tracking
     CustomOptional<bool> FGAlwaysTrackHeaps { false };
