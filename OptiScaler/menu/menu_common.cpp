@@ -5085,8 +5085,7 @@ bool MenuCommon::RenderMenu()
                     auto ft = StrFmt("%7.2f ms / %6.1f fps", state.frameTimes.back(), frameRate);
                     ImGui::PlotLines(
                         ft.c_str(), [](void* rb, int idx) -> float
-                        { return static_cast<RingBuffer<float, plotWidth>*>(rb)->At(idx); }, &gUpscalerTimes,
-                        plotWidth);
+                        { return static_cast<RingBuffer<float, plotWidth>*>(rb)->At(idx); }, &gFrameTimes, plotWidth);
 
                     if (currentFeature != nullptr && !currentFeature->IsFrozen())
                     {
