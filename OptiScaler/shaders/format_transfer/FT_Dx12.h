@@ -19,6 +19,9 @@ class FT_Dx12
     D3D12_GPU_DESCRIPTOR_HANDLE _gpuUavHandle[2] { { NULL }, { NULL } };
     int _counter = 0;
 
+    uint32_t bufferWidth = 0;
+    uint32_t bufferHeight = 0;
+
     uint32_t InNumThreadsX = 512;
     uint32_t InNumThreadsY = 1;
 

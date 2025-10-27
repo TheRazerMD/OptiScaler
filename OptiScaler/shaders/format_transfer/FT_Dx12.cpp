@@ -95,6 +95,9 @@ bool FT_Dx12::CreateBufferResource(ID3D12Device* InDevice, ID3D12Resource* InSou
     texDesc.Format = format;
     texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
+    bufferWidth = (uint32_t) texDesc.Width;
+    bufferHeight = texDesc.Height;
+
     hr = InDevice->CreateCommittedResource(&heapProperties, D3D12_HEAP_FLAG_NONE, &texDesc, InState, nullptr,
                                            IID_PPV_ARGS(&_buffer));
 
@@ -188,9 +191,8 @@ bool FT_Dx12::Dispatch(ID3D12Device* InDevice, ID3D12GraphicsCommandList* InCmdL
     UINT dispatchWidth = 0;
     UINT dispatchHeight = 0;
 
-    dispatchWidth =
-        static_cast<UINT>((State::Instance().currentFeature->DisplayWidth() + InNumThreadsX - 1) / InNumThreadsX);
-    dispatchHeight = (State::Instance().currentFeature->DisplayHeight() + InNumThreadsY - 1) / InNumThreadsY;
+    dispatchWidth = static_cast<UINT>((bufferWidth + InNumThreadsX - 1) / InNumThreadsX);
+    dispatchHeight = (bufferHeight + InNumThreadsY - 1) / InNumThreadsY;
 
     InCmdList->Dispatch(dispatchWidth, dispatchHeight, 1);
 
