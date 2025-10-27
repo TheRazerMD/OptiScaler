@@ -866,22 +866,6 @@ void XeFG_Dx12::SetResource(Dx12Resource* inputResource)
     if (inputResource == nullptr || inputResource->resource == nullptr)
         return;
 
-    // HACK: Prevent FG dispatch from being called for a few frames
-    if (_reEnableTargetFrame == _frameCount)
-    {
-        if (_isActive)
-        {
-            if (XeFGProxy::SetEnabled()(_swapChainContext, true) == XEFG_SWAPCHAIN_RESULT_SUCCESS)
-                _reEnableTargetFrame = 0;
-            else
-                _reEnableTargetFrame++; // Try enabling next frame
-        }
-        else
-        {
-            _reEnableTargetFrame = 0;
-        }
-    }
-
     auto fIndex = GetIndex();
     auto& type = inputResource->type;
 
