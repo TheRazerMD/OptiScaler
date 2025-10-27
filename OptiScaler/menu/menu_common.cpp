@@ -1427,7 +1427,7 @@ inline static std::string GetSourceString(UINT source)
     case 64:
         return "SGR";
     default:
-        return "???";
+        return std::format("{}", source);
     }
 }
 
@@ -1442,7 +1442,7 @@ inline static std::string GetDispatchString(UINT source)
     case 256:
         return "Disp";
     default:
-        return "???";
+        return std::format("{}", source);
     }
 }
 

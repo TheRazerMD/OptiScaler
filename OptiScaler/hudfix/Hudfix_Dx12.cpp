@@ -236,7 +236,7 @@ inline static std::string GetSourceString(UINT source)
     case CaptureInfo::SetGR:
         return "SGR";
     default:
-        return "???";
+        return std::format("{}", source);
     }
 }
 
@@ -251,7 +251,7 @@ inline static std::string GetDispatchString(UINT source)
     case CaptureInfo::Dispatch:
         return "Disp";
     default:
-        return "???";
+        return std::format("{}", source);
     }
 }
 
