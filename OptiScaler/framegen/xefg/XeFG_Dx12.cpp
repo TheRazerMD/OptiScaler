@@ -492,6 +492,8 @@ bool XeFG_Dx12::Dispatch()
     if (!IsActive() || IsPaused())
         return false;
 
+    auto& state = State::Instance();
+
     LOG_DEBUG("_frameCount: {}, _willDispatchFrame: {}, fIndex: {}", _frameCount, _willDispatchFrame, fIndex);
 
     if (!_haveHudless.has_value())
@@ -507,7 +509,7 @@ bool XeFG_Dx12::Dispatch()
                      _haveHudless.value());
 
             _haveHudless = usingHudless;
-            State::Instance().FGchanged = true;
+            state.FGchanged = true;
             UpdateTarget();
             Deactivate();
 
@@ -527,9 +529,9 @@ bool XeFG_Dx12::Dispatch()
     XeFGProxy::EnableDebugFeature()(_swapChainContext, XEFG_SWAPCHAIN_DEBUG_FEATURE_TAG_INTERPOLATED_FRAMES,
                                     Config::Instance()->FGXeFGDebugView.value_or_default(), nullptr);
     XeFGProxy::EnableDebugFeature()(_swapChainContext, XEFG_SWAPCHAIN_DEBUG_FEATURE_SHOW_ONLY_INTERPOLATION,
-                                    State::Instance().FGonlyGenerated, nullptr);
+                                    state.FGonlyGenerated, nullptr);
     // XeFGProxy::EnableDebugFeature()(_swapChainContext, XEFG_SWAPCHAIN_DEBUG_FEATURE_PRESENT_FAILED_INTERPOLATION,
-    //                                 State::Instance().FGonlyGenerated, nullptr);
+    //                                 state.FGonlyGenerated, nullptr);
 
     xefg_swapchain_frame_constant_data_t constData = {};
 
@@ -588,7 +590,7 @@ bool XeFG_Dx12::Dispatch()
     else
         constData.resetHistory = false;
 
-    constData.frameRenderTime = static_cast<float>(State::Instance().lastFGFrameTime);
+    constData.frameRenderTime = static_cast<float>(state.lastFGFrameTime);
 
     LOG_DEBUG("Reset: {}, FTDelta: {}", _reset[fIndex], constData.frameRenderTime);
 
@@ -599,7 +601,7 @@ bool XeFG_Dx12::Dispatch()
     {
         LOG_ERROR("TagFrameConstants error: {} ({})", magic_enum::enum_name(result), (UINT) result);
 
-        State::Instance().FGchanged = true;
+        state.FGchanged = true;
         UpdateTarget();
         Deactivate();
 
@@ -611,53 +613,50 @@ bool XeFG_Dx12::Dispatch()
     {
         LOG_ERROR("SetPresentId error: {} ({})", magic_enum::enum_name(result), (UINT) result);
 
-        State::Instance().FGchanged = true;
+        state.FGchanged = true;
         UpdateTarget();
         Deactivate();
 
         return false;
     }
 
-    // Base
+    // When using Hudfix, we always copy hudless as swapchain size
+    if (state.activeFgInput != FGInput::Upscaler)
     {
         uint32_t left = 0;
         uint32_t top = 0;
 
-        // use swapchain buffer info
-        DXGI_SWAP_CHAIN_DESC scDesc1 {};
-        if (State::Instance().currentSwapchain->GetDesc(&scDesc1) == S_OK)
+        if (_interpolationWidth[fIndex] == 0 && _interpolationHeight[fIndex] == 0)
         {
-            if (_interpolationWidth[fIndex] == 0 && _interpolationHeight[fIndex] == 0)
-            {
-                LOG_WARN("Interpolation size is 0, using swapchain size");
-                _interpolationWidth[fIndex] = scDesc1.BufferDesc.Width;
-                _interpolationHeight[fIndex] = scDesc1.BufferDesc.Height;
-            }
-            else
-            {
-                auto calculatedLeft = ((int) scDesc1.BufferDesc.Width - (int) _interpolationWidth[fIndex]) / 2;
-                if (calculatedLeft > 0)
-                    left = Config::Instance()->FGRectLeft.value_or(_interpolationLeft[fIndex].value_or(calculatedLeft));
-
-                auto calculatedTop = ((int) scDesc1.BufferDesc.Height - (int) _interpolationHeight[fIndex]) / 2;
-                if (calculatedTop > 0)
-                    top = Config::Instance()->FGRectTop.value_or(_interpolationTop[fIndex].value_or(calculatedTop));
-            }
-
-            LOG_DEBUG("SwapChain Res: {}x{}, Interpolation Res: {}x{}", scDesc1.BufferDesc.Width,
-                      scDesc1.BufferDesc.Height, _interpolationWidth[fIndex], _interpolationHeight[fIndex]);
+            LOG_WARN("Interpolation size is 0, using swapchain size");
+            _interpolationWidth[fIndex] = state.currentSwapchainDesc.BufferDesc.Width;
+            _interpolationHeight[fIndex] = state.currentSwapchainDesc.BufferDesc.Height;
         }
         else
         {
-            left = Config::Instance()->FGRectLeft.value_or(0);
-            top = Config::Instance()->FGRectTop.value_or(0);
+            auto calculatedLeft =
+                ((int) state.currentSwapchainDesc.BufferDesc.Width - (int) _interpolationWidth[fIndex]) / 2;
+            if (calculatedLeft > 0)
+                left = Config::Instance()->FGRectLeft.value_or(_interpolationLeft[fIndex].value_or(calculatedLeft));
+
+            auto calculatedTop =
+                ((int) state.currentSwapchainDesc.BufferDesc.Height - (int) _interpolationHeight[fIndex]) / 2;
+            if (calculatedTop > 0)
+                top = Config::Instance()->FGRectTop.value_or(_interpolationTop[fIndex].value_or(calculatedTop));
         }
+
+        LOG_DEBUG("SwapChain Res: {}x{}, Interpolation Res: {}x{}", state.currentSwapchainDesc.BufferDesc.Width,
+                  state.currentSwapchainDesc.BufferDesc.Height, _interpolationWidth[fIndex],
+                  _interpolationHeight[fIndex]);
 
         xefg_swapchain_d3d12_resource_data_t backbuffer = {};
         backbuffer.type = XEFG_SWAPCHAIN_RES_BACKBUFFER;
         backbuffer.validity = XEFG_SWAPCHAIN_RV_UNTIL_NEXT_PRESENT;
-        backbuffer.resourceBase = { left, top };
-        backbuffer.resourceSize = { static_cast<uint32_t>(_interpolationWidth[fIndex]), _interpolationHeight[fIndex] };
+        backbuffer.resourceBase = { (UINT) Config::Instance()->FGRectLeft.value_or(left),
+                                    (UINT) Config::Instance()->FGRectTop.value_or(top) };
+        backbuffer.resourceSize = { static_cast<uint32_t>(
+                                        Config::Instance()->FGRectWidth.value_or(_interpolationWidth[fIndex])),
+                                    (UINT) Config::Instance()->FGRectHeight.value_or(_interpolationHeight[fIndex]) };
 
         auto result =
             XeFGProxy::D3D12TagFrameResource()(_swapChainContext, (ID3D12CommandList*) 1, frameId, &backbuffer);
@@ -666,7 +665,7 @@ bool XeFG_Dx12::Dispatch()
         {
             LOG_ERROR("D3D12TagFrameResource Backbuffer error: {} ({})", magic_enum::enum_name(result), (UINT) result);
 
-            State::Instance().FGchanged = true;
+            state.FGchanged = true;
             UpdateTarget();
             Deactivate();
         }
@@ -687,11 +686,13 @@ void XeFG_Dx12::EvaluateState(ID3D12Device* device, FG_Constants& fgConstants)
 {
     LOG_FUNC();
 
+    auto& state = State::Instance();
+
     // If needed hooks are missing or XeFG proxy is not inited or FG swapchain is not created
-    if (!XeFGProxy::InitXeFG() || State::Instance().currentFGSwapchain == nullptr)
+    if (!XeFGProxy::InitXeFG() || state.currentFGSwapchain == nullptr)
         return;
 
-    if (State::Instance().isShuttingDown)
+    if (state.isShuttingDown)
     {
         DestroyFGContext();
         return;
@@ -712,7 +713,7 @@ void XeFG_Dx12::EvaluateState(ID3D12Device* device, FG_Constants& fgConstants)
             UpdateTarget();
         }
         // If there is a change deactivate it
-        else if (State::Instance().FGchanged)
+        else if (state.FGchanged)
         {
             LOG_DEBUG("FGChanged");
             Deactivate();
@@ -721,7 +722,7 @@ void XeFG_Dx12::EvaluateState(ID3D12Device* device, FG_Constants& fgConstants)
             UpdateTarget();
 
             // Destroy if Swapchain has a change destroy FG Context too
-            if (State::Instance().SCchanged)
+            if (state.SCchanged)
                 DestroyFGContext();
         }
 
@@ -733,15 +734,15 @@ void XeFG_Dx12::EvaluateState(ID3D12Device* device, FG_Constants& fgConstants)
         LOG_DEBUG("!FGEnabled");
         Deactivate();
 
-        State::Instance().ClearCapturedHudlesses = true;
+        state.ClearCapturedHudlesses = true;
         Hudfix_Dx12::ResetCounters();
     }
 
-    if (State::Instance().FGchanged)
+    if (state.FGchanged)
     {
         LOG_DEBUG("FGchanged");
 
-        State::Instance().FGchanged = false;
+        state.FGchanged = false;
 
         Hudfix_Dx12::ResetCounters();
 
@@ -753,7 +754,7 @@ void XeFG_Dx12::EvaluateState(ID3D12Device* device, FG_Constants& fgConstants)
             Mutex.unlockThis(2);
     }
 
-    State::Instance().SCchanged = false;
+    state.SCchanged = false;
 }
 
 void XeFG_Dx12::ReleaseObjects()
@@ -968,22 +969,6 @@ void XeFG_Dx12::SetResource(Dx12Resource* inputResource)
         _noDistortionField[fIndex] = false;
     else if (type == FG_ResourceType::HudlessColor)
         _noHudless[fIndex] = false;
-
-    // else if (type == FG_ResourceType::HudlessColor)
-    //{
-    //     _noHudless[fIndex] = false;
-
-    //    // HACK: Prevent FG dispatch from being called for a few frames
-    //    // Seems like XeFG doesn't like having hudless suddenly started to be tagged
-    //    // and then be required to use it right away
-    //    if (lastHudlessFrameId == UINT64_MAX || lastHudlessFrameId + 2 < _frameCount)
-    //    {
-    //        if (XeFGProxy::SetEnabled()(_swapChainContext, false) == XEFG_SWAPCHAIN_RESULT_SUCCESS)
-    //            _reEnableTargetFrame = _frameCount + 5;
-    //    }
-
-    //    lastHudlessFrameId = _frameCount;
-    //}
 
     fResource->validity = (fResource->validity != FG_ResourceValidity::ValidNow || willFlip)
                               ? FG_ResourceValidity::UntilPresent
