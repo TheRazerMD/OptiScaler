@@ -1049,6 +1049,10 @@ void ffxPresentCallback()
                 fg->SetResource(&hudless);
             }
         }
+        else
+        {
+            LOG_ERROR("Present callback failed: {:X}", (UINT) result);
+        }
 
         currentBuffer->Release();
 
@@ -1131,6 +1135,10 @@ void ffxPresentCallback()
                 hudless.width = hDesc.Width;
                 fg->SetResource(&hudless);
             }
+        }
+        else
+        {
+            LOG_ERROR("Frame Generation callback failed: {:X}", (UINT) result);
         }
 
         currentBuffer->Release();
