@@ -911,7 +911,8 @@ void XeFG_Dx12::SetResource(Dx12Resource* inputResource)
         FlipResource(fResource);
     }
 
-    if (type == FG_ResourceType::Depth && !Config::Instance()->FGXeFGDepthInverted.value_or_default())
+    if (_device != nullptr && type == FG_ResourceType::Depth &&
+        !Config::Instance()->FGXeFGDepthInverted.value_or_default())
     {
         if (_depthInvert.get() == nullptr)
         {
