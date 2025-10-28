@@ -97,6 +97,18 @@ HRESULT FGHooks::CreateSwapChain(IDXGIFactory* pFactory, IUnknown* pDevice, DXGI
     if (State::Instance().activeFgOutput == FGOutput::XeFG && !pDesc->Windowed)
         LOG_WARN("Using exclusive fullscreen with XeFG!!!");
 
+    // These effects are not supported in DX12
+    if (pDesc->SwapEffect == DXGI_SWAP_EFFECT_SEQUENTIAL)
+    {
+        LOG_WARN("DXGI_SWAP_EFFECT_SEQUENTIAL is not supported in DX12, changing to FLIP_SEQUENTIAL");
+        pDesc->SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+    }
+    else if (pDesc->SwapEffect == DXGI_SWAP_EFFECT_DISCARD)
+    {
+        LOG_WARN("DXGI_SWAP_EFFECT_DISCARD is not supported in DX12, changing to FLIP_DISCARD");
+        pDesc->SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+    }
+
     auto scResult = fg->CreateSwapchain(pFactory, cq, pDesc, ppSwapChain);
 
     if (Config::Instance()->FGDontUseSwapchainBuffers.value_or_default())
@@ -165,6 +177,18 @@ HRESULT FGHooks::CreateSwapChainForHwnd(IDXGIFactory* pFactory, IUnknown* pDevic
 
     if (State::Instance().activeFgOutput == FGOutput::XeFG && pFullscreenDesc != nullptr && !pFullscreenDesc->Windowed)
         LOG_WARN("Using exclusive fullscreen with XeFG!!!");
+
+    // These effects are not supported in DX12
+    if (pDesc->SwapEffect == DXGI_SWAP_EFFECT_SEQUENTIAL)
+    {
+        LOG_WARN("DXGI_SWAP_EFFECT_SEQUENTIAL is not supported in DX12, changing to FLIP_SEQUENTIAL");
+        pDesc->SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+    }
+    else if (pDesc->SwapEffect == DXGI_SWAP_EFFECT_DISCARD)
+    {
+        LOG_WARN("DXGI_SWAP_EFFECT_DISCARD is not supported in DX12, changing to FLIP_DISCARD");
+        pDesc->SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+    }
 
     auto scResult = fg->CreateSwapchain1(pFactory, cq, hWnd, pDesc, pFullscreenDesc, ppSwapChain);
 
