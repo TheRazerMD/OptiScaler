@@ -8,6 +8,64 @@
 
 #include <magic_enum.hpp>
 
+int GetFormatPrecisionGroup(FfxApiSurfaceFormat format)
+{
+    switch (format)
+    {
+    case FFX_API_SURFACE_FORMAT_R32G32B32A32_TYPELESS:
+    case FFX_API_SURFACE_FORMAT_R32G32B32A32_FLOAT:
+    case FFX_API_SURFACE_FORMAT_R32G32B32_FLOAT:
+        return 0;
+
+    case FFX_API_SURFACE_FORMAT_R16G16B16A16_TYPELESS:
+    case FFX_API_SURFACE_FORMAT_R16G16B16A16_FLOAT:
+        return 1;
+
+    case FFX_API_SURFACE_FORMAT_R8G8B8A8_TYPELESS:
+    case FFX_API_SURFACE_FORMAT_R8G8B8A8_UNORM:
+    case FFX_API_SURFACE_FORMAT_B8G8R8A8_TYPELESS:
+    case FFX_API_SURFACE_FORMAT_B8G8R8A8_UNORM:
+        return 2;
+
+    case FFX_API_SURFACE_FORMAT_R8G8B8A8_SNORM:
+        return 3;
+
+    case FFX_API_SURFACE_FORMAT_R8G8B8A8_SRGB:
+    case FFX_API_SURFACE_FORMAT_B8G8R8A8_SRGB:
+        return 4;
+
+    case FFX_API_SURFACE_FORMAT_R11G11B10_FLOAT:
+        return 5;
+
+    case FFX_API_SURFACE_FORMAT_R10G10B10A2_TYPELESS:
+    case FFX_API_SURFACE_FORMAT_R10G10B10A2_UNORM:
+        return 6;
+
+    case FFX_API_SURFACE_FORMAT_R9G9B9E5_SHAREDEXP:
+        return 7;
+
+    // we don't accept the following formats
+    case FFX_API_SURFACE_FORMAT_R32G32B32A32_UINT:
+    case FFX_API_SURFACE_FORMAT_R32G32_FLOAT:
+    case FFX_API_SURFACE_FORMAT_R8_UINT:
+    case FFX_API_SURFACE_FORMAT_R32_UINT:
+    case FFX_API_SURFACE_FORMAT_R16G16_UINT:
+    case FFX_API_SURFACE_FORMAT_R16G16_SINT:
+    case FFX_API_SURFACE_FORMAT_R16G16_FLOAT:
+    case FFX_API_SURFACE_FORMAT_R16_FLOAT:
+    case FFX_API_SURFACE_FORMAT_R16_UINT:
+    case FFX_API_SURFACE_FORMAT_R16_UNORM:
+    case FFX_API_SURFACE_FORMAT_R16_SNORM:
+    case FFX_API_SURFACE_FORMAT_R8_UNORM:
+    case FFX_API_SURFACE_FORMAT_R8G8_UNORM:
+    case FFX_API_SURFACE_FORMAT_R8G8_UINT:
+    case FFX_API_SURFACE_FORMAT_R32_FLOAT:
+    case FFX_API_SURFACE_FORMAT_UNKNOWN:
+    default:
+        return -1;
+    }
+}
+
 typedef struct FfxSwapchainFramePacingTuning
 {
     float safetyMarginInMs;  // in Millisecond. Default is 0.1ms
@@ -876,11 +934,45 @@ void FSRFG_Dx12::SetResource(Dx12Resource* inputResource)
     }
 
     if (type == FG_ResourceType::UIColor)
+    {
+        auto uiFormatGroup = GetFormatPrecisionGroup(
+            (FfxApiSurfaceFormat) ffxApiGetSurfaceFormatDX12(fResource->GetResource()->GetDesc().Format));
+        auto scFormatGroup = GetFormatPrecisionGroup(
+            (FfxApiSurfaceFormat) ffxApiGetSurfaceFormatDX12(State::Instance().currentSwapchainDesc.BufferDesc.Format));
+
+        if (uiFormatGroup == -1 || scFormatGroup == -1 || uiFormatGroup != scFormatGroup)
+        {
+            LOG_WARN("Skipping UI resource due to format mismatch! UI: {}, swapchain: {}", uiFormatGroup,
+                     scFormatGroup);
+
+            _frameResources[fIndex][type] = {};
+
+            return;
+        }
+
         _noUi[fIndex] = false;
+    }
     else if (type == FG_ResourceType::Distortion)
         _noDistortionField[fIndex] = false;
     else if (type == FG_ResourceType::HudlessColor)
+    {
+        auto hudlessFormatGroup = GetFormatPrecisionGroup(
+            (FfxApiSurfaceFormat) ffxApiGetSurfaceFormatDX12(fResource->GetResource()->GetDesc().Format));
+        auto scFormatGroup = GetFormatPrecisionGroup(
+            (FfxApiSurfaceFormat) ffxApiGetSurfaceFormatDX12(State::Instance().currentSwapchainDesc.BufferDesc.Format));
+
+        if (hudlessFormatGroup == -1 || scFormatGroup == -1 || hudlessFormatGroup != scFormatGroup)
+        {
+            LOG_WARN("Skipping hudless resource due to format mismatch! hudless: {}, swapchain: {}", hudlessFormatGroup,
+                     scFormatGroup);
+
+            _frameResources[fIndex][type] = {};
+
+            return;
+        }
+
         _noHudless[fIndex] = false;
+    }
 
     // For FSR FG we always copy ValidNow
     if (fResource->validity == FG_ResourceValidity::ValidButMakeCopy)
