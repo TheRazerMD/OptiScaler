@@ -8,6 +8,91 @@
 
 #include <magic_enum.hpp>
 
+static inline void ResourceBarrier(ID3D12GraphicsCommandList* InCommandList, ID3D12Resource* InResource,
+                                   D3D12_RESOURCE_STATES InBeforeState, D3D12_RESOURCE_STATES InAfterState)
+{
+    if (InBeforeState == InAfterState)
+        return;
+
+    D3D12_RESOURCE_BARRIER barrier = {};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Transition.pResource = InResource;
+    barrier.Transition.StateBefore = InBeforeState;
+    barrier.Transition.StateAfter = InAfterState;
+    barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+    InCommandList->ResourceBarrier(1, &barrier);
+}
+
+bool FSRFG_Dx12::HudlessFormatTransfer(int index, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList,
+                                       DXGI_FORMAT targetFormat, Dx12Resource* resource)
+{
+    if (_hudlessTransfer[index].get() == nullptr || !_hudlessTransfer[index].get()->IsFormatCompatible(targetFormat))
+    {
+        LOG_DEBUG("Format change, recreate the FormatTransfer");
+
+        if (_hudlessTransfer[index].get() != nullptr)
+            _hudlessTransfer[index].reset();
+
+        _hudlessTransfer[index] = std::make_unique<FT_Dx12>("FormatTransfer", device, targetFormat);
+
+        return false;
+    }
+
+    if (_hudlessTransfer[index].get() != nullptr &&
+        _hudlessTransfer[index].get()->CreateBufferResource(device, resource->GetResource(),
+                                                            D3D12_RESOURCE_STATE_UNORDERED_ACCESS))
+    {
+        ResourceBarrier(cmdList, resource->GetResource(), resource->state,
+                        D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+        _hudlessTransfer[index].get()->Dispatch(device, cmdList, resource->GetResource(),
+                                                _hudlessTransfer[index].get()->Buffer());
+
+        ResourceBarrier(cmdList, resource->GetResource(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+                        resource->state);
+
+        resource->copy = _hudlessTransfer[index].get()->Buffer();
+        return true;
+    }
+
+    return false;
+}
+
+bool FSRFG_Dx12::UIFormatTransfer(int index, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList,
+                                  DXGI_FORMAT targetFormat, Dx12Resource* resource)
+{
+    if (_uiTransfer[index].get() == nullptr || !_uiTransfer[index].get()->IsFormatCompatible(targetFormat))
+    {
+        LOG_DEBUG("Format change, recreate the FormatTransfer");
+
+        if (_uiTransfer[index].get() != nullptr)
+            _uiTransfer[index].reset();
+
+        _uiTransfer[index] = std::make_unique<FT_Dx12>("FormatTransfer", device, targetFormat);
+
+        return false;
+    }
+
+    if (_uiTransfer[index].get() != nullptr &&
+        _uiTransfer[index].get()->CreateBufferResource(device, resource->GetResource(),
+                                                       D3D12_RESOURCE_STATE_UNORDERED_ACCESS))
+    {
+        ResourceBarrier(cmdList, resource->GetResource(), resource->state,
+                        D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+        _uiTransfer[index].get()->Dispatch(device, cmdList, resource->GetResource(),
+                                           _uiTransfer[index].get()->Buffer());
+
+        ResourceBarrier(cmdList, resource->GetResource(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+                        resource->state);
+
+        resource->copy = _uiTransfer[index].get()->Buffer();
+        return true;
+    }
+
+    return false;
+}
+
 int GetFormatPrecisionGroup(FfxApiSurfaceFormat format)
 {
     switch (format)
@@ -935,19 +1020,26 @@ void FSRFG_Dx12::SetResource(Dx12Resource* inputResource)
 
     if (type == FG_ResourceType::UIColor)
     {
+        auto format = State::Instance().currentSwapchainDesc.BufferDesc.Format;
+
         auto uiFormatGroup = GetFormatPrecisionGroup(
             (FfxApiSurfaceFormat) ffxApiGetSurfaceFormatDX12(fResource->GetResource()->GetDesc().Format));
-        auto scFormatGroup = GetFormatPrecisionGroup(
-            (FfxApiSurfaceFormat) ffxApiGetSurfaceFormatDX12(State::Instance().currentSwapchainDesc.BufferDesc.Format));
+        auto scFormatGroup = GetFormatPrecisionGroup((FfxApiSurfaceFormat) ffxApiGetSurfaceFormatDX12(format));
 
         if (uiFormatGroup == -1 || scFormatGroup == -1 || uiFormatGroup != scFormatGroup)
         {
-            LOG_WARN("Skipping UI resource due to format mismatch! UI: {}, swapchain: {}", uiFormatGroup,
-                     scFormatGroup);
+            if (!UIFormatTransfer(fIndex, _device, GetUICommandList(fIndex), format, fResource))
+            {
+                LOG_WARN("Skipping UI resource due to format mismatch! UI: {}, swapchain: {}", uiFormatGroup,
+                         scFormatGroup);
 
-            _frameResources[fIndex][type] = {};
-
-            return;
+                _frameResources[fIndex][type] = {};
+                return;
+            }
+            else
+            {
+                fResource->validity = FG_ResourceValidity::UntilPresent;
+            }
         }
 
         _noUi[fIndex] = false;
@@ -956,19 +1048,26 @@ void FSRFG_Dx12::SetResource(Dx12Resource* inputResource)
         _noDistortionField[fIndex] = false;
     else if (type == FG_ResourceType::HudlessColor)
     {
+        auto format = State::Instance().currentSwapchainDesc.BufferDesc.Format;
+
         auto hudlessFormatGroup = GetFormatPrecisionGroup(
             (FfxApiSurfaceFormat) ffxApiGetSurfaceFormatDX12(fResource->GetResource()->GetDesc().Format));
-        auto scFormatGroup = GetFormatPrecisionGroup(
-            (FfxApiSurfaceFormat) ffxApiGetSurfaceFormatDX12(State::Instance().currentSwapchainDesc.BufferDesc.Format));
+        auto scFormatGroup = GetFormatPrecisionGroup((FfxApiSurfaceFormat) ffxApiGetSurfaceFormatDX12(format));
 
         if (hudlessFormatGroup == -1 || scFormatGroup == -1 || hudlessFormatGroup != scFormatGroup)
         {
-            LOG_WARN("Skipping hudless resource due to format mismatch! hudless: {}, swapchain: {}", hudlessFormatGroup,
-                     scFormatGroup);
+            if (!HudlessFormatTransfer(fIndex, _device, GetUICommandList(fIndex), format, fResource))
+            {
+                LOG_WARN("Skipping hudless resource due to format mismatch! hudless: {}, swapchain: {}",
+                         hudlessFormatGroup, scFormatGroup);
 
-            _frameResources[fIndex][type] = {};
-
-            return;
+                _frameResources[fIndex][type] = {};
+                return;
+            }
+            else
+            {
+                fResource->validity = FG_ResourceValidity::UntilPresent;
+            }
         }
 
         _noHudless[fIndex] = false;
