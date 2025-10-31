@@ -455,6 +455,18 @@ HRESULT FGHooks::hkResizeBuffers(IDXGISwapChain* This, UINT BufferCount, UINT Wi
     }
 
     State::Instance().SCAllowTearing = (SwapChainFlags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) > 0;
+
+    if (State::Instance().SCLastFlags != SwapChainFlags)
+    {
+        LOG_WARN("SwapChainFlags changed from {} to {}", State::Instance().SCLastFlags, SwapChainFlags);
+
+        if (State::Instance().activeFgOutput == FGOutput::XeFG)
+        {
+            LOG_WARN("Preventing flag change for XeFG!");
+            SwapChainFlags = State::Instance().SCLastFlags;
+        }
+    }
+
     State::Instance().SCLastFlags = SwapChainFlags;
 
     if (fg != nullptr && fg->IsActive())
@@ -608,6 +620,18 @@ HRESULT FGHooks::hkResizeBuffers1(IDXGISwapChain* This, UINT BufferCount, UINT W
     }
 
     State::Instance().SCAllowTearing = (SwapChainFlags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) > 0;
+
+    if (State::Instance().SCLastFlags != SwapChainFlags)
+    {
+        LOG_WARN("SwapChainFlags changed from {} to {}", State::Instance().SCLastFlags, SwapChainFlags);
+
+        if (State::Instance().activeFgOutput == FGOutput::XeFG)
+        {
+            LOG_WARN("Preventing flag change for XeFG!");
+            SwapChainFlags = State::Instance().SCLastFlags;
+        }
+    }
+
     State::Instance().SCLastFlags = SwapChainFlags;
 
     if (fg != nullptr && fg->IsActive())
