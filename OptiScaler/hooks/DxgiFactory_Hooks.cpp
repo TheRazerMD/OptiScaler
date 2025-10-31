@@ -5,6 +5,7 @@
 #include <spoofing/Dxgi_Spoofing.h>
 #include <wrapped/wrapped_swapchain.h>
 
+#include <magic_enum.hpp>
 #include <detours/detours.h>
 
 // #define DETAILED_SC_LOGS
@@ -187,6 +188,22 @@ HRESULT DxgiFactoryHooks::CreateSwapChain(IDXGIFactory* realFactory, IUnknown* p
               pDesc->BufferDesc.Width, pDesc->BufferDesc.Height, (UINT) pDesc->BufferDesc.Format, pDesc->BufferCount,
               pDesc->Flags, (SIZE_T) pDesc->OutputWindow, pDesc->Windowed, _skipFGSwapChainCreation);
 
+    LOG_DEBUG("pDesc->BufferCount: {}", pDesc->BufferCount);
+    LOG_DEBUG("pDesc->BufferDesc.Width: {}", pDesc->BufferDesc.Width);
+    LOG_DEBUG("pDesc->BufferDesc.Format: {}", magic_enum::enum_name(pDesc->BufferDesc.Format));
+    LOG_DEBUG("pDesc->BufferDesc.Height: {}", pDesc->BufferDesc.Height);
+    LOG_DEBUG("pDesc->BufferDesc.RefreshRate.Denominator: {}", pDesc->BufferDesc.RefreshRate.Denominator);
+    LOG_DEBUG("pDesc->BufferDesc.RefreshRate.Numerator: {}", pDesc->BufferDesc.RefreshRate.Numerator);
+    LOG_DEBUG("pDesc->BufferDesc.Scaling: {}", magic_enum::enum_name(pDesc->BufferDesc.Scaling));
+    LOG_DEBUG("pDesc->BufferDesc.ScanlineOrdering: {}", magic_enum::enum_name(pDesc->BufferDesc.ScanlineOrdering));
+    LOG_DEBUG("pDesc->Windowed: {}", pDesc->Windowed);
+    LOG_DEBUG("pDesc->SampleDesc.Count: {}", pDesc->SampleDesc.Count);
+    LOG_DEBUG("pDesc->SampleDesc.Quality: {}", pDesc->SampleDesc.Quality);
+    LOG_DEBUG("pDesc->BufferUsage: {}", (UINT) pDesc->BufferUsage);
+    LOG_DEBUG("pDesc->Flags: {}", pDesc->Flags);
+    LOG_DEBUG("pDesc->OutputWindow: {:X}", (UINT64) pDesc->OutputWindow);
+    LOG_DEBUG("pDesc->SwapEffect: {}", magic_enum::enum_name(pDesc->SwapEffect));
+
     if (State::Instance().activeFgOutput == FGOutput::XeFG &&
         Config::Instance()->FGXeFGForceBorderless.value_or_default())
     {
@@ -330,6 +347,10 @@ HRESULT DxgiFactoryHooks::CreateSwapChain(IDXGIFactory* realFactory, IUnknown* p
             LOG_DEBUG("Created new WrappedIDXGISwapChain4: {:X}, pDevice: {:X}", (size_t) *ppSwapChain,
                       (size_t) pDevice);
         }
+    }
+    else
+    {
+        LOG_ERROR("CreateSwapChain failed: {:X}", (UINT) result);
     }
 
     return result;
@@ -553,6 +574,10 @@ HRESULT DxgiFactoryHooks::CreateSwapChainForHwnd(IDXGIFactory2* realFactory, IUn
                 State::Instance().currentSwapchain = *ppSwapChain;
 
             State::Instance().currentWrappedSwapchain = *ppSwapChain;
+        }
+        else
+        {
+            LOG_ERROR("CreateSwapChainForHwnd failed: {:X}", (UINT) result);
         }
     }
 
