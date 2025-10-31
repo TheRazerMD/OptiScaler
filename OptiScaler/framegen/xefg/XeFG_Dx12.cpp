@@ -450,6 +450,7 @@ void XeFG_Dx12::Deactivate()
             _isActive = false;
 
         _lastDispatchedFrame = 0;
+        _waitingNewFrameData = false;
 
         LOG_INFO("SetEnabled: false, result: {} ({})", magic_enum::enum_name(result), (UINT) result);
     }
@@ -496,6 +497,15 @@ bool XeFG_Dx12::Dispatch()
 
     LOG_DEBUG("_frameCount: {}, _willDispatchFrame: {}, fIndex: {}", _frameCount, _willDispatchFrame, fIndex);
 
+    if (!_resourceReady[fIndex].contains(FG_ResourceType::Depth) ||
+        !_resourceReady[fIndex].at(FG_ResourceType::Depth) ||
+        !_resourceReady[fIndex].contains(FG_ResourceType::Velocity) ||
+        !_resourceReady[fIndex].at(FG_ResourceType::Velocity))
+    {
+        LOG_WARN("Depth or Velocity is not ready, skipping");
+        return false;
+    }
+
     if (!_haveHudless.has_value())
     {
         _haveHudless = IsUsingHudless(fIndex);
@@ -513,17 +523,8 @@ bool XeFG_Dx12::Dispatch()
             UpdateTarget();
             Deactivate();
 
-            return true;
+            return false;
         }
-    }
-
-    if (!_resourceReady[fIndex].contains(FG_ResourceType::Depth) ||
-        !_resourceReady[fIndex].at(FG_ResourceType::Depth) ||
-        !_resourceReady[fIndex].contains(FG_ResourceType::Velocity) ||
-        !_resourceReady[fIndex].at(FG_ResourceType::Velocity))
-    {
-        LOG_WARN("Depth or Velocity is not ready, skipping");
-        return false;
     }
 
     XeFGProxy::EnableDebugFeature()(_swapChainContext, XEFG_SWAPCHAIN_DEBUG_FEATURE_TAG_INTERPOLATED_FRAMES,
@@ -836,39 +837,51 @@ bool XeFG_Dx12::Present()
         }
     }
 
-    auto fIndex = GetIndex();
-    if (_uiCommandListResetted[fIndex])
+    bool result = false;
+
+    if (IsActive() && !IsPaused())
     {
-        LOG_DEBUG("Executing _uiCommandList[{}]: {:X}", fIndex, (size_t) _uiCommandList[fIndex]);
-        auto closeResult = _uiCommandList[fIndex]->Close();
+        auto fIndex = GetIndex();
+        if (_uiCommandListResetted[fIndex])
+        {
+            LOG_DEBUG("Executing _uiCommandList[{}]: {:X}", fIndex, (size_t) _uiCommandList[fIndex]);
+            auto closeResult = _uiCommandList[fIndex]->Close();
 
-        if (closeResult == S_OK)
-            _gameCommandQueue->ExecuteCommandLists(1, (ID3D12CommandList**) &_uiCommandList[fIndex]);
-        else
-            LOG_ERROR("_uiCommandList[{}]->Close() error: {:X}", fIndex, (UINT) closeResult);
+            if (closeResult == S_OK)
+                _gameCommandQueue->ExecuteCommandLists(1, (ID3D12CommandList**) &_uiCommandList[fIndex]);
+            else
+                LOG_ERROR("_uiCommandList[{}]->Close() error: {:X}", fIndex, (UINT) closeResult);
 
-        _uiCommandListResetted[fIndex] = false;
+            _uiCommandListResetted[fIndex] = false;
+        }
     }
 
-    if (_lastDispatchedFrame != 0 && _frameCount > (_lastDispatchedFrame + 2))
+    if (_fgFramePresentId > _lastFGFramePresentId && IsActive() && !_waitingNewFrameData)
     {
         LOG_DEBUG("Pausing FG");
-        State::Instance().FGchanged = true;
         Deactivate();
-        UpdateTarget();
+        _waitingNewFrameData = true;
         return false;
     }
+
+    _fgFramePresentId++;
 
     return Dispatch();
 }
 
 void XeFG_Dx12::SetResource(Dx12Resource* inputResource)
 {
-    if (inputResource == nullptr || inputResource->resource == nullptr)
+    if (inputResource == nullptr || inputResource->resource == nullptr || !IsActive() || IsPaused())
         return;
 
     auto fIndex = GetIndex();
     auto& type = inputResource->type;
+
+    if (_resourceFrame[type] == _frameCount)
+    {
+        LOG_WARN("Repeating resource tagging for {}, ignoring.", magic_enum::enum_name(type));
+        return;
+    }
 
     if (type == FG_ResourceType::HudlessColor && Config::Instance()->FGDisableHudless.value_or_default())
         return;
@@ -1018,7 +1031,11 @@ void XeFG_Dx12::SetResource(Dx12Resource* inputResource)
     LOG_TRACE("_frameResources[{}][{}]: {:X}", fIndex, magic_enum::enum_name(type), (size_t) fResource->GetResource());
 }
 
-void XeFG_Dx12::SetResourceReady(FG_ResourceType type) { _resourceReady[GetIndex()][type] = true; }
+void XeFG_Dx12::SetResourceReady(FG_ResourceType type)
+{
+    _resourceReady[GetIndex()][type] = true;
+    _resourceFrame[type] = _frameCount;
+}
 
 void XeFG_Dx12::SetCommandQueue(FG_ResourceType type, ID3D12CommandQueue* queue) { _gameCommandQueue = queue; }
 

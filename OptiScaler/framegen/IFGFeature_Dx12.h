@@ -46,6 +46,9 @@ class IFGFeature_Dx12 : public virtual IFGFeature
 
     HWND _hwnd = NULL;
 
+    UINT64 _fgFramePresentId = 0;
+    UINT64 _lastFGFramePresentId = 0;
+
     ID3D12GraphicsCommandList* _uiCommandList[BUFFER_COUNT] {};
     ID3D12CommandAllocator* _uiCommandAllocator[BUFFER_COUNT] {};
     bool _uiCommandListResetted[BUFFER_COUNT] { false, false, false, false };

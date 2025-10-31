@@ -835,11 +835,17 @@ bool FSRFG_Dx12::ExecuteCommandList(int index)
 
 void FSRFG_Dx12::SetResource(Dx12Resource* inputResource)
 {
-    if (inputResource == nullptr || inputResource->resource == nullptr)
+    if (inputResource == nullptr || inputResource->resource == nullptr || !IsActive() || IsPaused())
         return;
 
     auto fIndex = GetIndex();
     auto& type = inputResource->type;
+
+    if (_resourceFrame[type] == _frameCount)
+    {
+        LOG_WARN("Repeating resource tagging, ignoring.");
+        return;
+    }
 
     if (type == FG_ResourceType::HudlessColor && Config::Instance()->FGDisableHudless.value_or_default())
         return;
@@ -1029,28 +1035,32 @@ bool FSRFG_Dx12::Present()
         }
     }
 
-    auto fIndex = GetIndex();
-    if (_uiCommandListResetted[fIndex])
+    if (IsActive() && !IsPaused())
     {
-        LOG_DEBUG("Executing _uiCommandList[fIndex][{}]: {:X}", fIndex, (size_t) _uiCommandList[fIndex]);
-        auto closeResult = _uiCommandList[fIndex]->Close();
+        auto fIndex = GetIndex();
+        if (_uiCommandListResetted[fIndex])
+        {
+            LOG_DEBUG("Executing _uiCommandList[fIndex][{}]: {:X}", fIndex, (size_t) _uiCommandList[fIndex]);
+            auto closeResult = _uiCommandList[fIndex]->Close();
 
-        if (closeResult == S_OK)
-            _gameCommandQueue->ExecuteCommandLists(1, (ID3D12CommandList**) &_uiCommandList[fIndex]);
-        else
-            LOG_ERROR("_uiCommandList[{}]->Close() error: {:X}", fIndex, (UINT) closeResult);
+            if (closeResult == S_OK)
+                _gameCommandQueue->ExecuteCommandLists(1, (ID3D12CommandList**) &_uiCommandList[fIndex]);
+            else
+                LOG_ERROR("_uiCommandList[{}]->Close() error: {:X}", fIndex, (UINT) closeResult);
 
-        _uiCommandListResetted[fIndex] = false;
+            _uiCommandListResetted[fIndex] = false;
+        }
     }
 
-    if (_lastDispatchedFrame != 0 && _frameCount > (_lastDispatchedFrame + 2))
+    if (_fgFramePresentId > _lastFGFramePresentId && IsActive() && !_waitingNewFrameData)
     {
         LOG_DEBUG("Pausing FG");
-        State::Instance().FGchanged = true;
         Deactivate();
-        UpdateTarget();
+        _waitingNewFrameData = true;
         return false;
     }
+
+    _fgFramePresentId++;
 
     return Dispatch();
 }

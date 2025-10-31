@@ -71,12 +71,14 @@ class IFGFeature
     UINT64 _frameCount = 1;
     UINT64 _lastDispatchedFrame = 0;
     UINT64 _willDispatchFrame = 0;
+    bool _waitingNewFrameData = false;
 
     bool _isActive = false;
     UINT64 _targetFrame = 0;
     FG_Constants _constants {};
 
     std::unordered_map<FG_ResourceType, bool> _resourceReady[BUFFER_COUNT] {};
+    std::unordered_map<FG_ResourceType, UINT64> _resourceFrame {};
 
     bool _noHudless[BUFFER_COUNT] = { true, true, true, true };
     bool _noUi[BUFFER_COUNT] = { true, true, true, true };

@@ -107,6 +107,14 @@ Dx12Resource* IFGFeature_Dx12::GetResource(FG_ResourceType type, int index)
 
 void IFGFeature_Dx12::NewFrame()
 {
+    if (_waitingNewFrameData)
+    {
+        LOG_DEBUG("Re-activating FG");
+        UpdateTarget();
+        Activate();
+        _waitingNewFrameData = false;
+    }
+
     auto fIndex = GetIndex();
 
     std::lock_guard<std::mutex> lock(_frMutex);
@@ -115,6 +123,7 @@ void IFGFeature_Dx12::NewFrame()
 
     _frameResources[fIndex].clear();
     _uiCommandListResetted[fIndex] = false;
+    _lastFGFramePresentId = _fgFramePresentId;
 }
 
 void IFGFeature_Dx12::FlipResource(Dx12Resource* resource)

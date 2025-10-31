@@ -126,7 +126,7 @@ int IFGFeature::GetDispatchIndex()
     return (_willDispatchFrame % BUFFER_COUNT);
 }
 
-bool IFGFeature::IsActive() { return _isActive; }
+bool IFGFeature::IsActive() { return _isActive || _waitingNewFrameData; }
 
 bool IFGFeature::IsPaused() { return _targetFrame != 0 && _targetFrame >= _frameCount; }
 
