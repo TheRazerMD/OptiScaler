@@ -7,6 +7,12 @@
 #include <spoofing/Dxgi_Spoofing.h>
 #include <wrapped/wrapped_swapchain.h>
 
+// #define DETAILED_SC_LOGS
+
+#ifdef DETAILED_SC_LOGS
+#include <magic_enum.hpp>
+#endif
+
 void DxgiFactoryWrappedCalls::CheckAdapter(IUnknown* unkAdapter)
 {
     if (State::Instance().isRunningOnDXVK)
@@ -114,6 +120,24 @@ HRESULT DxgiFactoryWrappedCalls::CreateSwapChain(IDXGIFactory* realFactory, Wrap
     State::Instance().SCAllowTearing = (pDesc->Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) > 0;
     State::Instance().SCLastFlags = pDesc->Flags;
     State::Instance().realExclusiveFullscreen = !pDesc->Windowed;
+
+#ifdef DETAILED_SC_LOGS
+    LOG_TRACE("pDesc->BufferCount: {}", pDesc->BufferCount);
+    LOG_TRACE("pDesc->BufferDesc.Format: {}", magic_enum::enum_name(pDesc->BufferDesc.Format));
+    LOG_TRACE("pDesc->BufferDesc.Height: {}", pDesc->BufferDesc.Height);
+    LOG_TRACE("pDesc->BufferDesc.RefreshRate.Denominator: {}", pDesc->BufferDesc.RefreshRate.Denominator);
+    LOG_TRACE("pDesc->BufferDesc.RefreshRate.Numerator: {}", pDesc->BufferDesc.RefreshRate.Numerator);
+    LOG_TRACE("pDesc->BufferDesc.Scaling: {}", magic_enum::enum_name(pDesc->BufferDesc.Scaling));
+    LOG_TRACE("pDesc->BufferDesc.ScanlineOrdering: {}", magic_enum::enum_name(pDesc->BufferDesc.ScanlineOrdering));
+    LOG_TRACE("pDesc->BufferDesc.Width: {}", pDesc->BufferDesc.Width);
+    LOG_TRACE("pDesc->BufferUsage: {}", pDesc->BufferUsage);
+    LOG_TRACE("pDesc->Flags: {}", pDesc->Flags);
+    LOG_TRACE("pDesc->OutputWindow: {}", (UINT64) pDesc->OutputWindow);
+    LOG_TRACE("pDesc->SampleDesc.Count: {}", pDesc->SampleDesc.Count);
+    LOG_TRACE("pDesc->SampleDesc.Quality: {}", pDesc->SampleDesc.Quality);
+    LOG_TRACE("pDesc->SwapEffect: {}", magic_enum::enum_name(pDesc->SwapEffect));
+    LOG_TRACE("pDesc->Windowed: {}", pDesc->Windowed);
+#endif //
 
     // Check for SL proxy, get real queue
     ID3D12CommandQueue* real = nullptr;
@@ -302,6 +326,28 @@ HRESULT DxgiFactoryWrappedCalls::CreateSwapChainForHwnd(IDXGIFactory2* realFacto
     State::Instance().SCAllowTearing = (pDesc->Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) > 0;
     State::Instance().SCLastFlags = pDesc->Flags;
     State::Instance().realExclusiveFullscreen = pFullscreenDesc != nullptr && !pFullscreenDesc->Windowed;
+
+#ifdef VER_PRE_RELEASE
+    LOG_TRACE("pDesc->AlphaMode : {}", magic_enum::enum_name(pDesc->AlphaMode));
+    LOG_TRACE("pDesc->BufferCount : {}", pDesc->BufferCount);
+    LOG_TRACE("pDesc->BufferUsage : {}", pDesc->BufferUsage);
+    LOG_TRACE("pDesc->Flags : {}", pDesc->Flags);
+    LOG_TRACE("pDesc->Format : {}", magic_enum::enum_name(pDesc->Format));
+    LOG_TRACE("pDesc->Height : {}", pDesc->Height);
+    LOG_TRACE("pDesc->SampleDesc.Count : {}", pDesc->SampleDesc.Count);
+    LOG_TRACE("pDesc->SampleDesc.Quality : {}", pDesc->SampleDesc.Quality);
+    LOG_TRACE("pDesc->Scaling : {}", magic_enum::enum_name(pDesc->Scaling));
+    LOG_TRACE("pDesc->Stereo : {}", pDesc->Stereo);
+
+    if (pFullscreenDesc != nullptr)
+    {
+        LOG_TRACE("pFullscreenDesc->RefreshRate.Denominator : {}", pFullscreenDesc->RefreshRate.Denominator);
+        LOG_TRACE("pFullscreenDesc->RefreshRate.Numerator : {}", pFullscreenDesc->RefreshRate.Numerator);
+        LOG_TRACE("pFullscreenDesc->Scaling : {}", magic_enum::enum_name(pFullscreenDesc->Scaling));
+        LOG_TRACE("pFullscreenDesc->ScanlineOrdering : {}", magic_enum::enum_name(pFullscreenDesc->ScanlineOrdering));
+        LOG_TRACE("pFullscreenDesc->Windowed : {}", pFullscreenDesc->Windowed);
+    }
+#endif
 
     // Check for SL proxy, get real queue
     ID3D12CommandQueue* real = nullptr;
