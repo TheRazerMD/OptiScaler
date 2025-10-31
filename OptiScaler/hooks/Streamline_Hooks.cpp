@@ -207,7 +207,7 @@ sl::Result StreamlineHooks::hkslSetTagForFrame(const sl::FrameToken& frame, cons
 
     for (uint32_t i = 0; i < numResources; i++)
     {
-        if (resources[i].resource == nullptr)
+        if (resources[i].resource == nullptr || resources[i].resource->native == nullptr)
         {
             LOG_TRACE("Resource of type: {} is null, continuing", resources[i].type);
             continue;

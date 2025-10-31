@@ -163,6 +163,12 @@ bool Sl_Inputs_Dx12::reportResource(const sl::ResourceTag& tag, ID3D12GraphicsCo
     if (!cmdBuffer)
         LOG_TRACE("cmdBuffer is null");
 
+    if (tag.resource->native == nullptr)
+    {
+        LOG_TRACE("tag.resource->native is null");
+        return false;
+    }
+
     auto fgOutput = reinterpret_cast<IFGFeature_Dx12*>(State::Instance().currentFG);
 
     // It's possible for only some resources to be marked ready if FGEnabled is enabled during resource tagging
