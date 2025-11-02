@@ -107,7 +107,6 @@ class IFGFeature
     int GetIndex();
     UINT64 StartNewFrame();
 
-    virtual void SetResourceReady(FG_ResourceType type) = 0;
     bool IsResourceReady(FG_ResourceType type, int index = -1);
 
     bool IsUsingUI();
@@ -139,6 +138,7 @@ class IFGFeature
     void GetInterpolationRect(UINT64& width, UINT& height, int index = -1);
     void SetInterpolationPos(UINT left, UINT top);
     void GetInterpolationPos(UINT& left, UINT& top, int index = -1);
+    void SetResourceReady(FG_ResourceType type);
 
     void ResetCounters();
     void UpdateTarget();

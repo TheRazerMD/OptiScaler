@@ -62,7 +62,6 @@ class XeFG_Dx12 : public virtual IFGFeature_Dx12
     bool Present() override final;
 
     void SetResource(Dx12Resource* inputResource) override final;
-    void SetResourceReady(FG_ResourceType type) override final;
     void SetCommandQueue(FG_ResourceType type, ID3D12CommandQueue* queue) override final;
 
     void* FrameGenerationContext() override final;

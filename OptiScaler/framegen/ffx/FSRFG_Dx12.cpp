@@ -573,7 +573,10 @@ bool FSRFG_Dx12::Shutdown()
     Deactivate();
 
     if (_swapChainContext != nullptr)
-        ReleaseSwapchain(_hwnd);
+    {
+        if (ReleaseSwapchain(_hwnd))
+            State::Instance().currentFGSwapchain = nullptr;
+    }
 
     ReleaseObjects();
 
@@ -678,6 +681,7 @@ bool FSRFG_Dx12::ReleaseSwapchain(HWND hwnd)
         LOG_INFO("Destroy Ffx Swapchain Result: {}({})", result, FfxApiProxy::ReturnCodeToString(result));
 
         _swapChainContext = nullptr;
+        State::Instance().currentFGSwapchain = nullptr;
     }
 
     if (Config::Instance()->FGUseMutexForSwapchain.value_or_default())
@@ -1116,8 +1120,6 @@ void FSRFG_Dx12::SetResource(Dx12Resource* inputResource)
 
     LOG_TRACE("_frameResources[{}][{}]: {:X}", fIndex, magic_enum::enum_name(type), (size_t) fResource->GetResource());
 }
-
-void FSRFG_Dx12::SetResourceReady(FG_ResourceType type) { _resourceReady[GetIndex()][type] = true; }
 
 void FSRFG_Dx12::SetCommandQueue(FG_ResourceType type, ID3D12CommandQueue* queue) { _gameCommandQueue = queue; }
 

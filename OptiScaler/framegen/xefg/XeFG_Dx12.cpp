@@ -136,6 +136,8 @@ bool XeFG_Dx12::DestroySwapchainContext()
         // Set it back because context is not destroyed
         if (result != XEFG_SWAPCHAIN_RESULT_SUCCESS)
             _swapChainContext = context;
+        else
+            State::Instance().currentFGSwapchain = nullptr;
     }
 
     return true;
@@ -474,10 +476,10 @@ bool XeFG_Dx12::Shutdown()
     if (_fgContext != nullptr)
         DestroyFGContext();
 
+    ReleaseObjects();
+
     if (_swapChainContext != nullptr)
         DestroySwapchainContext();
-
-    ReleaseObjects();
 
     return true;
 }
@@ -762,6 +764,7 @@ void XeFG_Dx12::ReleaseObjects()
 {
     _mvFlip.reset();
     _depthFlip.reset();
+    _depthInvert.reset();
 }
 
 void XeFG_Dx12::CreateObjects(ID3D12Device* InDevice)
@@ -1030,12 +1033,6 @@ void XeFG_Dx12::SetResource(Dx12Resource* inputResource)
     SetResourceReady(type);
 
     LOG_TRACE("_frameResources[{}][{}]: {:X}", fIndex, magic_enum::enum_name(type), (size_t) fResource->GetResource());
-}
-
-void XeFG_Dx12::SetResourceReady(FG_ResourceType type)
-{
-    _resourceReady[GetIndex()][type] = true;
-    _resourceFrame[type] = _frameCount;
 }
 
 void XeFG_Dx12::SetCommandQueue(FG_ResourceType type, ID3D12CommandQueue* queue) { _gameCommandQueue = queue; }

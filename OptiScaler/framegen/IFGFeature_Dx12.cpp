@@ -95,6 +95,9 @@ Dx12Resource* IFGFeature_Dx12::GetResource(FG_ResourceType type, int index)
 {
     std::lock_guard<std::mutex> lock(_frMutex);
 
+    if (_resourceFrame[type] != _frameCount)
+        return nullptr;
+
     if (index < 0)
         index = GetIndex();
 
