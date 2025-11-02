@@ -688,8 +688,9 @@ HRESULT FGHooks::hkFGPresent(void* This, UINT SyncInterval, UINT Flags)
     if (_skipPresent)
     {
         LOG_DEBUG("XeFG call skipping");
-        _skipPresent = false;
-        return o_FGSCPresent(This, SyncInterval, Flags);
+        auto result = o_FGSCPresent(This, SyncInterval, Flags);
+        LOG_DEBUG("o_FGSCPresent result: {:X}", (UINT) result);
+        return result;
     }
 
     LOG_DEBUG("SyncInterval: {}, Flags: {:X}", SyncInterval, Flags);
@@ -708,8 +709,9 @@ HRESULT FGHooks::hkFGPresent1(void* This, UINT SyncInterval, UINT Flags,
     if (_skipPresent1)
     {
         LOG_DEBUG("XeFG call skipping");
-        _skipPresent1 = false;
-        return o_FGSCPresent1(This, SyncInterval, Flags, pPresentParameters);
+        auto result = o_FGSCPresent1(This, SyncInterval, Flags, pPresentParameters);
+        LOG_DEBUG("o_FGSCPresent result: {:X}", (UINT) result);
+        return result;
     }
 
     LOG_DEBUG("SyncInterval: {}, Flags: {:X}", SyncInterval, Flags);
