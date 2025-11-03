@@ -113,9 +113,8 @@ static PFN_SetComputeRootDescriptorTable o_SetComputeRootDescriptorTable = nullp
 static std::unique_ptr<HeapInfo> fgHeaps[1000];
 static UINT fgHeapIndex = 0;
 
-static std::vector<void*> _notFoundCmdLists;
-static std::unordered_map<FG_ResourceType, void*> _resCmdList;
-static std::unordered_map<FG_ResourceType, bool> _resCmdListFound;
+static std::set<void*> _notFoundCmdLists;
+static std::unordered_map<FG_ResourceType, void*> _resCmdList[BUFFER_COUNT];
 
 struct HeapCacheTLS
 {
@@ -733,58 +732,54 @@ void ResTrack_Dx12::hkExecuteCommandLists(ID3D12CommandQueue* This, UINT NumComm
         LOG_TRACK("NumCommandLists: {}", NumCommandLists);
 
         std::vector<FG_ResourceType> found;
+        auto fIndex = fg->GetIndex();
 
         do
         {
             std::lock_guard<std::mutex> lock2(_resourceCommandListMutex);
 
-            if (_notFoundCmdLists.size() > 0)
+            if (!_notFoundCmdLists.empty())
             {
                 for (size_t i = 0; i < NumCommandLists; i++)
                 {
-                    for (size_t k = _notFoundCmdLists.size(); k > 0; k--)
+                    if (_notFoundCmdLists.contains(ppCommandLists[i]))
                     {
-                        auto index = k - 1;
-                        if (_notFoundCmdLists[index] == ppCommandLists[i])
-                        {
-                            LOG_WARN("Found last frames cmdList: {:X}", (size_t) ppCommandLists[i]);
-                            _notFoundCmdLists.erase(_notFoundCmdLists.begin() + index);
-                        }
+                        LOG_WARN("Found last frames cmdList: {:X}", (size_t) ppCommandLists[i]);
+                        _notFoundCmdLists.erase(ppCommandLists[i]);
                     }
                 }
             }
 
-            if (_resCmdList.size() <= 0)
+            if (_resCmdList[fIndex].empty())
                 break;
 
             for (size_t i = 0; i < NumCommandLists; i++)
             {
                 LOG_TRACK("ppCommandLists[{}]: {:X}", i, (size_t) ppCommandLists[i]);
 
-                for (std::unordered_map<FG_ResourceType, void*>::iterator it = _resCmdList.begin();
-                     it != _resCmdList.end(); ++it)
+                for (const auto& pair : _resCmdList[fIndex])
                 {
-                    if (it->second == ppCommandLists[i])
+                    if (pair.second == ppCommandLists[i])
                     {
-                        LOG_DEBUG("found {} cmdList: {:X}, queue: {:X}", (UINT) it->first, (size_t) it->second,
+                        LOG_DEBUG("found {} cmdList: {:X}, queue: {:X}", (UINT) pair.first, (size_t) pair.second,
                                   (size_t) This);
-                        fg->SetResourceReady(it->first);
-                        found.push_back(it->first);
+                        fg->SetResourceReady(pair.first);
+                        found.push_back(pair.first);
                     }
                 }
 
                 for (size_t i = 0; i < found.size(); i++)
                 {
-                    _resCmdList.erase(found[i]);
+                    _resCmdList[fIndex].erase(found[i]);
                 }
 
-                if (_resCmdList.size() <= 0)
+                if (_resCmdList[fIndex].empty())
                     break;
             }
 
         } while (false);
 
-        if (found.size() > 0)
+        if (!found.empty())
         {
             o_ExecuteCommandLists(This, NumCommandLists, ppCommandLists);
 
@@ -1506,29 +1501,28 @@ void ResTrack_Dx12::hkExecuteBundle(ID3D12GraphicsCommandList* This, ID3D12Graph
     IFGFeature_Dx12* fg = State::Instance().currentFG;
     auto index = fg != nullptr ? fg->GetIndex() : 0;
 
-    if (fg != nullptr && fg->IsActive() && (_resourceCommandList[index].size() > 0 || _resCmdList.size() > 0))
     {
         std::lock_guard<std::mutex> lock(_resourceCommandListMutex);
 
-        for (size_t i = 0; i < _notFoundCmdLists.size(); i++)
+        if (fg != nullptr && fg->IsActive() && (_resourceCommandList[index].size() > 0 || !_resCmdList[index].empty()))
         {
-            if (_notFoundCmdLists[i] == pCommandList)
+            if (_notFoundCmdLists.contains(pCommandList))
                 LOG_WARN("Found last frames cmdList: {:X}", (size_t) This);
-        }
 
-        auto frameCmdList = _resourceCommandList[index];
-        for (std::unordered_map<FG_ResourceType, ID3D12GraphicsCommandList*>::iterator it = frameCmdList.begin();
-             it != frameCmdList.end(); ++it)
-        {
-            if (it->second == pCommandList)
-                it->second = This;
-        }
+            auto frameCmdList = _resourceCommandList[index];
+            for (std::unordered_map<FG_ResourceType, ID3D12GraphicsCommandList*>::iterator it = frameCmdList.begin();
+                 it != frameCmdList.end(); ++it)
+            {
+                if (it->second == pCommandList)
+                    it->second = This;
+            }
 
-        for (std::unordered_map<FG_ResourceType, void*>::iterator it = _resCmdList.begin(); it != _resCmdList.end();
-             ++it)
-        {
-            if (it->second == pCommandList)
-                it->second = This;
+            for (std::unordered_map<FG_ResourceType, void*>::iterator it = _resCmdList[index].begin();
+                 it != _resCmdList[index].end(); ++it)
+            {
+                if (it->second == pCommandList)
+                    it->second = This;
+            }
         }
     }
 
@@ -1546,25 +1540,20 @@ HRESULT ResTrack_Dx12::hkClose(ID3D12GraphicsCommandList* This)
 
         std::lock_guard<std::mutex> lock(_resourceCommandListMutex);
 
-        for (size_t i = 0; i < _notFoundCmdLists.size(); i++)
-        {
-            if (_notFoundCmdLists[i] == This)
-                LOG_WARN("Found last frames cmdList: {:X}", (size_t) This);
-        }
+        if (_notFoundCmdLists.contains(This))
+            LOG_WARN("Found last frames cmdList: {:X}", (size_t) This);
 
         std::vector<FG_ResourceType> found;
 
-        for (std::unordered_map<FG_ResourceType, ID3D12GraphicsCommandList*>::iterator it =
-                 _resourceCommandList[index].begin();
-             it != _resourceCommandList[index].end(); ++it)
+        for (const auto& pair : _resourceCommandList[index])
         {
-            if (This == it->second)
+            if (This == pair.second)
             {
-                if (!fg->IsResourceReady(it->first))
+                if (!fg->IsResourceReady(pair.first))
                 {
-                    LOG_DEBUG("{} cmdList: {:X}", (UINT) it->first, (size_t) This);
-                    _resCmdList[it->first] = it->second;
-                    found.push_back(it->first);
+                    LOG_DEBUG("{} cmdList: {:X}", (UINT) pair.first, (size_t) This);
+                    _resCmdList[index][pair.first] = pair.second;
+                    found.push_back(pair.first);
                 }
             }
         }
@@ -1964,21 +1953,19 @@ void ResTrack_Dx12::ClearPossibleHudless()
         for (const auto& pair : _resourceCommandList[fIndex])
         {
             LOG_WARN("{} cmdList: {:X}, not closed!", (UINT) pair.first, (size_t) pair.second);
-            _notFoundCmdLists.push_back(pair.second);
+            _notFoundCmdLists.insert(pair.second);
         }
 
-        for (const auto& pair : _resCmdList)
+        _resourceCommandList[fIndex].clear();
+
+        for (const auto& pair : _resCmdList[fIndex])
         {
             LOG_WARN("{} cmdList: {:X}, not executed!", (UINT) pair.first, (size_t) pair.second);
-            _notFoundCmdLists.push_back(pair.second);
+            _notFoundCmdLists.insert(pair.second);
         }
 
-        _resCmdList.clear();
-        _resourceCommandList[fIndex].clear();
+        _resCmdList[fIndex].clear();
     }
-
-    _resCmdList.clear();
-    _resCmdListFound.clear();
 }
 
 void ResTrack_Dx12::SetResourceCmdList(FG_ResourceType type, ID3D12GraphicsCommandList* cmdList)
