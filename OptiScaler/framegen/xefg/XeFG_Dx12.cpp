@@ -308,6 +308,13 @@ bool XeFG_Dx12::CreateSwapchain(IDXGIFactory* factory, ID3D12CommandQueue* cmdQu
         return false;
     }
 
+    xefg_swapchain_properties_t props {};
+    result = XeFGProxy::GetProperties()(_swapChainContext, &props);
+    if (result == XEFG_SWAPCHAIN_RESULT_SUCCESS)
+        LOG_INFO("Max supported interpolations: {}", props.maxSupportedInterpolations);
+    else
+        LOG_ERROR("Can't get swapchain properties: {} ({})", magic_enum::enum_name(result), (UINT) result);
+
     _gameCommandQueue = realQueue;
     _swapChain = *swapChain;
     _hwnd = hwnd;
@@ -399,6 +406,13 @@ bool XeFG_Dx12::CreateSwapchain1(IDXGIFactory* factory, ID3D12CommandQueue* cmdQ
         LOG_ERROR("D3D12GetSwapChainPtr error: {} ({})", magic_enum::enum_name(result), (UINT) result);
         return false;
     }
+
+    xefg_swapchain_properties_t props {};
+    result = XeFGProxy::GetProperties()(_swapChainContext, &props);
+    if (result == XEFG_SWAPCHAIN_RESULT_SUCCESS)
+        LOG_INFO("Max supported interpolations: {}", props.maxSupportedInterpolations);
+    else
+        LOG_ERROR("Can't get swapchain properties: {} ({})", magic_enum::enum_name(result), (UINT) result);
 
     _gameCommandQueue = realQueue;
     _swapChain = *swapChain;
