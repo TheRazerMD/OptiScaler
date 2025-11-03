@@ -1059,6 +1059,7 @@ void FSR3FG::ffxPresentCallback()
             return;
         }
 
+        currentBuffer->Release();
         currentBuffer->SetName(std::format(L"currentBuffer[{}]", scIndex).c_str());
 
         if (CreateBufferResource(_device, currentBuffer, D3D12_RESOURCE_STATE_COMMON, &_hudless[fIndex]))
@@ -1109,7 +1110,6 @@ void FSR3FG::ffxPresentCallback()
             }
         }
 
-        currentBuffer->Release();
         _presentCallback = nullptr;
     }
 
@@ -1129,12 +1129,14 @@ void FSR3FG::ffxPresentCallback()
                 return;
             }
 
-            currentBuffer->SetName(std::format(L"currentBuffer[{}]", scIndex).c_str());
             if (currentBuffer == nullptr)
             {
                 LOG_ERROR("currentBuffer is nullptr!");
                 return;
             }
+
+            currentBuffer->Release();
+            currentBuffer->SetName(std::format(L"currentBuffer[{}]", scIndex).c_str());
         }
 
         if (CreateBufferResource(_device, currentBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, &_hudless[fIndex]))
@@ -1187,8 +1189,6 @@ void FSR3FG::ffxPresentCallback()
                 fg->SetResource(&hudless);
             }
         }
-
-        currentBuffer->Release();
 
         _fgCallback = nullptr;
     }

@@ -327,7 +327,7 @@ ffxReturnCode_t ffxDestroyContext_Dx12FG(ffxContext* context, const ffxAllocatio
     if (State::Instance().currentFG != nullptr && (void*) scContext == *context)
     {
         LOG_INFO("Destroying Swapchain Context: {:X}", (size_t) State::Instance().currentFG);
-        State::Instance().currentFG->Shutdown();
+        State::Instance().currentFG->ReleaseSwapchain(State::Instance().currentFG->Hwnd());
         return FFX_API_RETURN_OK;
     }
     else if (State::Instance().currentFG != nullptr && (void*) fgContext == *context)
@@ -1002,6 +1002,7 @@ void ffxPresentCallback()
             return;
         }
 
+        currentBuffer->Release();
         currentBuffer->SetName(std::format(L"currentBuffer[{}]", scIndex).c_str());
 
         if (CreateBufferResource(_device, currentBuffer, D3D12_RESOURCE_STATE_COMMON, &_hudless[fIndex]))
@@ -1054,8 +1055,6 @@ void ffxPresentCallback()
             LOG_ERROR("Present callback failed: {:X}", (UINT) result);
         }
 
-        currentBuffer->Release();
-
         _presentCallback = nullptr;
         _presentCallbackUserContext = nullptr;
     }
@@ -1080,12 +1079,14 @@ void ffxPresentCallback()
                 return;
             }
 
-            currentBuffer->SetName(std::format(L"currentBuffer[{}]", scIndex).c_str());
             if (currentBuffer == nullptr)
             {
                 LOG_ERROR("currentBuffer is nullptr!");
                 return;
             }
+
+            currentBuffer->Release();
+            currentBuffer->SetName(std::format(L"currentBuffer[{}]", scIndex).c_str());
         }
 
         if (CreateBufferResource(_device, currentBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, &_hudless[fIndex]))
@@ -1140,8 +1141,6 @@ void ffxPresentCallback()
         {
             LOG_ERROR("Frame Generation callback failed: {:X}", (UINT) result);
         }
-
-        currentBuffer->Release();
 
         _fgCallback = nullptr;
         _fgCallbackUserContext = nullptr;
