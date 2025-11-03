@@ -405,9 +405,6 @@ static HRESULT hkCreateSamplerState(ID3D11Device* This, const D3D11_SAMPLER_DESC
     if (pSamplerDesc == nullptr || This == nullptr)
         return E_INVALIDARG;
 
-    if (State::Instance().currentD3D12Device == nullptr)
-        return o_CreateSamplerState(This, pSamplerDesc, ppSamplerState);
-
     LOG_FUNC();
 
     D3D11_SAMPLER_DESC newDesc {};
