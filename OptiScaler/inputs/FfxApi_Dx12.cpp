@@ -273,15 +273,16 @@ ffxReturnCode_t ffxCreateContext_Dx12(ffxContext* context, ffxCreateContextDescH
 
     LOG_DEBUG("type: {}", FfxGetGetDescTypeName(desc->type));
 
+    auto& state = State::Instance();
+
     // Extra checks added for Silent Hill f
     // Game is creating FSR-FG swapchain and calling present twice per frame
     // So when using OptiFG I am hijacking FSR-FG swapchain
     // It would crash the games which uses swapchain for FG
-    if (IsFGType(desc->type) &&
-        (State::Instance().activeFgInput == FGInput::FSRFG ||
-         (Config::Instance()->FGAlwaysCaptureFSRFGSwapchain.value_or_default() &&
-          State::Instance().activeFgOutput != FGOutput::NoFG && State::Instance().activeFgOutput != FGOutput::Nukems &&
-          (desc->type == 0x30005 || desc->type == 0x30006))))
+    if (IsFGType(desc->type) && (state.activeFgInput == FGInput::FSRFG ||
+                                 (Config::Instance()->FGAlwaysCaptureFSRFGSwapchain.value_or_default() &&
+                                  state.activeFgOutput != FGOutput::NoFG && state.activeFgOutput != FGOutput::Nukems &&
+                                  (desc->type == 0x30005 || desc->type == 0x30006))))
     {
         auto result = ffxCreateContext_Dx12FG(context, desc, memCb);
 
@@ -314,7 +315,9 @@ ffxReturnCode_t ffxCreateContext_Dx12(ffxContext* context, ffxCreateContextDescH
 
     if (!upscaleContext || Config::Instance()->EnableHotSwapping.value_or_default())
     {
+        state.skipHeapCapture = true;
         auto ffxApiResult = FfxApiProxy::D3D12_CreateContext(context, desc, memCb);
+        state.skipHeapCapture = false;
 
         LOG_ERROR("D3D12_CreateContext result: {:X} ({}), context: {:X}", (UINT) ffxApiResult,
                   FfxApiProxy::ReturnCodeToString(ffxApiResult), (size_t) *context);
@@ -323,7 +326,7 @@ ffxReturnCode_t ffxCreateContext_Dx12(ffxContext* context, ffxCreateContextDescH
             return ffxApiResult;
     }
 
-    if (!State::Instance().NvngxDx12Inited)
+    if (!state.NvngxDx12Inited)
     {
         NVSDK_NGX_FeatureCommonInfo fcInfo {};
 
@@ -359,8 +362,8 @@ ffxReturnCode_t ffxCreateContext_Dx12(ffxContext* context, ffxCreateContextDescH
         fcInfo.PathListInfo.Length = (int) pathStorage.size();
 
         auto nvResult = NVSDK_NGX_D3D12_Init_with_ProjectID(
-            "OptiScaler", State::Instance().NVNGX_Engine, VER_PRODUCT_VERSION_STR, dllPath.c_str(), _d3d12Device,
-            &fcInfo, State::Instance().NVNGX_Version == 0 ? NVSDK_NGX_Version_API : State::Instance().NVNGX_Version);
+            "OptiScaler", state.NVNGX_Engine, VER_PRODUCT_VERSION_STR, dllPath.c_str(), _d3d12Device, &fcInfo,
+            state.NVNGX_Version == 0 ? NVSDK_NGX_Version_API : state.NVNGX_Version);
 
         if (nvResult != NVSDK_NGX_Result_Success)
             return FFX_API_RETURN_ERROR_RUNTIME_ERROR;

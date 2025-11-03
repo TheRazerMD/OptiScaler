@@ -213,8 +213,12 @@ static Fsr3::FfxErrorCode ffxFsr3ContextCreate_Dx12(Fsr3::FfxFsr3UpscalerContext
     if (pContext == nullptr || pContextDescription->backendInterface.device == nullptr)
         return Fsr3::FFX_ERROR_INVALID_ARGUMENT;
 
+    auto& state = State::Instance();
+
     _skipCreate = true;
+    state.skipHeapCapture = true;
     auto ccResult = o_ffxFsr3UpscalerContextCreate_Dx12(pContext, pContextDescription);
+    state.skipHeapCapture = false;
     _skipCreate = false;
 
     if (ccResult != Fsr3::FFX_OK)
@@ -229,9 +233,9 @@ static Fsr3::FfxErrorCode ffxFsr3ContextCreate_Dx12(Fsr3::FfxFsr3UpscalerContext
     {
         auto bDevice = (ID3D12Device*) pContextDescription->backendInterface.device;
 
-        for (size_t i = 0; i < State::Instance().d3d12Devices.size(); i++)
+        for (size_t i = 0; i < state.d3d12Devices.size(); i++)
         {
-            if (State::Instance().d3d12Devices[i] == bDevice)
+            if (state.d3d12Devices[i] == bDevice)
             {
                 _d3d12Device = bDevice;
                 break;
@@ -241,8 +245,8 @@ static Fsr3::FfxErrorCode ffxFsr3ContextCreate_Dx12(Fsr3::FfxFsr3UpscalerContext
 
     // if still no device use latest created one
     // Might fixed TLOU but FMF2 still crashes
-    if (_d3d12Device == nullptr && State::Instance().d3d12Devices.size() > 0)
-        _d3d12Device = State::Instance().d3d12Devices[State::Instance().d3d12Devices.size() - 1];
+    if (_d3d12Device == nullptr && state.d3d12Devices.size() > 0)
+        _d3d12Device = state.d3d12Devices[state.d3d12Devices.size() - 1];
 
     if (_d3d12Device == nullptr)
     {
@@ -250,7 +254,7 @@ static Fsr3::FfxErrorCode ffxFsr3ContextCreate_Dx12(Fsr3::FfxFsr3UpscalerContext
         return ccResult;
     }
 
-    if (!State::Instance().NvngxDx12Inited)
+    if (!state.NvngxDx12Inited)
     {
         NVSDK_NGX_FeatureCommonInfo fcInfo {};
 
@@ -286,8 +290,8 @@ static Fsr3::FfxErrorCode ffxFsr3ContextCreate_Dx12(Fsr3::FfxFsr3UpscalerContext
         fcInfo.PathListInfo.Length = (int) pathStorage.size();
 
         auto nvResult = NVSDK_NGX_D3D12_Init_with_ProjectID(
-            "OptiScaler", State::Instance().NVNGX_Engine, VER_PRODUCT_VERSION_STR, dllPath.c_str(), _d3d12Device,
-            &fcInfo, State::Instance().NVNGX_Version == 0 ? NVSDK_NGX_Version_API : State::Instance().NVNGX_Version);
+            "OptiScaler", state.NVNGX_Engine, VER_PRODUCT_VERSION_STR, dllPath.c_str(), _d3d12Device, &fcInfo,
+            state.NVNGX_Version == 0 ? NVSDK_NGX_Version_API : state.NVNGX_Version);
 
         if (nvResult != NVSDK_NGX_Result_Success)
             return Fsr3::FFX_ERROR_BACKEND_API_ERROR;
@@ -436,7 +440,19 @@ ffxFsr3ContextCreate_Pattern_Dx12(Fsr3::FfxFsr3UpscalerContext* pContext,
     if (pContext == nullptr || pContextDescription->backendInterface.device == nullptr)
         return Fsr3::FFX_ERROR_INVALID_ARGUMENT;
 
+    auto& state = State::Instance();
+
+    bool skip = false;
+    if (!state.skipHeapCapture)
+    {
+        skip = true;
+        state.skipHeapCapture = true;
+    }
+
     auto ccResult = o_ffxFsr3UpscalerContextCreate_Pattern_Dx12(pContext, pContextDescription);
+
+    if (skip)
+        state.skipHeapCapture = false;
 
     if (_skipCreate)
         return ccResult;
@@ -453,9 +469,9 @@ ffxFsr3ContextCreate_Pattern_Dx12(Fsr3::FfxFsr3UpscalerContext* pContext,
     {
         auto bDevice = (ID3D12Device*) pContextDescription->backendInterface.device;
 
-        for (size_t i = 0; i < State::Instance().d3d12Devices.size(); i++)
+        for (size_t i = 0; i < state.d3d12Devices.size(); i++)
         {
-            if (State::Instance().d3d12Devices[i] == bDevice)
+            if (state.d3d12Devices[i] == bDevice)
             {
                 _d3d12Device = bDevice;
                 break;
@@ -465,8 +481,8 @@ ffxFsr3ContextCreate_Pattern_Dx12(Fsr3::FfxFsr3UpscalerContext* pContext,
 
     // if still no device use latest created one
     // Might fixed TLOU but FMF2 still crashes
-    if (_d3d12Device == nullptr && State::Instance().d3d12Devices.size() > 0)
-        _d3d12Device = State::Instance().d3d12Devices[State::Instance().d3d12Devices.size() - 1];
+    if (_d3d12Device == nullptr && state.d3d12Devices.size() > 0)
+        _d3d12Device = state.d3d12Devices[state.d3d12Devices.size() - 1];
 
     if (_d3d12Device == nullptr)
     {
@@ -474,7 +490,7 @@ ffxFsr3ContextCreate_Pattern_Dx12(Fsr3::FfxFsr3UpscalerContext* pContext,
         return ccResult;
     }
 
-    if (!State::Instance().NvngxDx12Inited)
+    if (!state.NvngxDx12Inited)
     {
         NVSDK_NGX_FeatureCommonInfo fcInfo {};
 
@@ -510,8 +526,8 @@ ffxFsr3ContextCreate_Pattern_Dx12(Fsr3::FfxFsr3UpscalerContext* pContext,
         fcInfo.PathListInfo.Length = (int) pathStorage.size();
 
         auto nvResult = NVSDK_NGX_D3D12_Init_with_ProjectID(
-            "OptiScaler", State::Instance().NVNGX_Engine, VER_PRODUCT_VERSION_STR, dllPath.c_str(), _d3d12Device,
-            &fcInfo, State::Instance().NVNGX_Version == 0 ? NVSDK_NGX_Version_API : State::Instance().NVNGX_Version);
+            "OptiScaler", state.NVNGX_Engine, VER_PRODUCT_VERSION_STR, dllPath.c_str(), _d3d12Device, &fcInfo,
+            state.NVNGX_Version == 0 ? NVSDK_NGX_Version_API : state.NVNGX_Version);
 
         if (nvResult != NVSDK_NGX_Result_Success)
             return Fsr3::FFX_ERROR_BACKEND_API_ERROR;
