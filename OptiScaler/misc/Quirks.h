@@ -228,7 +228,7 @@ static const QuirkEntry quirkTable[] = {
     // Self-explanatory
     //
     // The Persistence, Split Fiction, Minecraft Bedrock, Ghostwire: Tokyo, RoadCraft, STAR WARS Jedi:
-    // Survivor, Nioh 2 – The Complete Edition
+    // Survivor, Nioh 2 – The Complete Edition, FINAL FANTASY VII REBIRTH
     QUIRK_ENTRY_UE(persistence, GameQuirk::ForceUnrealEngine),
     QUIRK_ENTRY("splitfiction.exe", GameQuirk::FastFeatureReset),
     QUIRK_ENTRY("minecraft.windows.exe", GameQuirk::KernelBaseHooks),
@@ -236,6 +236,7 @@ static const QuirkEntry quirkTable[] = {
     QUIRK_ENTRY("roadcraft - retail.exe", GameQuirk::FixSlSimulationMarkers),
     QUIRK_ENTRY("jedisurvivor.exe", GameQuirk::ForceAutoExposure),
     QUIRK_ENTRY("nioh2.exe", GameQuirk::ForceAutoExposure),
+    QUIRK_ENTRY("ff7rebirth_.exe", GameQuirk::ForceUnrealEngine),
 
     // VULKAN
     // ------
