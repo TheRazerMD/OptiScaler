@@ -109,7 +109,12 @@ NvAPI_Status ReflexHooks::hkNvAPI_D3D_SetLatencyMarker(IUnknown* pDev,
         }
 
         if (pDev && !device12)
+        {
             pDev->QueryInterface(IID_PPV_ARGS(&device12));
+
+            if (device12)
+                device12->Release();
+        }
 
         if (device12)
             State::Instance().slFGInputs.evaluateState(device12);
