@@ -238,6 +238,7 @@ static const QuirkEntry quirkTable[] = {
     QUIRK_ENTRY("nioh2.exe", GameQuirk::ForceAutoExposure),
     QUIRK_ENTRY("ff7rebirth_.exe", GameQuirk::ForceUnrealEngine),
     QUIRK_ENTRY_UE(witchfire, GameQuirk::DisableUseFsrInputValues),
+    QUIRK_ENTRY_UE(avowed, GameQuirk::ForceAutoExposure),
 
     // VULKAN
     // ------
