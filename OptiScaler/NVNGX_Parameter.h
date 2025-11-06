@@ -513,8 +513,8 @@ inline static void InitNGXParameters(NVSDK_NGX_Parameter* InParams)
     }
 
     // Multi Fake Frames not supported by Nukems
-    if (State::Instance().activeFgInput == FGInput::Nukems)
-        InParams->Set("DLSSG.MultiFrameCountMax", 1);
+    // if (State::Instance().activeFgInput == FGInput::Nukems)
+    //    InParams->Set("DLSSG.MultiFrameCountMax", 1);
 }
 
 struct Parameter
