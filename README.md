@@ -74,7 +74,7 @@
 > </details>
 
 
-## Official Discord Server: [OptiScaler](https://discord.gg/2JDHx6kcXB)
+## Official Discord Server: [OptiScaler](https://discord.gg/wEyd9w4hG5)
 
 *This project is based on [PotatoOfDoom](https://github.com/PotatoOfDoom)'s excellent [CyberFSR2](https://github.com/PotatoOfDoom/CyberFSR2).*
 
