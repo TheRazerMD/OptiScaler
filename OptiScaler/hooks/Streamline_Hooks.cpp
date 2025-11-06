@@ -611,13 +611,8 @@ sl::Result StreamlineHooks::hkslDLSSGGetState(const sl::ViewportHandle& viewport
 
     auto result = o_slDLSSGGetState(viewport, state, options);
 
-    LOG_DEBUG("DLSSG State Status: {}, numFramesActuallyPresented: {}", magic_enum::enum_name(state.status),
-              state.numFramesActuallyPresented);
-
     auto& s = State::Instance();
     auto fg = s.currentFG;
-
-    static UINT64 lastFrameCount = 0;
 
     if (fg != nullptr)
     {
@@ -625,16 +620,17 @@ sl::Result StreamlineHooks::hkslDLSSGGetState(const sl::ViewportHandle& viewport
 
         auto fc = s.frameCount;
 
-        if (lastFrameCount == 0)
-            state.numFramesActuallyPresented = 1;
+        if (fg->IsActive() && !fg->IsPaused())
+            state.numFramesActuallyPresented = 2;
         else
-            state.numFramesActuallyPresented = static_cast<uint32_t>(fc - lastFrameCount);
-
-        lastFrameCount = fc;
+            state.numFramesActuallyPresented = 1;
 
         state.lastPresentInputsProcessingCompletionFenceValue = fg->FrameCount();
         state.numFramesToGenerateMax = 1;
     }
+
+    LOG_DEBUG("Status: {}, numFramesActuallyPresented: {}", magic_enum::enum_name(state.status),
+              state.numFramesActuallyPresented);
 
     return result;
 }
