@@ -41,6 +41,7 @@ StreamlineHooks::PFN_slOnPluginLoad StreamlineHooks::o_dlss_slOnPluginLoad = nul
 StreamlineHooks::PFN_slGetPluginFunction StreamlineHooks::o_dlssg_slGetPluginFunction = nullptr;
 StreamlineHooks::PFN_slOnPluginLoad StreamlineHooks::o_dlssg_slOnPluginLoad = nullptr;
 decltype(&slDLSSGSetOptions) StreamlineHooks::o_slDLSSGSetOptions = nullptr;
+decltype(&slDLSSGGetState) StreamlineHooks::o_slDLSSGGetState = nullptr;
 
 // Reflex
 StreamlineHooks::PFN_slGetPluginFunction StreamlineHooks::o_reflex_slGetPluginFunction = nullptr;
@@ -180,6 +181,10 @@ sl::Result StreamlineHooks::hkslSetTag(sl::ViewportHandle& viewport, sl::Resourc
         {
             State::Instance().slFGInputs.reportResource(tags[i], (ID3D12GraphicsCommandList*) cmdBuffer, 0);
         }
+        else if (State::Instance().activeFgInput == FGInput::Nukems)
+        {
+            LOG_TRACE("Tagging resource of type: {}", tags[i].type);
+        }
     }
 
     auto result = o_slSetTag(viewport, tags, numTags, cmdBuffer);
@@ -222,6 +227,10 @@ sl::Result StreamlineHooks::hkslSetTagForFrame(const sl::FrameToken& frame, cons
             State::Instance().slFGInputs.reportResource(resources[i], (ID3D12GraphicsCommandList*) cmdBuffer,
                                                         (uint32_t) frame);
         }
+        else if (State::Instance().activeFgInput == FGInput::Nukems)
+        {
+            LOG_TRACE("Tagging resource of type: {}", resources[i].type);
+        }
     }
 
     auto result = o_slSetTagForFrame(frame, viewport, resources, numResources, cmdBuffer);
@@ -233,6 +242,30 @@ sl::Result StreamlineHooks::hkslEvaluateFeature(sl::Feature feature, const sl::F
                                                 sl::CommandBuffer* cmdBuffer)
 {
     LOG_FUNC();
+
+    if (State::Instance().activeFgInput == FGInput::DLSSG && numInputs > 0 && inputs != nullptr)
+    {
+        for (uint32_t i = 0; i < numInputs; i++)
+        {
+            if (inputs[i] == nullptr)
+                continue;
+
+            if (inputs[i]->structType == sl::ResourceTag::s_structType)
+            {
+                auto tag = (const sl::ResourceTag*) inputs[i];
+
+                if (tag->type == sl::kBufferTypeHUDLessColor || tag->type == sl::kBufferTypeDepth ||
+                    tag->type == sl::kBufferTypeHiResDepth || tag->type == sl::kBufferTypeLinearDepth ||
+                    tag->type == sl::kBufferTypeMotionVectors || tag->type == sl::kBufferTypeUIColorAndAlpha ||
+                    tag->type == sl::kBufferTypeBidirectionalDistortionField)
+                {
+                    State::Instance().slFGInputs.reportResource(*tag, (ID3D12GraphicsCommandList*) cmdBuffer,
+                                                                (uint32_t) frame);
+                }
+            }
+        }
+    }
+
     auto result = o_slEvaluateFeature(feature, frame, inputs, numInputs, cmdBuffer);
     return result;
 }
@@ -556,10 +589,54 @@ sl::Result StreamlineHooks::hkslDLSSGSetOptions(const sl::ViewportHandle& viewpo
             ReflexHooks::setDlssgDetectedState(false);
         }
     }
+    else
+    {
+        if (State::Instance().currentFGSwapchain != nullptr && Config::Instance()->FGEnabled.value_or_default())
+        {
+            if (newOptions.mode == sl::DLSSGMode::eOn)
+                State::Instance().currentFG->Activate();
+            else
+                State::Instance().currentFG->Deactivate();
+        }
+    }
 
     LOG_TRACE("DLSSG Modified Mode: {}", magic_enum::enum_name(newOptions.mode));
 
     return o_slDLSSGSetOptions(viewport, newOptions);
+}
+
+sl::Result StreamlineHooks::hkslDLSSGGetState(const sl::ViewportHandle& viewport, sl::DLSSGState& state,
+                                              const sl::DLSSGOptions* options)
+{
+
+    auto result = o_slDLSSGGetState(viewport, state, options);
+
+    LOG_DEBUG("DLSSG State Status: {}, numFramesActuallyPresented: {}", magic_enum::enum_name(state.status),
+              state.numFramesActuallyPresented);
+
+    auto& s = State::Instance();
+    auto fg = s.currentFG;
+
+    static UINT64 lastFrameCount = 0;
+
+    if (fg != nullptr)
+    {
+        state.estimatedVRAMUsageInBytes = 256 * 1024 * 1024;
+
+        auto fc = s.frameCount;
+
+        if (lastFrameCount == 0)
+            state.numFramesActuallyPresented = 1;
+        else
+            state.numFramesActuallyPresented = static_cast<uint32_t>(fc - lastFrameCount);
+
+        lastFrameCount = fc;
+
+        state.lastPresentInputsProcessingCompletionFenceValue = fg->FrameCount();
+        state.numFramesToGenerateMax = 1;
+    }
+
+    return result;
 }
 
 bool StreamlineHooks::hkreflex_slOnPluginLoad(void* params, const char* loaderJSON, const char** pluginJSON)
@@ -635,6 +712,22 @@ void* StreamlineHooks::hkdlssg_slGetPluginFunction(const char* functionName)
 
         o_slDLSSGSetOptions = (decltype(&slDLSSGSetOptions)) o_dlssg_slGetPluginFunction(functionName);
         return &hkslDLSSGSetOptions;
+    }
+
+    if (strcmp(functionName, "slDLSSGGetState") == 0)
+    {
+        // Give steam overlay the original as it seems to be hooking it
+        auto steamOverlay = KernelBaseProxy::GetModuleHandleA_()("gameoverlayrenderer64.dll");
+        if (steamOverlay != nullptr)
+        {
+            if (HMODULE callerModule = Util::GetCallerModule(_ReturnAddress()); callerModule == steamOverlay)
+            {
+                return o_dlssg_slGetPluginFunction(functionName);
+            }
+        }
+
+        o_slDLSSGGetState = (decltype(&slDLSSGGetState)) o_dlssg_slGetPluginFunction(functionName);
+        return &hkslDLSSGGetState;
     }
 
     return o_dlssg_slGetPluginFunction(functionName);
@@ -953,8 +1046,8 @@ void StreamlineHooks::hookInterposer(HMODULE slInterposer)
                 if (o_slSetConstants != nullptr && hookSetTag)
                     DetourAttach(&(PVOID&) o_slSetConstants, hkslSetConstants);
 
-                // if (o_slEvaluateFeature != nullptr)
-                //     DetourAttach(&(PVOID&) o_slEvaluateFeature, hkslEvaluateFeature);
+                if (o_slEvaluateFeature != nullptr)
+                    DetourAttach(&(PVOID&) o_slEvaluateFeature, hkslEvaluateFeature);
 
                 // if (o_slAllocateResources != nullptr)
                 //     DetourAttach(&(PVOID&) o_slAllocateResources, hkslAllocateResources);

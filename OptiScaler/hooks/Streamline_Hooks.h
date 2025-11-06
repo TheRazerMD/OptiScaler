@@ -156,6 +156,8 @@ class StreamlineHooks
     static sl::Result hkslSetConstants(const sl::Constants& values, const sl::FrameToken& frame,
                                        const sl::ViewportHandle& viewport);
     static sl::Result hkslDLSSGSetOptions(const sl::ViewportHandle& viewport, const sl::DLSSGOptions& options);
+    static sl::Result hkslDLSSGGetState(const sl::ViewportHandle& viewport, sl::DLSSGState& state,
+                                        const sl::DLSSGOptions* options);
     static void* hkdlssg_slGetPluginFunction(const char* functionName);
 
     // Reflex
