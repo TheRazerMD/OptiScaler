@@ -58,8 +58,7 @@ class FSRFG_Dx12 : public virtual IFGFeature_Dx12
     bool ExecuteCommandList(int index);
     bool Dispatch();
     void ConfigureFramePaceTuning();
-    bool HudlessFormatTransfer(int index, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList,
-                               DXGI_FORMAT targetFormat, Dx12Resource* resource);
+    bool HudlessFormatTransfer(int index, ID3D12Device* device, DXGI_FORMAT targetFormat, Dx12Resource* resource);
     bool UIFormatTransfer(int index, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, DXGI_FORMAT targetFormat,
                           Dx12Resource* resource);
 
@@ -92,7 +91,7 @@ class FSRFG_Dx12 : public virtual IFGFeature_Dx12
 
     bool Present() override final;
 
-    void SetResource(Dx12Resource* inputResource) override final;
+    bool SetResource(Dx12Resource* inputResource) override final;
     void SetCommandQueue(FG_ResourceType type, ID3D12CommandQueue* queue) override final;
 
     ffxReturnCode_t DispatchCallback(ffxDispatchDescFrameGeneration* params);

@@ -460,6 +460,20 @@ void XeFG_Dx12::Deactivate()
 
     if (_isActive)
     {
+        auto fIndex = GetIndex();
+        if (_uiCommandListResetted[fIndex])
+        {
+            LOG_DEBUG("Executing _uiCommandList[fIndex][{}]: {:X}", fIndex, (size_t) _uiCommandList[fIndex]);
+            auto closeResult = _uiCommandList[fIndex]->Close();
+
+            if (closeResult == S_OK)
+                _gameCommandQueue->ExecuteCommandLists(1, (ID3D12CommandList**) &_uiCommandList[fIndex]);
+            else
+                LOG_ERROR("_uiCommandList[{}]->Close() error: {:X}", fIndex, (UINT) closeResult);
+
+            _uiCommandListResetted[fIndex] = false;
+        }
+
         auto result = XeFGProxy::SetEnabled()(_swapChainContext, false);
 
         if (result == XEFG_SWAPCHAIN_RESULT_SUCCESS)
@@ -886,38 +900,38 @@ bool XeFG_Dx12::Present()
     return Dispatch();
 }
 
-void XeFG_Dx12::SetResource(Dx12Resource* inputResource)
+bool XeFG_Dx12::SetResource(Dx12Resource* inputResource)
 {
     if (inputResource == nullptr || inputResource->resource == nullptr || !IsActive() || IsPaused())
-        return;
+        return false;
 
     auto fIndex = GetIndex();
     auto& type = inputResource->type;
 
-    if (_resourceFrame[type] == _frameCount)
+    if (_resourceFrame[type] == _frameCount || _frameResources[fIndex][type].resource != nullptr)
     {
         LOG_WARN("Repeating resource tagging for {}, ignoring.", magic_enum::enum_name(type));
-        return;
+        return false;
     }
 
     if (type == FG_ResourceType::HudlessColor && Config::Instance()->FGDisableHudless.value_or_default())
-        return;
+        return false;
 
     if (type == FG_ResourceType::UIColor && Config::Instance()->FGDisableUI.value_or_default())
-        return;
+        return false;
 
     std::lock_guard<std::mutex> lock(_frMutex);
 
     if (inputResource->cmdList == nullptr && inputResource->validity == FG_ResourceValidity::ValidNow)
     {
         LOG_ERROR("{}, validity == ValidNow but cmdList is nullptr!", magic_enum::enum_name(type));
-        return;
+        return false;
     }
 
     if (type == FG_ResourceType::Distortion)
     {
         LOG_TRACE("Distortion field is not supported by XeFG");
-        return;
+        return false;
     }
 
     auto fResource = &_frameResources[fIndex][type];
@@ -981,7 +995,7 @@ void XeFG_Dx12::SetResource(Dx12Resource* inputResource)
         if (!CopyResource(inputResource->cmdList, inputResource->resource, &copyOutput, inputResource->state))
         {
             LOG_ERROR("{}, CopyResource error!", magic_enum::enum_name(type));
-            return;
+            return false;
         }
 
         _resourceCopy[fIndex][type] = copyOutput;
@@ -1034,7 +1048,7 @@ void XeFG_Dx12::SetResource(Dx12Resource* inputResource)
         UpdateTarget();
         Deactivate();
 
-        return;
+        return false;
     }
 
     // Potentially we don't need to restore but do it just to be safe
@@ -1047,6 +1061,8 @@ void XeFG_Dx12::SetResource(Dx12Resource* inputResource)
     SetResourceReady(type);
 
     LOG_TRACE("_frameResources[{}][{}]: {:X}", fIndex, magic_enum::enum_name(type), (size_t) fResource->GetResource());
+
+    return true;
 }
 
 void XeFG_Dx12::SetCommandQueue(FG_ResourceType type, ID3D12CommandQueue* queue) { _gameCommandQueue = queue; }

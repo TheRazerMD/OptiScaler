@@ -23,8 +23,8 @@ static inline void ResourceBarrier(ID3D12GraphicsCommandList* InCommandList, ID3
     InCommandList->ResourceBarrier(1, &barrier);
 }
 
-bool FSRFG_Dx12::HudlessFormatTransfer(int index, ID3D12Device* device, ID3D12GraphicsCommandList* cmdList,
-                                       DXGI_FORMAT targetFormat, Dx12Resource* resource)
+bool FSRFG_Dx12::HudlessFormatTransfer(int index, ID3D12Device* device, DXGI_FORMAT targetFormat,
+                                       Dx12Resource* resource)
 {
     if (_hudlessTransfer[index].get() == nullptr || !_hudlessTransfer[index].get()->IsFormatCompatible(targetFormat))
     {
@@ -42,6 +42,8 @@ bool FSRFG_Dx12::HudlessFormatTransfer(int index, ID3D12Device* device, ID3D12Gr
         _hudlessTransfer[index].get()->CreateBufferResource(device, resource->GetResource(),
                                                             D3D12_RESOURCE_STATE_UNORDERED_ACCESS))
     {
+        ID3D12GraphicsCommandList* cmdList = GetUICommandList(index);
+
         ResourceBarrier(cmdList, resource->GetResource(), resource->state,
                         D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
@@ -833,6 +835,20 @@ void FSRFG_Dx12::Deactivate()
 {
     if (_isActive)
     {
+        auto fIndex = GetIndex();
+        if (_uiCommandListResetted[fIndex])
+        {
+            LOG_DEBUG("Executing _uiCommandList[fIndex][{}]: {:X}", fIndex, (size_t) _uiCommandList[fIndex]);
+            auto closeResult = _uiCommandList[fIndex]->Close();
+
+            if (closeResult == S_OK)
+                _gameCommandQueue->ExecuteCommandLists(1, (ID3D12CommandList**) &_uiCommandList[fIndex]);
+            else
+                LOG_ERROR("_uiCommandList[{}]->Close() error: {:X}", fIndex, (UINT) closeResult);
+
+            _uiCommandListResetted[fIndex] = false;
+        }
+
         ffxConfigureDescFrameGeneration fgConfig = {};
         fgConfig.header.type = FFX_API_CONFIGURE_DESC_TYPE_FRAMEGENERATION;
         fgConfig.frameGenerationEnabled = false;
@@ -980,32 +996,32 @@ bool FSRFG_Dx12::ExecuteCommandList(int index)
     return true;
 }
 
-void FSRFG_Dx12::SetResource(Dx12Resource* inputResource)
+bool FSRFG_Dx12::SetResource(Dx12Resource* inputResource)
 {
     if (inputResource == nullptr || inputResource->resource == nullptr || !IsActive() || IsPaused())
-        return;
+        return false;
 
     auto fIndex = GetIndex();
     auto& type = inputResource->type;
 
-    if (_resourceFrame[type] == _frameCount)
+    if (_resourceFrame[type] == _frameCount || _frameResources[fIndex][type].resource != nullptr)
     {
         LOG_WARN("Repeating resource tagging, ignoring.");
-        return;
+        return false;
     }
 
     if (type == FG_ResourceType::HudlessColor && Config::Instance()->FGDisableHudless.value_or_default())
-        return;
+        return false;
 
     if (type == FG_ResourceType::UIColor && Config::Instance()->FGDisableUI.value_or_default())
-        return;
+        return false;
 
     std::lock_guard<std::mutex> lock(_frMutex);
 
     if (inputResource->cmdList == nullptr && inputResource->validity == FG_ResourceValidity::ValidNow)
     {
         LOG_ERROR("{}, validity == ValidNow but cmdList is nullptr!", magic_enum::enum_name(type));
-        return;
+        return false;
     }
 
     _frameResources[fIndex][type] = {};
@@ -1044,7 +1060,7 @@ void FSRFG_Dx12::SetResource(Dx12Resource* inputResource)
                          scFormatGroup);
 
                 _frameResources[fIndex][type] = {};
-                return;
+                return false;
             }
             else
             {
@@ -1066,13 +1082,13 @@ void FSRFG_Dx12::SetResource(Dx12Resource* inputResource)
 
         if (hudlessFormatGroup == -1 || scFormatGroup == -1 || hudlessFormatGroup != scFormatGroup)
         {
-            if (!HudlessFormatTransfer(fIndex, _device, GetUICommandList(fIndex), format, fResource))
+            if (!HudlessFormatTransfer(fIndex, _device, format, fResource))
             {
                 LOG_WARN("Skipping hudless resource due to format mismatch! hudless: {}, swapchain: {}",
                          hudlessFormatGroup, scFormatGroup);
 
                 _frameResources[fIndex][type] = {};
-                return;
+                return false;
             }
             else
             {
@@ -1102,7 +1118,7 @@ void FSRFG_Dx12::SetResource(Dx12Resource* inputResource)
         if (!CopyResource(inputResource->cmdList, inputResource->resource, &copyOutput, inputResource->state))
         {
             LOG_ERROR("{}, CopyResource error!", magic_enum::enum_name(type));
-            return;
+            return false;
         }
 
         copyOutput->SetName(std::format(L"_resourceCopy[{}][{}]", fIndex, (UINT) type).c_str());
@@ -1119,6 +1135,7 @@ void FSRFG_Dx12::SetResource(Dx12Resource* inputResource)
         ResTrack_Dx12::SetResourceCmdList(type, inputResource->cmdList);
 
     LOG_TRACE("_frameResources[{}][{}]: {:X}", fIndex, magic_enum::enum_name(type), (size_t) fResource->GetResource());
+    return true;
 }
 
 void FSRFG_Dx12::SetCommandQueue(FG_ResourceType type, ID3D12CommandQueue* queue) { _gameCommandQueue = queue; }

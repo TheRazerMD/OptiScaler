@@ -91,7 +91,7 @@ class IFGFeature_Dx12 : public virtual IFGFeature
     virtual void CreateContext(ID3D12Device* device, FG_Constants& fgConstants) = 0;
     virtual void EvaluateState(ID3D12Device* device, FG_Constants& fgConstants) = 0;
 
-    virtual void SetResource(Dx12Resource* inputResource) = 0;
+    virtual bool SetResource(Dx12Resource* inputResource) = 0;
     virtual void SetCommandQueue(FG_ResourceType type, ID3D12CommandQueue* queue) = 0;
 
     ID3D12GraphicsCommandList* GetUICommandList(int index = -1);
