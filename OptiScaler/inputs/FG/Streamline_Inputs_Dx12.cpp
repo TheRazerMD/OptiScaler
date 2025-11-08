@@ -221,23 +221,25 @@ bool Sl_Inputs_Dx12::reportResource(const sl::ResourceTag& tag, ID3D12GraphicsCo
         setResource.state = (D3D12_RESOURCE_STATES) tag.resource->state;
         setResource.validity = validity;
 
-        fgOutput->SetResource(&setResource);
-
-        // Assume hudless is the size used for interpolation
-        interpolationWidth = width;
-        interpolationHeight = height;
-
-        auto static lastFormat = DXGI_FORMAT_UNKNOWN;
-        auto format = hudlessResource->GetDesc().Format;
-
-        // This might be specific to FSR FG
-        if (lastFormat != DXGI_FORMAT_UNKNOWN && lastFormat != format)
+        if (fgOutput->SetResource(&setResource))
         {
-            State::Instance().FGchanged = true;
-            LOG_DEBUG("HUDLESS format changed, triggering FG reinit");
-        }
+            // Assume hudless is the size used for interpolation
+            interpolationWidth = width;
+            interpolationHeight = height;
 
-        lastFormat = format;
+            auto static lastFormat = DXGI_FORMAT_UNKNOWN;
+            auto format = hudlessResource->GetDesc().Format;
+
+            // This might be specific to FSR FG
+            if (lastFormat != DXGI_FORMAT_UNKNOWN && lastFormat != format)
+            {
+                State::Instance().FGchanged = true;
+                LOG_DEBUG("HUDLESS format changed {} -> {}, triggering FG reinit", magic_enum::enum_name(lastFormat),
+                          magic_enum::enum_name(format));
+            }
+
+            lastFormat = format;
+        }
     }
     else if (tag.type == sl::kBufferTypeDepth || tag.type == sl::kBufferTypeHiResDepth ||
              tag.type == sl::kBufferTypeLinearDepth)
@@ -337,13 +339,14 @@ bool Sl_Inputs_Dx12::reportResource(const sl::ResourceTag& tag, ID3D12GraphicsCo
         setResource.state = (D3D12_RESOURCE_STATES) tag.resource->state;
         setResource.validity = validity;
 
-        fgOutput->SetResource(&setResource);
-
-        // Use UI size as fallback for interpolated size
-        if (interpolationWidth == 0 && interpolationHeight == 0)
+        if (fgOutput->SetResource(&setResource))
         {
-            interpolationWidth = width;
-            interpolationHeight = height;
+            // Use UI size as fallback for interpolated size
+            if (interpolationWidth == 0 && interpolationHeight == 0)
+            {
+                interpolationWidth = width;
+                interpolationHeight = height;
+            }
         }
     }
     else if (tag.type == sl::kBufferTypeBidirectionalDistortionField)
