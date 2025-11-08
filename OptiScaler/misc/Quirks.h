@@ -158,6 +158,7 @@ static const QuirkEntry quirkTable[] = {
                 GameQuirk::DisableDxgiSpoofing),
 
     // Avowed
+    // NoBarriers needed to avoid post-loading crash with DLSS
     QUIRK_ENTRY_UE(avowed, GameQuirk::ForceAutoExposure, GameQuirk::DontUseUnrealBarriers),
 
     // SL spoof enough to unlock everything DLSS/No spoof needed for DLSS inputs
@@ -167,7 +168,7 @@ static const QuirkEntry quirkTable[] = {
     // Sackboy: A Big Adventure, Hellblade: Senua's Sacrifice, Pumpkin Jack, Metro Exodus Enhanced Edition, Rise of the
     // Ronin, DYNASTY WARRIORS: ORIGINS, Crysis Remastered, Crysis 2 Remastered, Mortal Shell, Sekiro: Shadows Die
     // Twice (for SekiroTSR mod), The Medium, NINJA GAIDEN 4 (+ WinGDK), Dead Space Remake, God of War (2018), Europa
-    // Universalis V
+    // Universalis V, Need for Speed Unbound, Nioh 2 – The Complete Edition
     QUIRK_ENTRY("witcher3.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("alanwake2.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("crysis3remastered.exe", GameQuirk::DisableDxgiSpoofing),
@@ -196,6 +197,8 @@ static const QuirkEntry quirkTable[] = {
     QUIRK_ENTRY("dead space.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("gow.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("eu5.exe", GameQuirk::DisableDxgiSpoofing),
+    QUIRK_ENTRY("needforspeedunbound.exe", GameQuirk::DisableDxgiSpoofing),
+    QUIRK_ENTRY("nioh2.exe", GameQuirk::DisableDxgiSpoofing, GameQuirk::ForceAutoExposure),
 
     // FSR2 only, no spoof needed
     //
@@ -233,14 +236,13 @@ static const QuirkEntry quirkTable[] = {
     // Self-explanatory
     //
     // The Persistence, Split Fiction, Minecraft Bedrock, Ghostwire: Tokyo, RoadCraft, STAR WARS Jedi:
-    // Survivor, Nioh 2 – The Complete Edition, FINAL FANTASY VII REBIRTH, Witchfire
+    // Survivor, FINAL FANTASY VII REBIRTH, Witchfire
     QUIRK_ENTRY_UE(persistence, GameQuirk::ForceUnrealEngine),
     QUIRK_ENTRY("splitfiction.exe", GameQuirk::FastFeatureReset),
     QUIRK_ENTRY("minecraft.windows.exe", GameQuirk::KernelBaseHooks),
     QUIRK_ENTRY("gwt.exe", GameQuirk::ForceUnrealEngine),
     QUIRK_ENTRY("roadcraft - retail.exe", GameQuirk::FixSlSimulationMarkers),
     QUIRK_ENTRY("jedisurvivor.exe", GameQuirk::ForceAutoExposure),
-    QUIRK_ENTRY("nioh2.exe", GameQuirk::ForceAutoExposure),
     QUIRK_ENTRY("ff7rebirth_.exe", GameQuirk::ForceUnrealEngine),
     QUIRK_ENTRY_UE(witchfire, GameQuirk::DisableUseFsrInputValues),
 
