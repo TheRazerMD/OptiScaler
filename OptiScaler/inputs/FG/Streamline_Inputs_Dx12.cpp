@@ -158,7 +158,9 @@ bool Sl_Inputs_Dx12::reportResource(const sl::ResourceTag& tag, ID3D12GraphicsCo
 {
     std::scoped_lock lock(reportResourceMutex);
 
-    State::Instance().DLSSGLastFrame = State::Instance().FGLastFrame;
+    auto& state = State::Instance();
+
+    state.DLSSGLastFrame = state.FGLastFrame;
 
     if (!cmdBuffer)
         LOG_TRACE("cmdBuffer is null");
@@ -169,7 +171,7 @@ bool Sl_Inputs_Dx12::reportResource(const sl::ResourceTag& tag, ID3D12GraphicsCo
         return false;
     }
 
-    auto fgOutput = reinterpret_cast<IFGFeature_Dx12*>(State::Instance().currentFG);
+    auto fgOutput = reinterpret_cast<IFGFeature_Dx12*>(state.currentFG);
 
     // It's possible for only some resources to be marked ready if FGEnabled is enabled during resource tagging
     if (fgOutput == nullptr || !Config::Instance()->FGEnabled.value_or_default())
@@ -181,6 +183,12 @@ bool Sl_Inputs_Dx12::reportResource(const sl::ResourceTag& tag, ID3D12GraphicsCo
         dispatched = false;
 
         indexToFrameIdMapping[fgOutput->GetIndex()] = frameId;
+
+        {
+            std::scoped_lock lock(newFrameMutex);
+            _hudlessResource = {};
+            _uiResource = {};
+        }
     }
 
     // Can cause unforeseen consequences
@@ -188,9 +196,12 @@ bool Sl_Inputs_Dx12::reportResource(const sl::ResourceTag& tag, ID3D12GraphicsCo
 
     if (tag.type == sl::kBufferTypeHUDLessColor)
     {
-        LOG_TRACE("Hudless lifecycle: {}", magic_enum::enum_name(tag.lifecycle));
-
         auto hudlessResource = (ID3D12Resource*) tag.resource->native;
+        const auto desc = hudlessResource->GetDesc();
+
+        LOG_TRACE("Hudless lifecycle: {}, Format: {} SCFormat: {}", magic_enum::enum_name(tag.lifecycle),
+                  magic_enum::enum_name(desc.Format),
+                  magic_enum::enum_name(state.currentSwapchainDesc.BufferDesc.Format));
 
         auto validity =
             (tag.lifecycle != sl::eOnlyValidNow) ? FG_ResourceValidity::UntilPresent : FG_ResourceValidity::ValidNow;
@@ -205,23 +216,31 @@ bool Sl_Inputs_Dx12::reportResource(const sl::ResourceTag& tag, ID3D12GraphicsCo
 
         if (!tag.extent)
         {
-            const auto desc = hudlessResource->GetDesc();
             width = desc.Width;
             height = desc.Height;
         }
 
-        Dx12Resource setResource {};
-        setResource.type = FG_ResourceType::HudlessColor;
-        setResource.cmdList = cmdBuffer;
-        setResource.resource = hudlessResource;
-        setResource.top = tag.extent.top;
-        setResource.left = tag.extent.left;
-        setResource.width = width;
-        setResource.height = height;
-        setResource.state = (D3D12_RESOURCE_STATES) tag.resource->state;
-        setResource.validity = validity;
+        if (_hudlessResource.resource != nullptr && _hudlessResource.validity != FG_ResourceValidity::UntilPresent)
+        {
+            LOG_INFO("Ignoring new hudless, we already have != UntilPresent one");
+            return false;
+        }
 
-        if (fgOutput->SetResource(&setResource))
+        {
+            std::scoped_lock lock(newFrameMutex);
+            _hudlessResource = {};
+            _hudlessResource.type = FG_ResourceType::HudlessColor;
+            _hudlessResource.cmdList = cmdBuffer;
+            _hudlessResource.resource = hudlessResource;
+            _hudlessResource.top = tag.extent.top;
+            _hudlessResource.left = tag.extent.left;
+            _hudlessResource.width = width;
+            _hudlessResource.height = height;
+            _hudlessResource.state = (D3D12_RESOURCE_STATES) tag.resource->state;
+            _hudlessResource.validity = validity;
+        }
+
+        if (validity != FG_ResourceValidity::UntilPresent && fgOutput->SetResource(&_hudlessResource))
         {
             // Assume hudless is the size used for interpolation
             interpolationWidth = width;
@@ -328,24 +347,32 @@ bool Sl_Inputs_Dx12::reportResource(const sl::ResourceTag& tag, ID3D12GraphicsCo
         const auto validity =
             (tag.lifecycle != sl::eOnlyValidNow) ? FG_ResourceValidity::UntilPresent : FG_ResourceValidity::ValidNow;
 
-        Dx12Resource setResource {};
-        setResource.type = FG_ResourceType::UIColor;
-        setResource.cmdList = cmdBuffer;
-        setResource.resource = uiResource;
-        setResource.top = tag.extent.top;
-        setResource.left = tag.extent.left;
-        setResource.width = width;
-        setResource.height = height;
-        setResource.state = (D3D12_RESOURCE_STATES) tag.resource->state;
-        setResource.validity = validity;
+        if (_uiResource.resource != nullptr && _uiResource.validity != FG_ResourceValidity::UntilPresent)
+        {
+            LOG_INFO("Ignoring new UI, we already have != UntilPresent one");
+            return false;
+        }
 
-        if (fgOutput->SetResource(&setResource))
+        {
+            std::scoped_lock lock(newFrameMutex);
+            _uiResource = {};
+            _uiResource.type = FG_ResourceType::UIColor;
+            _uiResource.cmdList = cmdBuffer;
+            _uiResource.resource = uiResource;
+            _uiResource.top = tag.extent.top;
+            _uiResource.left = tag.extent.left;
+            _uiResource.width = width;
+            _uiResource.height = height;
+            _uiResource.state = (D3D12_RESOURCE_STATES) tag.resource->state;
+            _uiResource.validity = validity;
+        }
+        if (validity != FG_ResourceValidity::UntilPresent && fgOutput->SetResource(&_uiResource))
         {
             // Use UI size as fallback for interpolated size
             if (interpolationWidth == 0 && interpolationHeight == 0)
             {
-                interpolationWidth = width;
-                interpolationHeight = height;
+                interpolationWidth = _uiResource.width;
+                interpolationHeight = _uiResource.height;
             }
         }
     }
@@ -404,6 +431,51 @@ bool Sl_Inputs_Dx12::dispatchFG()
 
     if (!fgOutput->IsActive())
         return false;
+
+    {
+        std::scoped_lock lock(newFrameMutex);
+
+        if (_hudlessResource.resource != nullptr)
+        {
+            if (fgOutput->SetResource(&_hudlessResource))
+            {
+                // Assume hudless is the size used for interpolation
+                interpolationWidth = _hudlessResource.width;
+                interpolationHeight = _hudlessResource.height;
+
+                auto static lastFormat = DXGI_FORMAT_UNKNOWN;
+
+                const auto desc = _hudlessResource.resource->GetDesc();
+
+                // This might be specific to FSR FG
+                if (lastFormat != DXGI_FORMAT_UNKNOWN && lastFormat != desc.Format)
+                {
+                    State::Instance().FGchanged = true;
+                    LOG_DEBUG("HUDLESS format changed {} -> {}, triggering FG reinit",
+                              magic_enum::enum_name(lastFormat), magic_enum::enum_name(desc.Format));
+                }
+
+                lastFormat = desc.Format;
+            }
+
+            _hudlessResource = {};
+        }
+
+        if (_uiResource.resource != nullptr)
+        {
+            if (fgOutput->SetResource(&_uiResource))
+            {
+                // Use UI size as fallback for interpolated size
+                if (interpolationWidth == 0 && interpolationHeight == 0)
+                {
+                    interpolationWidth = _uiResource.width;
+                    interpolationHeight = _uiResource.height;
+                }
+            }
+
+            _uiResource = {};
+        }
+    }
 
     // Nukem's function, licensed under GPLv3
     auto loadCameraMatrix = [&]()

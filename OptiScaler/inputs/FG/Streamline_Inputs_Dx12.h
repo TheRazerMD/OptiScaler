@@ -14,10 +14,13 @@ class Sl_Inputs_Dx12
 
     bool dispatched = false;
     std::mutex reportResourceMutex {};
+    std::mutex newFrameMutex {};
 
     uint32_t lastConstantsFrameId = UINT32_MAX;
     uint64_t lastPresentFrameId = 0;
     uint32_t indexToFrameIdMapping[BUFFER_COUNT] {};
+    Dx12Resource _hudlessResource {};
+    Dx12Resource _uiResource {};
 
     uint64_t mvsWidth = 0;
     uint32_t mvsHeight = 0;
