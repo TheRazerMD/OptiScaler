@@ -213,6 +213,7 @@ HRESULT DxgiFactoryHooks::CreateSwapChain(IDXGIFactory* realFactory, IUnknown* p
             pDesc->Windowed = true;
         }
 
+        pDesc->Flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
         pDesc->BufferDesc.Scaling = DXGI_MODE_SCALING_STRETCHED;
     }
 
@@ -434,6 +435,7 @@ HRESULT DxgiFactoryHooks::CreateSwapChainForHwnd(IDXGIFactory2* realFactory, IUn
             pFullscreenDesc->Windowed = true;
         }
 
+        pDesc->Flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
         pDesc->Scaling = DXGI_SCALING_STRETCH;
     }
 

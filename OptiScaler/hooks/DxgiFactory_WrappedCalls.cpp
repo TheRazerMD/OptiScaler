@@ -98,6 +98,7 @@ HRESULT DxgiFactoryWrappedCalls::CreateSwapChain(IDXGIFactory* realFactory, Wrap
             pDesc->Windowed = true;
         }
 
+        pDesc->Flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
         pDesc->BufferDesc.Scaling = DXGI_MODE_SCALING_STRETCHED;
     }
 
@@ -304,6 +305,7 @@ HRESULT DxgiFactoryWrappedCalls::CreateSwapChainForHwnd(IDXGIFactory2* realFacto
             pFullscreenDesc->Windowed = true;
         }
 
+        pDesc->Flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
         pDesc->Scaling = DXGI_SCALING_STRETCH;
     }
 
@@ -327,7 +329,7 @@ HRESULT DxgiFactoryWrappedCalls::CreateSwapChainForHwnd(IDXGIFactory2* realFacto
     State::Instance().SCLastFlags = pDesc->Flags;
     State::Instance().realExclusiveFullscreen = pFullscreenDesc != nullptr && !pFullscreenDesc->Windowed;
 
-#ifdef VER_PRE_RELEASE
+#ifdef DETAILED_SC_LOGS
     LOG_TRACE("pDesc->AlphaMode : {}", magic_enum::enum_name(pDesc->AlphaMode));
     LOG_TRACE("pDesc->BufferCount : {}", pDesc->BufferCount);
     LOG_TRACE("pDesc->BufferUsage : {}", pDesc->BufferUsage);
