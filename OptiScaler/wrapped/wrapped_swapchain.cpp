@@ -182,15 +182,15 @@ static HRESULT LocalPresent(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT 
     // Fallback when FGPresent is not hooked for V-sync
     if (willPresent && Config::Instance()->ForceVsync.has_value())
     {
-        LOG_DEBUG("ForceVsync: {}, VsyncInterval: {}, SCAllowTearing: {}, SCExclusiveFullscreen: {}",
+        LOG_DEBUG("ForceVsync: {}, VsyncInterval: {}, SCAllowTearing: {}, realExclusiveFullscreen: {}",
                   Config::Instance()->ForceVsync.value(), Config::Instance()->VsyncInterval.value_or_default(),
-                  State::Instance().SCAllowTearing, State::Instance().SCExclusiveFullscreen);
+                  State::Instance().SCAllowTearing, State::Instance().realExclusiveFullscreen);
 
         if (!Config::Instance()->ForceVsync.value())
         {
             SyncInterval = 0;
 
-            if (State::Instance().SCAllowTearing && !State::Instance().SCExclusiveFullscreen)
+            if (State::Instance().SCAllowTearing && !State::Instance().realExclusiveFullscreen)
             {
                 LOG_DEBUG("Adding DXGI_PRESENT_ALLOW_TEARING");
                 Flags |= DXGI_PRESENT_ALLOW_TEARING;
