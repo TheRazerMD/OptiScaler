@@ -210,6 +210,8 @@ sl::Result StreamlineHooks::hkslSetTagForFrame(const sl::FrameToken& frame, cons
         return o_slSetTagForFrame(frame, viewport, resources, numResources, cmdBuffer);
     }
 
+    LOG_DEBUG("frameIndex: {}", static_cast<uint32_t>(frame));
+
     for (uint32_t i = 0; i < numResources; i++)
     {
         if (resources[i].resource == nullptr || resources[i].resource->native == nullptr)
@@ -241,7 +243,7 @@ sl::Result StreamlineHooks::hkslEvaluateFeature(sl::Feature feature, const sl::F
                                                 const sl::BaseStructure** inputs, uint32_t numInputs,
                                                 sl::CommandBuffer* cmdBuffer)
 {
-    LOG_FUNC();
+    LOG_DEBUG("frameIndex: {}", static_cast<uint32_t>(frame));
 
     if (State::Instance().activeFgInput == FGInput::DLSSG && numInputs > 0 && inputs != nullptr)
     {
@@ -589,16 +591,22 @@ sl::Result StreamlineHooks::hkslDLSSGSetOptions(const sl::ViewportHandle& viewpo
             ReflexHooks::setDlssgDetectedState(false);
         }
     }
-    else
-    {
-        if (State::Instance().currentFGSwapchain != nullptr && Config::Instance()->FGEnabled.value_or_default())
-        {
-            if (newOptions.mode == sl::DLSSGMode::eOn)
-                State::Instance().currentFG->Activate();
-            else
-                State::Instance().currentFG->Deactivate();
-        }
-    }
+    // else
+    //{
+    //     if (State::Instance().currentFGSwapchain != nullptr && Config::Instance()->FGEnabled.value_or_default())
+    //     {
+    //         if (newOptions.mode == sl::DLSSGMode::eOn)
+    //         {
+    //             if (!State::Instance().currentFG->IsActive())
+    //                 State::Instance().currentFG->Activate();
+    //         }
+    //         else
+    //         {
+    //             if (State::Instance().currentFG->IsActive())
+    //                 State::Instance().currentFG->Deactivate();
+    //         }
+    //     }
+    // }
 
     LOG_TRACE("DLSSG Modified Mode: {}", magic_enum::enum_name(newOptions.mode));
 
