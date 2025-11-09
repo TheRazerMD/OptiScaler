@@ -887,7 +887,7 @@ bool XeFG_Dx12::Present()
         }
     }
 
-    if (_fgFramePresentId > _lastFGFramePresentId && IsActive() && !_waitingNewFrameData)
+    if ((_fgFramePresentId - _lastFGFramePresentId) > 3 && IsActive() && !_waitingNewFrameData)
     {
         LOG_DEBUG("Pausing FG");
         Deactivate();
