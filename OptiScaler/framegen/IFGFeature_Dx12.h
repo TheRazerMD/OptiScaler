@@ -24,7 +24,7 @@ struct Dx12Resource
 
     // TODO: make private?
     ID3D12Resource* copy = nullptr;
-    UINT64 fenceValue = 0;
+    int frameIndex = -1;
     bool waitingExecution = false;
 
     ID3D12Resource* GetResource() { return (copy == nullptr) ? resource : copy; }

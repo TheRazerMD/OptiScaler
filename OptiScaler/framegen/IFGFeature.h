@@ -138,7 +138,7 @@ class IFGFeature
     void GetInterpolationRect(UINT64& width, UINT& height, int index = -1);
     void SetInterpolationPos(UINT left, UINT top);
     void GetInterpolationPos(UINT& left, UINT& top, int index = -1);
-    void SetResourceReady(FG_ResourceType type);
+    void SetResourceReady(FG_ResourceType type, int index = -1);
 
     void ResetCounters();
     void UpdateTarget();

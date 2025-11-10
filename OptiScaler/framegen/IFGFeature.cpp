@@ -235,8 +235,11 @@ UINT64 IFGFeature::LastDispatchedFrame() { return _lastDispatchedFrame; }
 
 UINT64 IFGFeature::TargetFrame() { return _targetFrame; }
 
-void IFGFeature::SetResourceReady(FG_ResourceType type)
+void IFGFeature::SetResourceReady(FG_ResourceType type, int index)
 {
-    _resourceReady[GetIndex()][type] = true;
+    if (index < 0)
+        index = GetIndex();
+
+    _resourceReady[index][type] = true;
     _resourceFrame[type] = _frameCount;
 }

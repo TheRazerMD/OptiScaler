@@ -32,6 +32,8 @@ class Sl_Inputs_Dx12
     uint32_t interpolationHeight = 0;
 
     std::optional<sl::Constants>* getFrameData(IFGFeature_Dx12* fgOutput);
+    void SetHudlessResource();
+    void SetUIResource();
 
   public:
     bool setConstants(const sl::Constants& constants, uint32_t frameId);

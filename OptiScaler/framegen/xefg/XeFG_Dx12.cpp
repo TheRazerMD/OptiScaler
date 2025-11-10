@@ -545,8 +545,8 @@ bool XeFG_Dx12::Dispatch()
         auto usingHudless = IsUsingHudless(fIndex);
         if (_haveHudless.value() != usingHudless)
         {
-            LOG_INFO("Hudless state changed {} -> {}, skipping rendering for 10 frames", usingHudless,
-                     _haveHudless.value());
+            LOG_INFO("Hudless state changed {} -> {}, skipping rendering for 10 frames", _haveHudless.value(),
+                     usingHudless);
 
             _haveHudless = usingHudless;
             state.FGchanged = true;
@@ -905,12 +905,17 @@ bool XeFG_Dx12::SetResource(Dx12Resource* inputResource)
     if (inputResource == nullptr || inputResource->resource == nullptr || !IsActive() || IsPaused())
         return false;
 
-    auto fIndex = GetIndex();
+    // For late sent SL resources
+    // we use provided frame index
+    auto fIndex = inputResource->frameIndex;
+    if (fIndex < 0)
+        fIndex = GetIndex();
+
     auto& type = inputResource->type;
 
     if (_resourceFrame[type] == _frameCount || _frameResources[fIndex][type].resource != nullptr)
     {
-        LOG_WARN("Repeating resource tagging for {}, ignoring.", magic_enum::enum_name(type));
+        LOG_WARN("Repeating resource tagging for {}[{}], ignoring.", magic_enum::enum_name(type), fIndex);
         return false;
     }
 
@@ -955,6 +960,7 @@ bool XeFG_Dx12::SetResource(Dx12Resource* inputResource)
         FlipResource(fResource);
     }
 
+    // Depth Invert
     if (_device != nullptr && type == FG_ResourceType::Depth &&
         !Config::Instance()->FGXeFGDepthInverted.value_or_default())
     {
@@ -1006,8 +1012,6 @@ bool XeFG_Dx12::SetResource(Dx12Resource* inputResource)
         fResource->validity = FG_ResourceValidity::UntilPresent;
     }
 
-    static auto lastHudlessFrameId = UINT64_MAX;
-
     if (type == FG_ResourceType::UIColor)
         _noUi[fIndex] = false;
     else if (type == FG_ResourceType::Distortion)
@@ -1058,7 +1062,7 @@ bool XeFG_Dx12::SetResource(Dx12Resource* inputResource)
                         inputResource->state);
     }
 
-    SetResourceReady(type);
+    SetResourceReady(type, fIndex);
 
     LOG_TRACE("_frameResources[{}][{}]: {:X}", fIndex, magic_enum::enum_name(type), (size_t) fResource->GetResource());
 

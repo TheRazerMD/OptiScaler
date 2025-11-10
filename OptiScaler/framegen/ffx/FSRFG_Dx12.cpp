@@ -1001,7 +1001,12 @@ bool FSRFG_Dx12::SetResource(Dx12Resource* inputResource)
     if (inputResource == nullptr || inputResource->resource == nullptr || !IsActive() || IsPaused())
         return false;
 
-    auto fIndex = GetIndex();
+    // For late sent SL resources
+    // we use provided frame index
+    auto fIndex = inputResource->frameIndex;
+    if (fIndex < 0)
+        fIndex = GetIndex();
+
     auto& type = inputResource->type;
 
     if (_resourceFrame[type] == _frameCount || _frameResources[fIndex][type].resource != nullptr)
@@ -1130,7 +1135,7 @@ bool FSRFG_Dx12::SetResource(Dx12Resource* inputResource)
     }
 
     if (inputResource->validity == FG_ResourceValidity::UntilPresent)
-        SetResourceReady(type);
+        SetResourceReady(type, fIndex);
     else
         ResTrack_Dx12::SetResourceCmdList(type, inputResource->cmdList);
 
