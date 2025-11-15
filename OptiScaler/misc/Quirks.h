@@ -168,7 +168,7 @@ static const QuirkEntry quirkTable[] = {
     // Sackboy: A Big Adventure, Hellblade: Senua's Sacrifice, Pumpkin Jack, Metro Exodus Enhanced Edition, Rise of the
     // Ronin, DYNASTY WARRIORS: ORIGINS, Crysis Remastered, Crysis 2 Remastered, Mortal Shell, Sekiro: Shadows Die
     // Twice (for SekiroTSR mod), The Medium, NINJA GAIDEN 4 (+ WinGDK), Dead Space Remake, God of War (2018), Europa
-    // Universalis V, Need for Speed Unbound, Nioh 2 – The Complete Edition
+    // Universalis V, Need for Speed Unbound, Nioh 2 – The Complete Edition, Control Ultimate Edition
     QUIRK_ENTRY("witcher3.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("alanwake2.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("crysis3remastered.exe", GameQuirk::DisableDxgiSpoofing),
@@ -199,6 +199,7 @@ static const QuirkEntry quirkTable[] = {
     QUIRK_ENTRY("eu5.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("needforspeedunbound.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("nioh2.exe", GameQuirk::DisableDxgiSpoofing, GameQuirk::ForceAutoExposure),
+    QUIRK_ENTRY("control_dx12.exe", GameQuirk::DisableDxgiSpoofing, GameQuirk::ForceAutoExposure),
 
     // FSR2 only, no spoof needed
     //
