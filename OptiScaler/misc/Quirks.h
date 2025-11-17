@@ -239,7 +239,7 @@ static const QuirkEntry quirkTable[] = {
     // Self-explanatory
     //
     // The Persistence, Split Fiction, Minecraft Bedrock, Ghostwire: Tokyo, RoadCraft, STAR WARS Jedi:
-    // Survivor, FINAL FANTASY VII REBIRTH, Witchfire
+    // Survivor, FINAL FANTASY VII REBIRTH, Witchfire, MechWarrior 5: Mercenaries
     QUIRK_ENTRY_UE(persistence, GameQuirk::ForceUnrealEngine),
     QUIRK_ENTRY("splitfiction.exe", GameQuirk::FastFeatureReset),
     QUIRK_ENTRY("minecraft.windows.exe", GameQuirk::KernelBaseHooks),
@@ -248,6 +248,7 @@ static const QuirkEntry quirkTable[] = {
     QUIRK_ENTRY("jedisurvivor.exe", GameQuirk::ForceAutoExposure),
     QUIRK_ENTRY("ff7rebirth_.exe", GameQuirk::ForceUnrealEngine),
     QUIRK_ENTRY_UE(witchfire, GameQuirk::DisableUseFsrInputValues),
+    QUIRK_ENTRY_UE(mechwarrior, GameQuirk::ForceUnrealEngine),
 
     // VULKAN
     // ------
