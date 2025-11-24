@@ -168,7 +168,8 @@ static const QuirkEntry quirkTable[] = {
     // Sackboy: A Big Adventure, Hellblade: Senua's Sacrifice, Pumpkin Jack, Metro Exodus Enhanced Edition, Rise of the
     // Ronin, DYNASTY WARRIORS: ORIGINS, Crysis Remastered, Crysis 2 Remastered, Mortal Shell, Sekiro: Shadows Die
     // Twice (for SekiroTSR mod), The Medium, NINJA GAIDEN 4 (+ WinGDK), Dead Space Remake, God of War (2018), Europa
-    // Universalis V, Need for Speed Unbound, Nioh 2 – The Complete Edition, Control Ultimate Edition, Deathloop
+    // Universalis V, Need for Speed Unbound, Nioh 2 – The Complete Edition, Control Ultimate Edition, Deathloop, Where
+    // Winds Meet
     QUIRK_ENTRY("witcher3.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("alanwake2.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("crysis3remastered.exe", GameQuirk::DisableDxgiSpoofing),
@@ -201,6 +202,7 @@ static const QuirkEntry quirkTable[] = {
     QUIRK_ENTRY("nioh2.exe", GameQuirk::DisableDxgiSpoofing, GameQuirk::ForceAutoExposure),
     QUIRK_ENTRY("control_dx12.exe", GameQuirk::DisableDxgiSpoofing, GameQuirk::ForceAutoExposure),
     QUIRK_ENTRY("deathloop.exe", GameQuirk::DisableDxgiSpoofing),
+    QUIRK_ENTRY("wwm.exe", GameQuirk::DisableDxgiSpoofing),
 
     // FSR2 only, no spoof needed
     //
@@ -239,7 +241,7 @@ static const QuirkEntry quirkTable[] = {
     // Self-explanatory
     //
     // The Persistence, Split Fiction, Minecraft Bedrock, Ghostwire: Tokyo, RoadCraft, STAR WARS Jedi:
-    // Survivor, FINAL FANTASY VII REBIRTH, Witchfire
+    // Survivor, FINAL FANTASY VII REBIRTH, Witchfire, MechWarrior 5: Mercenaries
     QUIRK_ENTRY_UE(persistence, GameQuirk::ForceUnrealEngine),
     QUIRK_ENTRY("splitfiction.exe", GameQuirk::FastFeatureReset),
     QUIRK_ENTRY("minecraft.windows.exe", GameQuirk::KernelBaseHooks),
@@ -248,6 +250,9 @@ static const QuirkEntry quirkTable[] = {
     QUIRK_ENTRY("jedisurvivor.exe", GameQuirk::ForceAutoExposure),
     QUIRK_ENTRY("ff7rebirth_.exe", GameQuirk::ForceUnrealEngine),
     QUIRK_ENTRY_UE(witchfire, GameQuirk::DisableUseFsrInputValues),
+    QUIRK_ENTRY_UE(mechwarrior, GameQuirk::ForceUnrealEngine),
+    QUIRK_ENTRY_UE(ghostrunner, GameQuirk::ForceUnrealEngine),
+    QUIRK_ENTRY_UE(ghostrunner2, GameQuirk::ForceUnrealEngine),
 
     // VULKAN
     // ------
