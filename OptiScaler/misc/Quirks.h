@@ -251,6 +251,8 @@ static const QuirkEntry quirkTable[] = {
     QUIRK_ENTRY("ff7rebirth_.exe", GameQuirk::ForceUnrealEngine),
     QUIRK_ENTRY_UE(witchfire, GameQuirk::DisableUseFsrInputValues),
     QUIRK_ENTRY_UE(mechwarrior, GameQuirk::ForceUnrealEngine),
+    QUIRK_ENTRY_UE(ghostrunner, GameQuirk::ForceUnrealEngine),
+    QUIRK_ENTRY_UE(ghostrunner2, GameQuirk::ForceUnrealEngine),
 
     // VULKAN
     // ------
