@@ -80,6 +80,21 @@ class FfxApiProxy
 
     static bool IsFGType(ffxStructType_t type) { return type >= 0x00020001u && type <= 0x00030009u; }
 
+    // Can't directly check for type when query is used
+    // might apply to FFX_API_DESC_TYPE_OVERRIDE_VERSION as well
+    static bool IsFGType(ffxQueryDescHeader* header)
+    {
+        ffxStructType_t type = header->type;
+
+        if (header->type == FFX_API_QUERY_DESC_TYPE_GET_VERSIONS ||
+            header->type == FFX_API_QUERY_DESC_TYPE_GET_PROVIDER_VERSION)
+        {
+            type = header[1].type;
+        }
+
+        return IsFGType(type);
+    }
+
     static bool IsLoader(const std::wstring& filePath)
     {
         auto size = std::filesystem::file_size(filePath);
@@ -651,7 +666,7 @@ class FfxApiProxy
 
     static ffxReturnCode_t D3D12_Query(ffxContext* context, ffxQueryDescHeader* desc)
     {
-        auto isFg = IsFGType(desc->type);
+        auto isFg = IsFGType(desc);
 
         if (isFg && _dllDx12_FG != nullptr)
             return _D3D12_Query_FG(context, desc);
