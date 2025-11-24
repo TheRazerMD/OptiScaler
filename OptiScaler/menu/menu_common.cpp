@@ -1506,6 +1506,7 @@ bool MenuCommon::RenderMenu()
                 (state.currentFGSwapchain != nullptr || state.activeFgInput == FGInput::Nukems))
             {
                 config->FGEnabled = !config->FGEnabled.value_or_default();
+                LOG_DEBUG("FG toggle key pressed, setting FGEnabled to {}", config->FGEnabled.value_or_default());
 
                 if (config->FGEnabled.value_or_default())
                     state.FGchanged = true;
