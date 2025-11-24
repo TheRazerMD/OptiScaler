@@ -4,21 +4,15 @@
 
 int IFGFeature::GetIndex() { return (_frameCount % BUFFER_COUNT); }
 
+int IFGFeature::GetIndexWillBeDispatched()
+{
+    auto df = _lastDispatchedFrame + 1;
+    return (df % BUFFER_COUNT);
+}
+
 UINT64 IFGFeature::StartNewFrame()
 {
-    // If last frame already dispatched
-    if (_lastDispatchedFrame == _frameCount || (_frameCount - _lastDispatchedFrame) > 1)
-    {
-        // Update both
-        _frameCount++;
-        _willDispatchFrame = _frameCount;
-    }
-    else
-    {
-        // Only update frame counter
-        // _willDispatchFrame will be set at GetDispatchIndex
-        _frameCount++;
-    }
+    _frameCount++;
 
     auto fIndex = GetIndex();
     LOG_DEBUG("_frameCount: {}, fIndex: {}", _frameCount, fIndex);
@@ -107,23 +101,23 @@ bool IFGFeature::CheckForRealObject(std::string functionName, IUnknown* pObject,
     return false;
 }
 
-int IFGFeature::GetDispatchIndex()
+int IFGFeature::GetDispatchIndex(UINT64& willDispatchFrame)
 {
+    LOG_DEBUG("_lastDispatchedFrame: {},  _frameCount: {}", _lastDispatchedFrame, _frameCount);
+
     // We are in same frame
     if (_frameCount == _lastDispatchedFrame)
         return -1;
 
-    // _willDispatch not updated, probably FG wasn't dispatched
-    // when start new frame called
-    if (_lastDispatchedFrame == _willDispatchFrame)
-    {
-        // Set dispatch frame as new one
-        _willDispatchFrame = _frameCount;
-    }
+    auto diff = _frameCount - _lastDispatchedFrame;
+    if (diff > 5 || diff < 0)
+        willDispatchFrame = _frameCount; // Set dispatch frame as new one
+    else
+        willDispatchFrame = _lastDispatchedFrame + 1; // Render next one
 
-    _lastDispatchedFrame = _willDispatchFrame;
+    _lastDispatchedFrame = willDispatchFrame;
 
-    return (_willDispatchFrame % BUFFER_COUNT);
+    return (willDispatchFrame % BUFFER_COUNT);
 }
 
 bool IFGFeature::IsActive() { return _isActive || _waitingNewFrameData; }

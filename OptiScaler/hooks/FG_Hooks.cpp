@@ -757,12 +757,6 @@ HRESULT FGHooks::FGPresent(void* This, UINT SyncInterval, UINT Flags, const DXGI
         UpscalerTimeDx12::ReadUpscalingTime(State::Instance().currentCommandQueue);
     }
 
-    if (willPresent)
-    {
-        if (State::Instance().activeFgInput == FGInput::DLSSG && !State::Instance().slFGInputs.dispatchFG())
-            LOG_DEBUG("Streamline FG was not dispatched");
-    }
-
     auto fg = State::Instance().currentFG;
     bool mutexUsed = false;
     if (willPresent && fg != nullptr && fg->IsActive() &&

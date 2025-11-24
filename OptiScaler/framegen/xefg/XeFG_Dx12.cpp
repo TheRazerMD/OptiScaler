@@ -143,16 +143,17 @@ bool XeFG_Dx12::DestroySwapchainContext()
     return true;
 }
 
-xefg_swapchain_d3d12_resource_data_t XeFG_Dx12::GetResourceData(FG_ResourceType type)
+xefg_swapchain_d3d12_resource_data_t XeFG_Dx12::GetResourceData(FG_ResourceType type, int index)
 {
-    auto fIndex = GetIndex();
+    if (index)
+        index = GetIndex();
 
     xefg_swapchain_d3d12_resource_data_t resourceParam = {};
 
-    if (!_frameResources[fIndex].contains(type))
+    if (!_frameResources[index].contains(type))
         return resourceParam;
 
-    auto fResource = &_frameResources[fIndex].at(type);
+    auto fResource = &_frameResources[index].at(type);
 
     resourceParam.validity = (fResource->validity == FG_ResourceValidity::ValidNow)
                                  ? XEFG_SWAPCHAIN_RV_ONLY_NOW
@@ -516,7 +517,8 @@ bool XeFG_Dx12::Dispatch()
 {
     LOG_DEBUG();
 
-    auto fIndex = GetDispatchIndex();
+    UINT64 willDispatchFrame = 0;
+    auto fIndex = GetDispatchIndex(willDispatchFrame);
     if (fIndex < 0)
         return false;
 
@@ -525,7 +527,7 @@ bool XeFG_Dx12::Dispatch()
 
     auto& state = State::Instance();
 
-    LOG_DEBUG("_frameCount: {}, _willDispatchFrame: {}, fIndex: {}", _frameCount, _willDispatchFrame, fIndex);
+    LOG_DEBUG("_frameCount: {}, willDispatchFrame: {}, fIndex: {}", _frameCount, willDispatchFrame, fIndex);
 
     if (!_resourceReady[fIndex].contains(FG_ResourceType::Depth) ||
         !_resourceReady[fIndex].at(FG_ResourceType::Depth) ||
@@ -559,6 +561,30 @@ bool XeFG_Dx12::Dispatch()
 
             return false;
         }
+    }
+
+    if (!_noHudless[fIndex])
+    {
+        auto res = &_frameResources[fIndex][FG_ResourceType::HudlessColor];
+        res->validity = FG_ResourceValidity::UntilPresentFromDispatch;
+        res->frameIndex = fIndex;
+        SetResource(res);
+    }
+
+    if (!_noUi[fIndex])
+    {
+        auto res = &_frameResources[fIndex][FG_ResourceType::UIColor];
+        res->validity = FG_ResourceValidity::UntilPresentFromDispatch;
+        res->frameIndex = fIndex;
+        SetResource(res);
+    }
+
+    if (!_noDistortionField[fIndex])
+    {
+        auto res = &_frameResources[fIndex][FG_ResourceType::Distortion];
+        res->validity = FG_ResourceValidity::UntilPresentFromDispatch;
+        res->frameIndex = fIndex;
+        SetResource(res);
     }
 
     XeFGProxy::EnableDebugFeature()(_swapChainContext, XEFG_SWAPCHAIN_DEBUG_FEATURE_TAG_INTERPOLATED_FRAMES,
@@ -629,7 +655,7 @@ bool XeFG_Dx12::Dispatch()
 
     LOG_DEBUG("Reset: {}, FTDelta: {}", _reset[fIndex], constData.frameRenderTime);
 
-    auto frameId = static_cast<uint32_t>(_willDispatchFrame);
+    auto frameId = static_cast<uint32_t>(willDispatchFrame);
 
     auto result = XeFGProxy::TagFrameConstants()(_swapChainContext, frameId, &constData);
     if (result != XEFG_SWAPCHAIN_RESULT_SUCCESS)
@@ -852,10 +878,13 @@ void XeFG_Dx12::CreateObjects(ID3D12Device* InDevice)
 
 bool XeFG_Dx12::Present()
 {
+    auto fIndex = GetIndexWillBeDispatched();
+
     if (IsActive() && !IsPaused() && State::Instance().FGHudlessCompare)
     {
-        auto hudless = GetResource(FG_ResourceType::HudlessColor);
-        if (hudless != nullptr && hudless->validity == FG_ResourceValidity::UntilPresent)
+        auto hudless = GetResource(FG_ResourceType::HudlessColor, fIndex);
+        if (hudless != nullptr && (hudless->validity == FG_ResourceValidity::UntilPresent ||
+                                   hudless->validity == FG_ResourceValidity::UntilPresentFromDispatch))
         {
             if (_hudlessCompare.get() == nullptr)
             {
@@ -870,13 +899,16 @@ bool XeFG_Dx12::Present()
                 }
             }
         }
+        else if (hudless == nullptr)
+        {
+            LOG_WARN("Hudless resource is nullptr");
+        }
     }
 
     bool result = false;
 
     if (IsActive() && !IsPaused())
     {
-        auto fIndex = GetIndex();
         if (_uiCommandListResetted[fIndex])
         {
             LOG_DEBUG("Executing _uiCommandList[{}]: {:X}", fIndex, (size_t) _uiCommandList[fIndex]);
@@ -917,17 +949,39 @@ bool XeFG_Dx12::SetResource(Dx12Resource* inputResource)
 
     auto& type = inputResource->type;
 
-    if (_resourceFrame[type] == _frameCount || _frameResources[fIndex][type].resource != nullptr)
+    if (type == FG_ResourceType::HudlessColor)
     {
-        LOG_WARN("Repeating resource tagging for {}[{}], ignoring.", magic_enum::enum_name(type), fIndex);
-        return false;
+        if (Config::Instance()->FGDisableHudless.value_or_default())
+            return false;
+
+        if (!_noHudless[fIndex] && (_frameResources[fIndex][type].validity == FG_ResourceValidity::ValidNow ||
+                                    _frameResources[fIndex][type].validity == FG_ResourceValidity::ValidButMakeCopy))
+        {
+            return false;
+        }
     }
 
-    if (type == FG_ResourceType::HudlessColor && Config::Instance()->FGDisableHudless.value_or_default())
-        return false;
+    if (type == FG_ResourceType::UIColor)
+    {
+        if (Config::Instance()->FGDisableUI.value_or_default())
+            return false;
 
-    if (type == FG_ResourceType::UIColor && Config::Instance()->FGDisableUI.value_or_default())
-        return false;
+        if (!_noUi[fIndex] && (_frameResources[fIndex][type].validity == FG_ResourceValidity::ValidNow ||
+                               _frameResources[fIndex][type].validity == FG_ResourceValidity::ValidButMakeCopy))
+        {
+            return false;
+        }
+    }
+
+    if (type == FG_ResourceType::Distortion)
+    {
+        if (!_noDistortionField[fIndex] &&
+            (_frameResources[fIndex][type].validity == FG_ResourceValidity::ValidNow ||
+             _frameResources[fIndex][type].validity == FG_ResourceValidity::ValidButMakeCopy))
+        {
+            return false;
+        }
+    }
 
     std::lock_guard<std::mutex> lock(_frMutex);
 
@@ -960,9 +1014,7 @@ bool XeFG_Dx12::SetResource(Dx12Resource* inputResource)
 
     // Resource flipping
     if (willFlip && _device != nullptr)
-    {
         FlipResource(fResource);
-    }
 
     // Depth Invert
     // https://github.com/intel/xess/issues/50
@@ -1031,51 +1083,74 @@ bool XeFG_Dx12::SetResource(Dx12Resource* inputResource)
                               ? FG_ResourceValidity::UntilPresent
                               : FG_ResourceValidity::ValidNow;
 
-    xefg_swapchain_d3d12_resource_data_t resourceParam = GetResourceData(type);
-
-    // SDK version 2.1.1 fixes those issues
-    if (version < feature_version { 1, 2, 2 })
+    // Set it if it's Depth or Velocity or validity is ValidNow or ValidButMakeCopy
+    if ((fResource->type == FG_ResourceType::Depth || fResource->type == FG_ResourceType::Velocity) ||
+        (fResource->validity != FG_ResourceValidity::UntilPresent &&
+         fResource->validity != FG_ResourceValidity::UntilPresentFromDispatch &&
+         fResource->validity != FG_ResourceValidity::JustTrackCmdlist))
     {
-        // HACK: XeFG docs lie and cmd list is technically required as it checks for it
-        // But it doesn't seem to use it when the validity is UNTIL_NEXT_PRESENT
-        // https://github.com/intel/xess/issues/45
-        if (fResource->cmdList == nullptr && resourceParam.validity == XEFG_SWAPCHAIN_RV_UNTIL_NEXT_PRESENT)
-            fResource->cmdList = (ID3D12GraphicsCommandList*) 1;
+        if (type == FG_ResourceType::HudlessColor)
+        {
+            static DXGI_FORMAT lastFormat[BUFFER_COUNT] = {};
+            auto desc = fResource->GetResource()->GetDesc();
 
-        // HACK: XeFG seems to crash if the resource is in COPY_SOURCE state
-        // even though the docs say it's the preferred state
-        // https://github.com/intel/xess/issues/47
+            if (lastFormat[fIndex] != DXGI_FORMAT_UNKNOWN && lastFormat[fIndex] != desc.Format)
+            {
+                State::Instance().FGchanged = true;
+                return false;
+            }
+
+            lastFormat[fIndex] = desc.Format;
+        }
+
+        xefg_swapchain_d3d12_resource_data_t resourceParam = GetResourceData(type, fIndex);
+
+        // SDK version 2.1.1 fixes those issues
+        if (version < feature_version { 1, 2, 2 })
+        {
+            // HACK: XeFG docs lie and cmd list is technically required as it checks for it
+            // But it doesn't seem to use it when the validity is UNTIL_NEXT_PRESENT
+            // https://github.com/intel/xess/issues/45
+            if (fResource->cmdList == nullptr && resourceParam.validity == XEFG_SWAPCHAIN_RV_UNTIL_NEXT_PRESENT)
+                fResource->cmdList = (ID3D12GraphicsCommandList*) 1;
+
+            // HACK: XeFG seems to crash if the resource is in COPY_SOURCE state
+            // even though the docs say it's the preferred state
+            // https://github.com/intel/xess/issues/47
+            if (inputResource->state == D3D12_RESOURCE_STATE_COPY_SOURCE)
+            {
+                ResourceBarrier(inputResource->cmdList, inputResource->resource, inputResource->state,
+                                D3D12_RESOURCE_STATE_COPY_DEST);
+
+                resourceParam.incomingState = D3D12_RESOURCE_STATE_COPY_DEST;
+            }
+        }
+
+        auto frameId = static_cast<uint32_t>(_frameCount);
+        auto result =
+            XeFGProxy::D3D12TagFrameResource()(_swapChainContext, fResource->cmdList, frameId, &resourceParam);
+
+        if (result != XEFG_SWAPCHAIN_RESULT_SUCCESS)
+        {
+            LOG_ERROR("D3D12TagFrameResource {} error: {} ({})", magic_enum::enum_name(type),
+                      magic_enum::enum_name(result), (int32_t) result);
+
+            State::Instance().FGchanged = true;
+            UpdateTarget();
+            Deactivate();
+
+            return false;
+        }
+
+        // Potentially we don't need to restore but do it just to be safe
         if (inputResource->state == D3D12_RESOURCE_STATE_COPY_SOURCE)
         {
-            ResourceBarrier(inputResource->cmdList, inputResource->resource, inputResource->state,
-                            D3D12_RESOURCE_STATE_COPY_DEST);
-            resourceParam.incomingState = D3D12_RESOURCE_STATE_COPY_DEST;
+            ResourceBarrier(inputResource->cmdList, inputResource->resource, D3D12_RESOURCE_STATE_COPY_DEST,
+                            inputResource->state);
         }
+
+        SetResourceReady(type, fIndex);
     }
-
-    auto frameId = static_cast<uint32_t>(_frameCount);
-    auto result = XeFGProxy::D3D12TagFrameResource()(_swapChainContext, fResource->cmdList, frameId, &resourceParam);
-
-    if (result != XEFG_SWAPCHAIN_RESULT_SUCCESS)
-    {
-        LOG_ERROR("D3D12TagFrameResource {} error: {} ({})", magic_enum::enum_name(type), magic_enum::enum_name(result),
-                  (int32_t) result);
-
-        State::Instance().FGchanged = true;
-        UpdateTarget();
-        Deactivate();
-
-        return false;
-    }
-
-    // Potentially we don't need to restore but do it just to be safe
-    if (inputResource->state == D3D12_RESOURCE_STATE_COPY_SOURCE)
-    {
-        ResourceBarrier(inputResource->cmdList, inputResource->resource, D3D12_RESOURCE_STATE_COPY_DEST,
-                        inputResource->state);
-    }
-
-    SetResourceReady(type, fIndex);
 
     LOG_TRACE("_frameResources[{}][{}]: {:X}", fIndex, magic_enum::enum_name(type), (size_t) fResource->GetResource());
 

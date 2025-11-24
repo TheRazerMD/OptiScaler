@@ -8,64 +8,24 @@
 
 std::optional<sl::Constants>* Sl_Inputs_Dx12::getFrameData(IFGFeature_Dx12* fgOutput)
 {
-    auto frameId = indexToFrameIdMapping[fgOutput->GetIndex()];
-
-    if (frameId != 0)
-    {
-        LOG_TRACE("Using SL's frame id: {}", frameId);
-        return &slConstants[frameId % BUFFER_COUNT];
-    }
-    else if (lastConstantsFrameId > lastPresentFrameId)
-    {
-        LOG_TRACE("Using last reflex present frame id: {}", lastPresentFrameId);
-        return &slConstants[lastPresentFrameId % BUFFER_COUNT];
-    }
-    else
-    {
-        LOG_TRACE("Using constants frame id: {}", lastConstantsFrameId);
-        return &slConstants[lastConstantsFrameId % BUFFER_COUNT];
-    }
+    return &slConstants[fgOutput->GetIndexWillBeDispatched()];
 }
 
-void Sl_Inputs_Dx12::SetHudlessResource()
+void Sl_Inputs_Dx12::CheckForFrame(IFGFeature_Dx12* fg, uint32_t frameId)
 {
-    auto fgOutput = State::Instance().currentFG;
-    auto hudlessResource = _hudlessResource.GetResource();
+    std::scoped_lock lock(_frameBoundaryMutex);
 
-    if (hudlessResource != nullptr && fgOutput != nullptr && fgOutput->SetResource(&_hudlessResource))
+    if (_isFrameFinished)
     {
-        // Assume hudless is the size used for interpolation
-        interpolationWidth = _hudlessResource.width;
-        interpolationHeight = _hudlessResource.height;
+        fg->StartNewFrame();
+        _isFrameFinished = false;
 
-        auto static lastFormat = DXGI_FORMAT_UNKNOWN;
-        auto format = hudlessResource->GetDesc().Format;
+        if (frameId != 0)
+            lastConstantsFrameId = frameId;
 
-        // This might be specific to FSR FG
-        if (lastFormat != DXGI_FORMAT_UNKNOWN && lastFormat != format)
-        {
-            State::Instance().FGchanged = true;
-            LOG_DEBUG("HUDLESS format changed {} -> {}, triggering FG reinit", magic_enum::enum_name(lastFormat),
-                      magic_enum::enum_name(format));
-        }
-
-        lastFormat = format;
-    }
-}
-
-void Sl_Inputs_Dx12::SetUIResource()
-{
-    auto fgOutput = State::Instance().currentFG;
-    auto uiResource = _uiResource.GetResource();
-
-    if (uiResource != nullptr && fgOutput != nullptr && fgOutput->SetResource(&_uiResource))
-    {
-        // Use UI size as fallback for interpolated size
-        if (interpolationWidth == 0 && interpolationHeight == 0)
-        {
-            interpolationWidth = _uiResource.width;
-            interpolationHeight = _uiResource.height;
-        }
+        // Reset local tracking variables for the new frame if needed
+        interpolationWidth = 0;
+        interpolationHeight = 0;
     }
 }
 
@@ -76,13 +36,9 @@ bool Sl_Inputs_Dx12::setConstants(const sl::Constants& values, uint32_t frameId)
     if (fgOutput == nullptr)
         return false;
 
-    // Streamline already log this error, keep using the previous data
-    if (lastConstantsFrameId == frameId)
-        return false;
+    CheckForFrame(fgOutput, frameId);
 
-    lastConstantsFrameId = frameId;
-
-    auto& data = slConstants[frameId % BUFFER_COUNT];
+    auto& data = slConstants[fgOutput->GetIndex()];
 
     data = sl::Constants {};
 
@@ -119,6 +75,12 @@ bool Sl_Inputs_Dx12::evaluateState(ID3D12Device* device)
 
     if (fgOutput == nullptr)
         return false;
+
+    LOG_DEBUG();
+
+    std::scoped_lock lock(_frameBoundaryMutex);
+
+    _isFrameFinished = true;
 
     auto data = getFrameData(fgOutput);
     if (!data->has_value())
@@ -193,25 +155,17 @@ bool Sl_Inputs_Dx12::evaluateState(ID3D12Device* device)
 
     fgOutput->EvaluateState(device, fgConstants);
 
-    return true;
+    auto result = dispatchFG();
+
+    LOG_DEBUG("Dispatch FG result: {}", result);
+
+    return result;
 }
 
 bool Sl_Inputs_Dx12::reportResource(const sl::ResourceTag& tag, ID3D12GraphicsCommandList* cmdBuffer, uint32_t frameId)
 {
-    std::scoped_lock lock(reportResourceMutex);
-
     auto& state = State::Instance();
-
     state.DLSSGLastFrame = state.FGLastFrame;
-
-    if (!cmdBuffer)
-        LOG_TRACE("cmdBuffer is null");
-
-    if (tag.resource->native == nullptr)
-    {
-        LOG_TRACE("tag.resource->native is null");
-        return false;
-    }
 
     auto fgOutput = reinterpret_cast<IFGFeature_Dx12*>(state.currentFG);
 
@@ -219,227 +173,80 @@ bool Sl_Inputs_Dx12::reportResource(const sl::ResourceTag& tag, ID3D12GraphicsCo
     if (fgOutput == nullptr || !Config::Instance()->FGEnabled.value_or_default())
         return false;
 
-    if (dispatched)
+    LOG_DEBUG("Reporting SL resource type: {} lifecycle: {} frameId: {}", tag.type,
+              magic_enum::enum_name(tag.lifecycle), frameId);
+
+    CheckForFrame(fgOutput, frameId);
+
+    if (tag.resource->native == nullptr)
     {
-        fgOutput->StartNewFrame();
-        dispatched = false;
-
-        indexToFrameIdMapping[fgOutput->GetIndex()] = frameId;
-
-        {
-            std::scoped_lock lock(newFrameMutex);
-
-            // if (_hudlessResource.GetResource() != nullptr)
-            //     SetHudlessResource();
-
-            // if (_uiResource.GetResource() != nullptr)
-            //     SetUIResource();
-
-            _hudlessResource = {};
-            _uiResource = {};
-        }
+        LOG_TRACE("tag.resource->native is null");
+        return false;
     }
 
-    // Can cause unforeseen consequences
-    static const bool alwaysCopy = false;
+    if (!cmdBuffer && tag.lifecycle == sl::eOnlyValidNow)
+        LOG_TRACE("cmdBuffer is null");
 
-    if (tag.type == sl::kBufferTypeHUDLessColor)
+    auto d3dRes = (ID3D12Resource*) tag.resource->native;
+    auto desc = d3dRes->GetDesc();
+
+    Dx12Resource res = {};
+    res.resource = d3dRes;
+    res.cmdList = cmdBuffer; // Critical for eOnlyValidNow
+    res.width = tag.extent ? tag.extent.width : desc.Width;
+    res.height = tag.extent ? tag.extent.height : desc.Height;
+    res.state = (D3D12_RESOURCE_STATES) tag.resource->state;
+    res.frameIndex = fgOutput->GetIndex();
+    res.validity =
+        (tag.lifecycle == sl::eOnlyValidNow) ? FG_ResourceValidity::ValidNow : FG_ResourceValidity::UntilPresent;
+
+    bool handled = true;
+
+    // Map types
+    if (tag.type == sl::kBufferTypeDepth || tag.type == sl::kBufferTypeHiResDepth ||
+        tag.type == sl::kBufferTypeLinearDepth)
     {
-        auto hudlessResource = (ID3D12Resource*) tag.resource->native;
-
-        auto validity =
-            (tag.lifecycle != sl::eOnlyValidNow) ? FG_ResourceValidity::UntilPresent : FG_ResourceValidity::ValidNow;
-
-        // We need to make sure we have a copy of hudless that WE can use
-        // TODO: bugged and copy crashes
-        // if (cmdBuffer != nullptr && validity == FG_ResourceValidity::ValidNow)
-        //    validity = FG_ResourceValidity::ValidButMakeCopy;
-
-        UINT64 width = tag.extent.width;
-        auto height = tag.extent.height;
-
-        if (!tag.extent)
-        {
-            const auto desc = hudlessResource->GetDesc();
-            width = desc.Width;
-            height = desc.Height;
-        }
-
-        if (_hudlessResource.GetResource() != nullptr && _hudlessResource.validity != FG_ResourceValidity::UntilPresent)
-        {
-            LOG_INFO("Ignoring new hudless, we already have != UntilPresent one");
-            return false;
-        }
-
-        {
-            std::scoped_lock lock(newFrameMutex);
-            _hudlessResource = {};
-            _hudlessResource.type = FG_ResourceType::HudlessColor;
-            _hudlessResource.cmdList = cmdBuffer;
-            _hudlessResource.resource = hudlessResource;
-            _hudlessResource.top = tag.extent.top;
-            _hudlessResource.left = tag.extent.left;
-            _hudlessResource.width = width;
-            _hudlessResource.height = height;
-            _hudlessResource.state = (D3D12_RESOURCE_STATES) tag.resource->state;
-            _hudlessResource.validity = validity;
-            _hudlessResource.frameIndex = fgOutput->GetIndex();
-        }
-
-        if (_hudlessResource.validity != FG_ResourceValidity::UntilPresent)
-            SetHudlessResource();
-    }
-    else if (tag.type == sl::kBufferTypeDepth || tag.type == sl::kBufferTypeHiResDepth ||
-             tag.type == sl::kBufferTypeLinearDepth)
-    {
-        LOG_TRACE("Depth lifecycle: {}, type: {}", magic_enum::enum_name(tag.lifecycle), tag.type);
-
-        auto depthResource = (ID3D12Resource*) tag.resource->native;
-
-        UINT64 width = tag.extent.width;
-        auto height = tag.extent.height;
-
-        if (!tag.extent)
-        {
-            const auto desc = depthResource->GetDesc();
-            width = desc.Width;
-            height = desc.Height;
-        }
-
-        const auto validity =
-            (tag.lifecycle != sl::eOnlyValidNow) ? FG_ResourceValidity::UntilPresent : FG_ResourceValidity::ValidNow;
-
-        Dx12Resource setResource {};
-        setResource.type = FG_ResourceType::Depth;
-        setResource.cmdList = cmdBuffer;
-        setResource.resource = depthResource;
-        setResource.top = tag.extent.top;
-        setResource.left = tag.extent.left;
-        setResource.width = width;
-        setResource.height = height;
-        setResource.state = (D3D12_RESOURCE_STATES) tag.resource->state;
-        setResource.validity = validity;
-
-        fgOutput->SetResource(&setResource);
+        res.type = FG_ResourceType::Depth;
+        fgOutput->SetResource(&res);
     }
     else if (tag.type == sl::kBufferTypeMotionVectors)
     {
-        LOG_TRACE("MVs lifecycle: {}", magic_enum::enum_name(tag.lifecycle));
+        res.type = FG_ResourceType::Velocity;
+        mvsWidth = res.width; // Track locally for dispatch logic
+        mvsHeight = res.height;
+        fgOutput->SetResource(&res);
+    }
+    else if (tag.type == sl::kBufferTypeHUDLessColor)
+    {
+        res.type = FG_ResourceType::HudlessColor;
 
-        auto mvResource = (ID3D12Resource*) tag.resource->native;
+        interpolationWidth = res.width; // Track for dispatch
+        interpolationHeight = res.height;
 
-        UINT64 width = tag.extent.width;
-        auto height = tag.extent.height;
-
-        if (!tag.extent)
-        {
-            const auto desc = mvResource->GetDesc();
-            width = desc.Width;
-            height = desc.Height;
-        }
-
-        mvsWidth = width;
-        mvsHeight = height;
-
-        const auto validity =
-            (tag.lifecycle != sl::eOnlyValidNow) ? FG_ResourceValidity::UntilPresent : FG_ResourceValidity::ValidNow;
-
-        Dx12Resource setResource {};
-        setResource.type = FG_ResourceType::Velocity;
-        setResource.cmdList = cmdBuffer;
-        setResource.resource = mvResource;
-        setResource.top = tag.extent.top;
-        setResource.left = tag.extent.left;
-        setResource.width = width;
-        setResource.height = height;
-        setResource.state = (D3D12_RESOURCE_STATES) tag.resource->state;
-        setResource.validity = validity;
-
-        fgOutput->SetResource(&setResource);
+        fgOutput->SetResource(&res);
     }
     else if (tag.type == sl::kBufferTypeUIColorAndAlpha)
     {
-        LOG_TRACE("UIColorAndAlpha lifecycle: {}", magic_enum::enum_name(tag.lifecycle));
+        res.type = FG_ResourceType::UIColor;
 
-        auto uiResource = (ID3D12Resource*) tag.resource->native;
-
-        UINT64 width = tag.extent.width;
-        auto height = tag.extent.height;
-
-        if (!tag.extent)
+        // Fallback size logic
+        if (interpolationWidth == 0)
         {
-            const auto desc = uiResource->GetDesc();
-            width = desc.Width;
-            height = desc.Height;
+            interpolationWidth = res.width;
+            interpolationHeight = res.height;
         }
-
-        const auto validity =
-            (tag.lifecycle != sl::eOnlyValidNow) ? FG_ResourceValidity::UntilPresent : FG_ResourceValidity::ValidNow;
-
-        if (_uiResource.GetResource() != nullptr && _uiResource.validity != FG_ResourceValidity::UntilPresent)
-        {
-            LOG_INFO("Ignoring new UI, we already have != UntilPresent one");
-            return false;
-        }
-
-        {
-            std::scoped_lock lock(newFrameMutex);
-            _uiResource = {};
-            _uiResource.type = FG_ResourceType::UIColor;
-            _uiResource.cmdList = cmdBuffer;
-            _uiResource.resource = uiResource;
-            _uiResource.top = tag.extent.top;
-            _uiResource.left = tag.extent.left;
-            _uiResource.width = width;
-            _uiResource.height = height;
-            _uiResource.state = (D3D12_RESOURCE_STATES) tag.resource->state;
-            _uiResource.validity = validity;
-            _uiResource.frameIndex = fgOutput->GetIndex();
-        }
-
-        if (validity != FG_ResourceValidity::UntilPresent)
-            SetUIResource();
+        fgOutput->SetResource(&res);
     }
-    else if (tag.type == sl::kBufferTypeBidirectionalDistortionField)
+    else
     {
-        LOG_TRACE("DistortionField lifecycle: {}", magic_enum::enum_name(tag.lifecycle));
-
-        auto distortionFieldResource = (ID3D12Resource*) tag.resource->native;
-
-        UINT64 width = tag.extent.width;
-        auto height = tag.extent.height;
-
-        if (!tag.extent)
-        {
-            const auto desc = distortionFieldResource->GetDesc();
-            width = desc.Width;
-            height = desc.Height;
-        }
-
-        const auto validity =
-            (tag.lifecycle != sl::eOnlyValidNow) ? FG_ResourceValidity::UntilPresent : FG_ResourceValidity::ValidNow;
-
-        Dx12Resource setResource {};
-        setResource.type = FG_ResourceType::Distortion;
-        setResource.cmdList = cmdBuffer;
-        setResource.resource = distortionFieldResource;
-        setResource.top = tag.extent.top;
-        setResource.left = tag.extent.left;
-        setResource.width = width;
-        setResource.height = height;
-        setResource.state = (D3D12_RESOURCE_STATES) tag.resource->state;
-        setResource.validity = validity;
-
-        fgOutput->SetResource(&setResource);
+        handled = false;
     }
 
-    return true;
+    return handled;
 }
 
 bool Sl_Inputs_Dx12::dispatchFG()
 {
-    dispatched = true;
-
     auto fgOutput = reinterpret_cast<IFGFeature_Dx12*>(State::Instance().currentFG);
     if (fgOutput == nullptr)
         return false;
@@ -455,21 +262,6 @@ bool Sl_Inputs_Dx12::dispatchFG()
 
     if (!fgOutput->IsActive())
         return false;
-
-    {
-        // Set latest Hudless and UI resources before dispatch
-
-        std::scoped_lock lock(newFrameMutex);
-
-        if (_hudlessResource.GetResource() != nullptr)
-            SetHudlessResource();
-
-        if (_uiResource.GetResource() != nullptr)
-            SetUIResource();
-
-        _hudlessResource = {};
-        _uiResource = {};
-    }
 
     // Nukem's function, licensed under GPLv3
     auto loadCameraMatrix = [&]()
@@ -575,8 +367,4 @@ bool Sl_Inputs_Dx12::dispatchFG()
     return true;
 }
 
-void Sl_Inputs_Dx12::markPresent(uint64_t frameId)
-{
-    LOG_TRACE("Present Start: {}", frameId);
-    lastPresentFrameId = frameId;
-}
+void Sl_Inputs_Dx12::markPresent(uint64_t frameId) { LOG_TRACE("Present Start: {}", frameId); }

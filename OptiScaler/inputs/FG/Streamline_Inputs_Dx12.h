@@ -12,15 +12,11 @@ class Sl_Inputs_Dx12
     std::optional<sl::Constants> slConstants[BUFFER_COUNT] {};
     sl::EngineType engineType = sl::EngineType::eCount;
 
-    bool dispatched = false;
-    std::mutex reportResourceMutex {};
-    std::mutex newFrameMutex {};
+    std::mutex _frameBoundaryMutex;
+    bool _isFrameFinished = true;
 
     uint32_t lastConstantsFrameId = UINT32_MAX;
-    uint64_t lastPresentFrameId = 0;
     uint32_t indexToFrameIdMapping[BUFFER_COUNT] {};
-    Dx12Resource _hudlessResource {};
-    Dx12Resource _uiResource {};
 
     uint64_t mvsWidth = 0;
     uint32_t mvsHeight = 0;
@@ -32,8 +28,7 @@ class Sl_Inputs_Dx12
     uint32_t interpolationHeight = 0;
 
     std::optional<sl::Constants>* getFrameData(IFGFeature_Dx12* fgOutput);
-    void SetHudlessResource();
-    void SetUIResource();
+    void CheckForFrame(IFGFeature_Dx12* fg, uint32_t frameId);
 
   public:
     bool setConstants(const sl::Constants& constants, uint32_t frameId);

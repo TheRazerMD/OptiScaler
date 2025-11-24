@@ -42,7 +42,10 @@ enum class FG_ResourceValidity : uint32_t
     ValidNow = 0,
     UntilPresent,
     ValidButMakeCopy,
-    JustTrackCmdlist
+    JustTrackCmdlist,
+    UntilPresentFromDispatch,
+
+    ValidityCOUNT
 };
 
 class IFGFeature
@@ -70,7 +73,6 @@ class IFGFeature
 
     UINT64 _frameCount = 1;
     UINT64 _lastDispatchedFrame = 0;
-    UINT64 _willDispatchFrame = 0;
     bool _waitingNewFrameData = false;
 
     bool _isActive = false;
@@ -88,7 +90,7 @@ class IFGFeature
     IID streamlineRiid {};
 
     bool CheckForRealObject(std::string functionName, IUnknown* pObject, IUnknown** ppRealObject);
-    int GetDispatchIndex();
+    int GetDispatchIndex(UINT64& willDispatchFrame);
     virtual void NewFrame() = 0;
 
   public:
@@ -105,6 +107,7 @@ class IFGFeature
     virtual bool Shutdown() = 0;
 
     int GetIndex();
+    int GetIndexWillBeDispatched();
     UINT64 StartNewFrame();
 
     bool IsResourceReady(FG_ResourceType type, int index = -1);

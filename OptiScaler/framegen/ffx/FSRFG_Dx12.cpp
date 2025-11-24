@@ -219,7 +219,8 @@ bool FSRFG_Dx12::Dispatch()
         return false;
     }
 
-    auto fIndex = GetDispatchIndex();
+    UINT64 willDispatchFrame = 0;
+    auto fIndex = GetDispatchIndex(willDispatchFrame);
     if (fIndex < 0)
         return false;
 
@@ -232,7 +233,7 @@ bool FSRFG_Dx12::Dispatch()
     if (state.FSRFGFTPchanged)
         ConfigureFramePaceTuning();
 
-    LOG_DEBUG("_frameCount: {}, _willDispatchFrame: {}, fIndex: {}", _frameCount, _willDispatchFrame, fIndex);
+    LOG_DEBUG("_frameCount: {}, willDispatchFrame: {}, fIndex: {}", _frameCount, willDispatchFrame, fIndex);
 
     if (!_resourceReady[fIndex].contains(FG_ResourceType::Depth) ||
         !_resourceReady[fIndex].at(FG_ResourceType::Depth) ||
@@ -366,11 +367,11 @@ bool FSRFG_Dx12::Dispatch()
     };
 
     fgConfig.onlyPresentGenerated = state.FGonlyGenerated;
-    fgConfig.frameID = _willDispatchFrame;
+    fgConfig.frameID = willDispatchFrame;
     fgConfig.swapChain = _swapChain;
 
     ffxReturnCode_t retCode = FfxApiProxy::D3D12_Configure(&_fgContext, &fgConfig.header);
-    LOG_DEBUG("D3D12_Configure result: {0:X}, frame: {1}, fIndex: {2}", retCode, _willDispatchFrame, fIndex);
+    LOG_DEBUG("D3D12_Configure result: {0:X}, frame: {1}, fIndex: {2}", retCode, willDispatchFrame, fIndex);
 
     bool dispatchResult = false;
     if (retCode == FFX_API_RETURN_OK && _isActive)
@@ -409,7 +410,7 @@ bool FSRFG_Dx12::Dispatch()
         }
 
         dfgPrepare.commandList = _fgCommandList[fIndex];
-        dfgPrepare.frameID = _willDispatchFrame;
+        dfgPrepare.frameID = willDispatchFrame;
         dfgPrepare.flags = fgConfig.flags;
 
         auto velocity = GetResource(FG_ResourceType::Velocity, fIndex);
@@ -457,8 +458,8 @@ bool FSRFG_Dx12::Dispatch()
         dfgPrepare.viewSpaceToMetersFactor = _meterFactor[fIndex];
 
         retCode = FfxApiProxy::D3D12_Dispatch(&_fgContext, &dfgPrepare.header);
-        LOG_DEBUG("D3D12_Dispatch result: {0}, frame: {1}, fIndex: {2}, commandList: {3:X}", retCode,
-                  _willDispatchFrame, fIndex, (size_t) dfgPrepare.commandList);
+        LOG_DEBUG("D3D12_Dispatch result: {0}, frame: {1}, fIndex: {2}, commandList: {3:X}", retCode, willDispatchFrame,
+                  fIndex, (size_t) dfgPrepare.commandList);
 
         if (retCode == FFX_API_RETURN_OK)
         {
@@ -550,7 +551,6 @@ void FSRFG_Dx12::DestroyFGContext()
 {
     _frameCount = 1;
     _lastDispatchedFrame = 0;
-    _willDispatchFrame = 0;
 
     LOG_DEBUG("");
 
@@ -1009,12 +1009,6 @@ bool FSRFG_Dx12::SetResource(Dx12Resource* inputResource)
 
     auto& type = inputResource->type;
 
-    if (_resourceFrame[type] == _frameCount || _frameResources[fIndex][type].resource != nullptr)
-    {
-        LOG_WARN("Repeating resource tagging, ignoring.");
-        return false;
-    }
-
     if (type == FG_ResourceType::HudlessColor && Config::Instance()->FGDisableHudless.value_or_default())
         return false;
 
@@ -1076,7 +1070,9 @@ bool FSRFG_Dx12::SetResource(Dx12Resource* inputResource)
         _noUi[fIndex] = false;
     }
     else if (type == FG_ResourceType::Distortion)
+    {
         _noDistortionField[fIndex] = false;
+    }
     else if (type == FG_ResourceType::HudlessColor)
     {
         auto format = State::Instance().currentSwapchainDesc.BufferDesc.Format;
@@ -1230,9 +1226,11 @@ void FSRFG_Dx12::CreateObjects(ID3D12Device* InDevice)
 
 bool FSRFG_Dx12::Present()
 {
-    if (State::Instance().FGHudlessCompare)
+    auto fIndex = GetIndexWillBeDispatched();
+
+    if (IsActive() && !IsPaused() && State::Instance().FGHudlessCompare)
     {
-        auto hudless = GetResource(FG_ResourceType::HudlessColor);
+        auto hudless = GetResource(FG_ResourceType::HudlessColor, fIndex);
         if (hudless != nullptr)
         {
             if (_hudlessCompare.get() == nullptr)
@@ -1250,9 +1248,10 @@ bool FSRFG_Dx12::Present()
         }
     }
 
+    bool result = false;
+
     if (IsActive() && !IsPaused())
     {
-        auto fIndex = GetIndex();
         if (_uiCommandListResetted[fIndex])
         {
             LOG_DEBUG("Executing _uiCommandList[fIndex][{}]: {:X}", fIndex, (size_t) _uiCommandList[fIndex]);
