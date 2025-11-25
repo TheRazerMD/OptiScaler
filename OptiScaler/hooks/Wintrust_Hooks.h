@@ -8,7 +8,7 @@
 #include <WinTrust.h>
 #include <Softpub.h>
 
-typedef LONG (*PFN_WinVerifyTrust)(HWND hwnd, GUID* pgActionID, LPVOID pWVTData);
+typedef decltype(&WinVerifyTrust) PFN_WinVerifyTrust;
 static PFN_WinVerifyTrust o_WinVerifyTrust = nullptr;
 
 static LONG hkWinVerifyTrust(HWND hwnd, GUID* pgActionID, LPVOID pWVTData)

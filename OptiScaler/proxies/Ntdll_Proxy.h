@@ -107,8 +107,8 @@ class NtdllProxy
     }
 
   private:
-    typedef VOID(NTAPI* PFN_RtlInitUnicodeString)(PUNICODE_STRING DestinationString, PCWSTR SourceString);
-    typedef ULONG(NTAPI* PFN_RtlNtStatusToDosError)(NTSTATUS Status);
+    typedef decltype(&RtlInitUnicodeString) PFN_RtlInitUnicodeString;
+    typedef decltype(&RtlNtStatusToDosError) PFN_RtlNtStatusToDosError;
 
     inline static HMODULE _dll = nullptr;
 

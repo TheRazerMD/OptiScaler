@@ -24,75 +24,51 @@
 
 #pragma comment(lib, "Version.lib")
 
-typedef xess_result_t (*PFN_xessD3D12CreateContext)(ID3D12Device* pDevice, xess_context_handle_t* phContext);
-typedef xess_result_t (*PFN_xessD3D12BuildPipelines)(xess_context_handle_t hContext,
-                                                     ID3D12PipelineLibrary* pPipelineLibrary, bool blocking,
-                                                     uint32_t initFlags);
-typedef xess_result_t (*PRN_xessD3D12Init)(xess_context_handle_t hContext, const xess_d3d12_init_params_t* pInitParams);
-typedef xess_result_t (*PFN_xessD3D12Execute)(xess_context_handle_t hContext, ID3D12GraphicsCommandList* pCommandList,
-                                              const xess_d3d12_execute_params_t* pExecParams);
-typedef xess_result_t (*PFN_xessSelectNetworkModel)(xess_context_handle_t hContext, xess_network_model_t network);
-typedef xess_result_t (*PFN_xessStartDump)(xess_context_handle_t hContext,
-                                           const xess_dump_parameters_t* dump_parameters);
-typedef xess_result_t (*PFN_xessGetVersion)(xess_version_t* pVersion);
-typedef xess_result_t (*PFN_xessIsOptimalDriver)(xess_context_handle_t hContext);
-typedef xess_result_t (*PFN_xessSetLoggingCallback)(xess_context_handle_t hContext, xess_logging_level_t loggingLevel,
-                                                    xess_app_log_callback_t loggingCallback);
-typedef xess_result_t (*PFN_xessGetProperties)(xess_context_handle_t hContext, const xess_2d_t* pOutputResolution,
-                                               xess_properties_t* pBindingProperties);
-typedef xess_result_t (*PFN_xessDestroyContext)(xess_context_handle_t hContext);
-typedef xess_result_t (*PFN_xessSetVelocityScale)(xess_context_handle_t hContext, float x, float y);
+typedef decltype(&xessD3D12CreateContext) PFN_xessD3D12CreateContext;
+typedef decltype(&xessD3D12BuildPipelines) PFN_xessD3D12BuildPipelines;
+typedef decltype(&xessD3D12Init) PFN_xessD3D12Init;
+typedef decltype(&xessD3D12Execute) PFN_xessD3D12Execute;
+typedef decltype(&xessSelectNetworkModel) PFN_xessSelectNetworkModel;
+typedef decltype(&xessStartDump) PFN_xessStartDump;
+typedef decltype(&xessGetVersion) PFN_xessGetVersion;
+typedef decltype(&xessIsOptimalDriver) PFN_xessIsOptimalDriver;
+typedef decltype(&xessSetLoggingCallback) PFN_xessSetLoggingCallback;
+typedef decltype(&xessGetProperties) PFN_xessGetProperties;
+typedef decltype(&xessDestroyContext) PFN_xessDestroyContext;
+typedef decltype(&xessSetVelocityScale) PFN_xessSetVelocityScale;
 
-typedef xess_result_t (*PFN_xessD3D12GetInitParams)(xess_context_handle_t hContext,
-                                                    xess_d3d12_init_params_t* pInitParams);
-typedef xess_result_t (*PFN_xessForceLegacyScaleFactors)(xess_context_handle_t hContext, bool force);
-typedef xess_result_t (*PFN_xessGetExposureMultiplier)(xess_context_handle_t hContext, float* pScale);
-typedef xess_result_t (*PFN_xessGetInputResolution)(xess_context_handle_t hContext, const xess_2d_t* pOutputResolution,
-                                                    xess_quality_settings_t qualitySettings,
-                                                    xess_2d_t* pInputResolution);
-typedef xess_result_t (*PFN_xessGetIntelXeFXVersion)(xess_context_handle_t hContext, xess_version_t* pVersion);
-typedef xess_result_t (*PFN_xessGetJitterScale)(xess_context_handle_t hContext, float* pX, float* pY);
-typedef xess_result_t (*PFN_xessGetOptimalInputResolution)(
-    xess_context_handle_t hContext, const xess_2d_t* pOutputResolution, xess_quality_settings_t qualitySettings,
-    xess_2d_t* pInputResolutionOptimal, xess_2d_t* pInputResolutionMin, xess_2d_t* pInputResolutionMax);
-typedef xess_result_t (*PFN_xessSetExposureMultiplier)(xess_context_handle_t hContext, float scale);
-typedef xess_result_t (*PFN_xessSetJitterScale)(xess_context_handle_t hContext, float x, float y);
+typedef decltype(&xessD3D12GetInitParams) PFN_xessD3D12GetInitParams;
+typedef decltype(&xessForceLegacyScaleFactors) PFN_xessForceLegacyScaleFactors;
+typedef decltype(&xessGetExposureMultiplier) PFN_xessGetExposureMultiplier;
+typedef decltype(&xessGetInputResolution) PFN_xessGetInputResolution;
+typedef decltype(&xessGetIntelXeFXVersion) PFN_xessGetIntelXeFXVersion;
+typedef decltype(&xessGetJitterScale) PFN_xessGetJitterScale;
+typedef decltype(&xessGetOptimalInputResolution) PFN_xessGetOptimalInputResolution;
+typedef decltype(&xessSetExposureMultiplier) PFN_xessSetExposureMultiplier;
+typedef decltype(&xessSetJitterScale) PFN_xessSetJitterScale;
 
-typedef xess_result_t (*PFN_xessD3D12GetResourcesToDump)(xess_context_handle_t hContext,
-                                                         xess_resources_to_dump_t** pResourcesToDump);
-typedef xess_result_t (*PFN_xessD3D12GetProfilingData)(xess_context_handle_t hContext,
-                                                       xess_profiling_data_t** pProfilingData);
+typedef decltype(&xessD3D12GetResourcesToDump) PFN_xessD3D12GetResourcesToDump;
+typedef decltype(&xessD3D12GetProfilingData) PFN_xessD3D12GetProfilingData;
 
-typedef xess_result_t (*PFN_xessSetContextParameterF)();
-typedef xess_result_t (*PFN_xessGetPipelineBuildStatus)(xess_context_handle_t hContext);
+typedef xess_result_t (*PFN_xessSetContextParameterF)(); // XeSS' headers don't export this
+typedef decltype(&xessGetPipelineBuildStatus) PFN_xessGetPipelineBuildStatus;
 
 // Vulkan?!?
-typedef xess_result_t (*PFN_xessVKGetRequiredInstanceExtensions)(uint32_t* instanceExtensionsCount,
-                                                                 const char* const** instanceExtensions,
-                                                                 uint32_t* minVkApiVersion);
-typedef xess_result_t (*PFN_xessVKGetRequiredDeviceExtensions)(VkInstance instance, VkPhysicalDevice physicalDevice,
-                                                               uint32_t* deviceExtensionsCount,
-                                                               const char* const** deviceExtensions);
-typedef xess_result_t (*PFN_xessVKGetRequiredDeviceFeatures)(VkInstance instance, VkPhysicalDevice physicalDevice,
-                                                             void** features);
-typedef xess_result_t (*PFN_xessVKCreateContext)(VkInstance instance, VkPhysicalDevice physicalDevice, VkDevice device,
-                                                 xess_context_handle_t* phContext);
-typedef xess_result_t (*PFN_xessVKBuildPipelines)(xess_context_handle_t hContext, VkPipelineCache pipelineCache,
-                                                  bool blocking, uint32_t initFlags);
-typedef xess_result_t (*PFN_xessVKInit)(xess_context_handle_t hContext, const xess_vk_init_params_t* pInitParams);
-typedef xess_result_t (*PFN_xessVKGetInitParams)(xess_context_handle_t hContext, xess_vk_init_params_t* pInitParams);
-typedef xess_result_t (*PFN_xessVKExecute)(xess_context_handle_t hContext, VkCommandBuffer commandBuffer,
-                                           const xess_vk_execute_params_t* pExecParams);
-typedef xess_result_t (*PFN_xessVKGetResourcesToDump)(xess_context_handle_t hContext,
-                                                      xess_vk_resources_to_dump_t** pResourcesToDump);
+typedef decltype(&xessVKGetRequiredInstanceExtensions) PFN_xessVKGetRequiredInstanceExtensions;
+typedef decltype(&xessVKGetRequiredDeviceExtensions) PFN_xessVKGetRequiredDeviceExtensions;
+typedef decltype(&xessVKGetRequiredDeviceFeatures) PFN_xessVKGetRequiredDeviceFeatures;
+typedef decltype(&xessVKCreateContext) PFN_xessVKCreateContext;
+typedef decltype(&xessVKBuildPipelines) PFN_xessVKBuildPipelines;
+typedef decltype(&xessVKInit) PFN_xessVKInit;
+typedef decltype(&xessVKGetInitParams) PFN_xessVKGetInitParams;
+typedef decltype(&xessVKExecute) PFN_xessVKExecute;
+typedef decltype(&xessVKGetResourcesToDump) PFN_xessVKGetResourcesToDump;
 
 // Dx11
-typedef xess_result_t (*PFN_xessD3D11CreateContext)(ID3D11Device* device, xess_context_handle_t* phContext);
-typedef xess_result_t (*PFN_xessD3D11Init)(xess_context_handle_t hContext, const xess_d3d11_init_params_t* pInitParams);
-typedef xess_result_t (*PFN_xessD3D11GetInitParams)(xess_context_handle_t hContext,
-                                                    xess_d3d11_init_params_t* pInitParams);
-typedef xess_result_t (*PFN_xessD3D11Execute)(xess_context_handle_t hContext,
-                                              const xess_d3d11_execute_params_t* pExecParams);
+typedef decltype(&xessD3D11CreateContext) PFN_xessD3D11CreateContext;
+typedef decltype(&xessD3D11Init) PFN_xessD3D11Init;
+typedef decltype(&xessD3D11GetInitParams) PFN_xessD3D11GetInitParams;
+typedef decltype(&xessD3D11Execute) PFN_xessD3D11Execute;
 
 class XeSSProxy
 {
@@ -105,7 +81,7 @@ class XeSSProxy
 
     inline static PFN_xessD3D12CreateContext _xessD3D12CreateContext = nullptr;
     inline static PFN_xessD3D12BuildPipelines _xessD3D12BuildPipelines = nullptr;
-    inline static PRN_xessD3D12Init _xessD3D12Init = nullptr;
+    inline static PFN_xessD3D12Init _xessD3D12Init = nullptr;
     inline static PFN_xessD3D12Execute _xessD3D12Execute = nullptr;
     inline static PFN_xessSelectNetworkModel _xessSelectNetworkModel = nullptr;
     inline static PFN_xessStartDump _xessStartDump = nullptr;
@@ -361,7 +337,7 @@ class XeSSProxy
                 (PFN_xessD3D12CreateContext) KernelBaseProxy::GetProcAddress_()(_dll, "xessD3D12CreateContext");
             _xessD3D12BuildPipelines =
                 (PFN_xessD3D12BuildPipelines) KernelBaseProxy::GetProcAddress_()(_dll, "xessD3D12BuildPipelines");
-            _xessD3D12Init = (PRN_xessD3D12Init) KernelBaseProxy::GetProcAddress_()(_dll, "xessD3D12Init");
+            _xessD3D12Init = (PFN_xessD3D12Init) KernelBaseProxy::GetProcAddress_()(_dll, "xessD3D12Init");
             _xessD3D12Execute = (PFN_xessD3D12Execute) KernelBaseProxy::GetProcAddress_()(_dll, "xessD3D12Execute");
             _xessSelectNetworkModel =
                 (PFN_xessSelectNetworkModel) KernelBaseProxy::GetProcAddress_()(_dll, "xessSelectNetworkModel");
@@ -432,7 +408,7 @@ class XeSSProxy
                 (PFN_xessD3D12CreateContext) DetourFindFunction("libxess.dll", "xessD3D12CreateContext");
             _xessD3D12BuildPipelines =
                 (PFN_xessD3D12BuildPipelines) DetourFindFunction("libxess.dll", "xessD3D12BuildPipelines");
-            _xessD3D12Init = (PRN_xessD3D12Init) DetourFindFunction("libxess.dll", "xessD3D12Init");
+            _xessD3D12Init = (PFN_xessD3D12Init) DetourFindFunction("libxess.dll", "xessD3D12Init");
             _xessGetVersion = (PFN_xessGetVersion) DetourFindFunction("libxess.dll", "xessGetVersion");
             _xessD3D12Execute = (PFN_xessD3D12Execute) DetourFindFunction("libxess.dll", "xessD3D12Execute");
             _xessSelectNetworkModel =
@@ -888,7 +864,7 @@ class XeSSProxy
 
     static PFN_xessD3D12CreateContext D3D12CreateContext() { return _xessD3D12CreateContext; }
     static PFN_xessD3D12BuildPipelines D3D12BuildPipelines() { return _xessD3D12BuildPipelines; }
-    static PRN_xessD3D12Init D3D12Init() { return _xessD3D12Init; }
+    static PFN_xessD3D12Init D3D12Init() { return _xessD3D12Init; }
     static PFN_xessD3D12Execute D3D12Execute() { return _xessD3D12Execute; }
     static PFN_xessSelectNetworkModel SelectNetworkModel() { return _xessSelectNetworkModel; }
     static PFN_xessStartDump StartDump() { return _xessStartDump; }

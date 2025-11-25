@@ -15,52 +15,29 @@
 #pragma comment(lib, "Version.lib")
 
 // Common
-typedef xefg_swapchain_result_t (*PFN_xefgSwapChainGetVersion)(xefg_swapchain_version_t* pVersion);
-typedef xefg_swapchain_result_t (*PFN_xefgSwapChainGetProperties)(xefg_swapchain_handle_t hSwapChain,
-                                                                  xefg_swapchain_properties_t* pProperties);
-typedef xefg_swapchain_result_t (*PFN_xefgSwapChainTagFrameConstants)(
-    xefg_swapchain_handle_t hSwapChain, uint32_t presentId, const xefg_swapchain_frame_constant_data_t* pConstants);
-typedef xefg_swapchain_result_t (*PFN_xefgSwapChainSetEnabled)(xefg_swapchain_handle_t hSwapChain, uint32_t enable);
-typedef xefg_swapchain_result_t (*PFN_xefgSwapChainSetPresentId)(xefg_swapchain_handle_t hSwapChain,
-                                                                 uint32_t presentId);
-typedef xefg_swapchain_result_t (*PFN_xefgSwapChainGetLastPresentStatus)(
-    xefg_swapchain_handle_t hSwapChain, xefg_swapchain_present_status_t* pPresentStatus);
-typedef xefg_swapchain_result_t (*PFN_xefgSwapChainSetLoggingCallback)(
-    xefg_swapchain_handle_t hSwapChain, xefg_swapchain_logging_level_t loggingLevel,
-    xefg_swapchain_app_log_callback_t loggingCallback, void* userData);
-typedef xefg_swapchain_result_t (*PFN_xefgSwapChainDestroy)(xefg_swapchain_handle_t hSwapChain);
-typedef xefg_swapchain_result_t (*PFN_xefgSwapChainSetLatencyReduction)(xefg_swapchain_handle_t hSwapChain,
-                                                                        void* hXeLLContext);
-typedef xefg_swapchain_result_t (*PFN_xefgSwapChainSetSceneChangeThreshold)(xefg_swapchain_handle_t hSwapChain,
-                                                                            float threshold);
-typedef xefg_swapchain_result_t (*PFN_xefgSwapChainGetPipelineBuildStatus)(xefg_swapchain_handle_t hSwapChain);
+typedef decltype(&xefgSwapChainGetVersion) PFN_xefgSwapChainGetVersion;
+typedef decltype(&xefgSwapChainGetProperties) PFN_xefgSwapChainGetProperties;
+typedef decltype(&xefgSwapChainTagFrameConstants) PFN_xefgSwapChainTagFrameConstants;
+typedef decltype(&xefgSwapChainSetEnabled) PFN_xefgSwapChainSetEnabled;
+typedef decltype(&xefgSwapChainSetPresentId) PFN_xefgSwapChainSetPresentId;
+typedef decltype(&xefgSwapChainGetLastPresentStatus) PFN_xefgSwapChainGetLastPresentStatus;
+typedef decltype(&xefgSwapChainSetLoggingCallback) PFN_xefgSwapChainSetLoggingCallback;
+typedef decltype(&xefgSwapChainDestroy) PFN_xefgSwapChainDestroy;
+typedef decltype(&xefgSwapChainSetLatencyReduction) PFN_xefgSwapChainSetLatencyReduction;
+typedef decltype(&xefgSwapChainSetSceneChangeThreshold) PFN_xefgSwapChainSetSceneChangeThreshold;
+typedef decltype(&xefgSwapChainGetPipelineBuildStatus) PFN_xefgSwapChainGetPipelineBuildStatus;
 
 // Dx12
-typedef xefg_swapchain_result_t (*PFN_xefgSwapChainD3D12CreateContext)(ID3D12Device* pDevice,
-                                                                       xefg_swapchain_handle_t* phSwapChain);
-typedef xefg_swapchain_result_t (*PFN_xefgSwapChainD3D12BuildPipelines)(xefg_swapchain_handle_t hSwapChain,
-                                                                        ID3D12PipelineLibrary* pPipelineLibrary,
-                                                                        bool blocking, uint32_t initFlags);
-typedef xefg_swapchain_result_t (*PFN_xefgSwapChainD3D12InitFromSwapChain)(
-    xefg_swapchain_handle_t hSwapChain, ID3D12CommandQueue* pCmdQueue,
-    const xefg_swapchain_d3d12_init_params_t* pInitParams);
-typedef xefg_swapchain_result_t (*PFN_xefgSwapChainD3D12InitFromSwapChainDesc)(
-    xefg_swapchain_handle_t hSwapChain, HWND hWnd, const DXGI_SWAP_CHAIN_DESC1* pSwapChainDesc,
-    const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pFullscreenDesc, ID3D12CommandQueue* pCmdQueue, IDXGIFactory2* pDxgiFactory,
-    const xefg_swapchain_d3d12_init_params_t* pInitParams);
-typedef xefg_swapchain_result_t (*PFN_xefgSwapChainD3D12GetSwapChainPtr)(xefg_swapchain_handle_t hSwapChain,
-                                                                         REFIID riid, void** ppSwapChain);
-typedef xefg_swapchain_result_t (*PFN_xefgSwapChainD3D12TagFrameResource)(
-    xefg_swapchain_handle_t hSwapChain, ID3D12CommandList* pCmdList, uint32_t presentId,
-    const xefg_swapchain_d3d12_resource_data_t* pResData);
-typedef xefg_swapchain_result_t (*PFN_xefgSwapChainD3D12SetDescriptorHeap)(xefg_swapchain_handle_t hSwapChain,
-                                                                           ID3D12DescriptorHeap* pDescriptorHeap,
-                                                                           uint32_t descriptorHeapOffsetInBytes);
+typedef decltype(&xefgSwapChainD3D12CreateContext) PFN_xefgSwapChainD3D12CreateContext;
+typedef decltype(&xefgSwapChainD3D12BuildPipelines) PFN_xefgSwapChainD3D12BuildPipelines;
+typedef decltype(&xefgSwapChainD3D12InitFromSwapChain) PFN_xefgSwapChainD3D12InitFromSwapChain;
+typedef decltype(&xefgSwapChainD3D12InitFromSwapChainDesc) PFN_xefgSwapChainD3D12InitFromSwapChainDesc;
+typedef decltype(&xefgSwapChainD3D12GetSwapChainPtr) PFN_xefgSwapChainD3D12GetSwapChainPtr;
+typedef decltype(&xefgSwapChainD3D12TagFrameResource) PFN_xefgSwapChainD3D12TagFrameResource;
+typedef decltype(&xefgSwapChainD3D12SetDescriptorHeap) PFN_xefgSwapChainD3D12SetDescriptorHeap;
 
 // Debug
-typedef xefg_swapchain_result_t (*PFN_xefgSwapChainEnableDebugFeature)(xefg_swapchain_handle_t hSwapChain,
-                                                                       xefg_swapchain_debug_feature_t featureId,
-                                                                       uint32_t enable, void* pArgument);
+typedef decltype(&xefgSwapChainEnableDebugFeature) PFN_xefgSwapChainEnableDebugFeature;
 
 class XeFGProxy
 {
