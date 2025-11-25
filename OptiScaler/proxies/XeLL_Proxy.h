@@ -16,18 +16,16 @@
 #pragma comment(lib, "Version.lib")
 
 // Common
-typedef xell_result_t (*PFN_xellDestroyContext)(xell_context_handle_t context);
-typedef xell_result_t (*PFN_xellSetSleepMode)(xell_context_handle_t context, const xell_sleep_params_t* param);
-typedef xell_result_t (*PFN_xellGetSleepMode)(xell_context_handle_t context, xell_sleep_params_t* param);
-typedef xell_result_t (*PFN_xellSleep)(xell_context_handle_t context, uint32_t frame_id);
-typedef xell_result_t (*PFN_xellAddMarkerData)(xell_context_handle_t context, uint32_t frame_id,
-                                               xell_latency_marker_type_t marker);
-typedef xell_result_t (*PFN_xellGetVersion)(xell_version_t* pVersion);
-typedef xell_result_t (*PFN_xellSetLoggingCallback)(xell_context_handle_t hContext, xell_logging_level_t loggingLevel,
-                                                    xell_app_log_callback_t loggingCallback);
+typedef decltype(&xellDestroyContext) PFN_xellDestroyContext;
+typedef decltype(&xellSetSleepMode) PFN_xellSetSleepMode;
+typedef decltype(&xellGetSleepMode) PFN_xellGetSleepMode;
+typedef decltype(&xellSleep) PFN_xellSleep;
+typedef decltype(&xellAddMarkerData) PFN_xellAddMarkerData;
+typedef decltype(&xellGetVersion) PFN_xellGetVersion;
+typedef decltype(&xellSetLoggingCallback) PFN_xellSetLoggingCallback;
 
 // Dx12
-typedef xell_result_t (*PFN_xellD3D12CreateContext)(ID3D12Device* device, xell_context_handle_t* out_context);
+typedef decltype(&xellD3D12CreateContext) PFN_xellD3D12CreateContext;
 
 class XeLLProxy
 {

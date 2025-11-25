@@ -8,10 +8,9 @@
 
 const HKEY signatureMark = (HKEY) 0xFFFFFFFF13372137;
 
-typedef LSTATUS (*PFN_RegOpenKeyExW)(HKEY hKey, LPCWSTR lpSubKey, DWORD ulOptions, REGSAM samDesired, PHKEY phkResult);
-typedef LSTATUS (*PFN_RegEnumValueW)(HKEY hKey, DWORD dwIndex, LPWSTR lpValueName, LPDWORD lpcchValueName,
-                                     LPDWORD lpReserved, LPDWORD lpType, LPBYTE lpData, LPDWORD lpcbData);
-typedef LSTATUS (*PFN_RegCloseKey)(HKEY hKey);
+typedef decltype(&RegOpenKeyExW) PFN_RegOpenKeyExW;
+typedef decltype(&RegEnumValueW) PFN_RegEnumValueW;
+typedef decltype(&RegCloseKey) PFN_RegCloseKey;
 
 static PFN_RegOpenKeyExW o_RegOpenKeyExW = nullptr;
 static PFN_RegEnumValueW o_RegEnumValueW = nullptr;

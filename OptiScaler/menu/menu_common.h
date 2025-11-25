@@ -83,12 +83,12 @@ class MenuCommon
 #pragma region "Hooks & WndProc"
 
     // for hooking
-    typedef BOOL (*PFN_SetCursorPos)(int x, int y);
-    typedef BOOL (*PFN_ClipCursor)(const RECT* lpRect);
-    typedef UINT (*PFN_SendInput)(UINT cInputs, LPINPUT pInputs, int cbSize);
-    typedef void (*PFN_mouse_event)(DWORD dwFlags, DWORD dx, DWORD dy, DWORD dwData, ULONG_PTR dwExtraInfo);
-    typedef BOOL (*PFN_GetCursorPos)(LPPOINT lpPoint);
-    typedef LRESULT (*PFN_SendMessageW)(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
+    typedef decltype(&SetCursorPos) PFN_SetCursorPos;
+    typedef decltype(&ClipCursor) PFN_ClipCursor;
+    typedef decltype(&SendInput) PFN_SendInput;
+    typedef decltype(&mouse_event) PFN_mouse_event;
+    typedef decltype(&GetCursorPos) PFN_GetCursorPos;
+    typedef decltype(&SendMessageW) PFN_SendMessageW;
 
     inline static PFN_SetCursorPos pfn_SetPhysicalCursorPos = nullptr;
     inline static PFN_SetCursorPos pfn_SetCursorPos = nullptr;

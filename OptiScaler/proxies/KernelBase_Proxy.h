@@ -7,16 +7,16 @@
 class KernelBaseProxy
 {
   public:
-    typedef BOOL(WINAPI* PFN_FreeLibrary)(HMODULE lpLibrary);
-    typedef HMODULE(WINAPI* PFN_LoadLibraryA)(LPCSTR lpLibFileName);
-    typedef HMODULE(WINAPI* PFN_LoadLibraryW)(LPCWSTR lpLibFileName);
-    typedef HMODULE(WINAPI* PFN_LoadLibraryExA)(LPCSTR lpLibFileName, HANDLE hFile, DWORD dwFlags);
-    typedef HMODULE(WINAPI* PFN_LoadLibraryExW)(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags);
-    typedef FARPROC(WINAPI* PFN_GetProcAddress)(HMODULE hModule, LPCSTR lpProcName);
-    typedef HMODULE(WINAPI* PFN_GetModuleHandleA)(LPCSTR lpModuleName);
-    typedef HMODULE(WINAPI* PFN_GetModuleHandleW)(LPCWSTR lpModuleName);
-    typedef BOOL(WINAPI* PFN_GetModuleHandleExA)(DWORD dwFlags, LPCSTR lpModuleName, HMODULE* phModule);
-    typedef BOOL(WINAPI* PFN_GetModuleHandleExW)(DWORD dwFlags, LPCWSTR lpModuleName, HMODULE* phModule);
+    typedef decltype(&FreeLibrary) PFN_FreeLibrary;
+    typedef decltype(&LoadLibraryA) PFN_LoadLibraryA;
+    typedef decltype(&LoadLibraryW) PFN_LoadLibraryW;
+    typedef decltype(&LoadLibraryExA) PFN_LoadLibraryExA;
+    typedef decltype(&LoadLibraryExW) PFN_LoadLibraryExW;
+    typedef decltype(&GetProcAddress) PFN_GetProcAddress;
+    typedef decltype(&GetModuleHandleA) PFN_GetModuleHandleA;
+    typedef decltype(&GetModuleHandleW) PFN_GetModuleHandleW;
+    typedef decltype(&GetModuleHandleExA) PFN_GetModuleHandleExA;
+    typedef decltype(&GetModuleHandleExW) PFN_GetModuleHandleExW;
 
     static void Init()
     {
