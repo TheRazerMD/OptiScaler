@@ -13,6 +13,8 @@
 
 #include "ffx_api.h"
 #include <detours/detours.h>
+#include <ffx_framegeneration.h>
+#include <ffx_upscale.h>
 
 class FfxApiProxy
 {
@@ -78,11 +80,43 @@ class FfxApiProxy
         LOG_WARN("can't parse {0}", version_str);
     }
 
-    static bool IsFGType(ffxStructType_t type) { return type >= 0x00020001u && type <= 0x00030009u; }
+    enum class FFXStructType
+    {
+        General,
+        Upscaling,
+        Swapchain,
+        FG,
+        VulkanSwapchain,
+        Unknown
+    };
+
+    static FFXStructType GetType(ffxStructType_t type)
+    {
+        switch (type & FFX_API_EFFECT_MASK) // type without the specific effect
+        {
+        case FFX_API_EFFECT_ID_GENERAL:
+            return FFXStructType::General;
+
+        case FFX_API_EFFECT_ID_UPSCALE:
+            return FFXStructType::Upscaling;
+
+        case FFX_API_EFFECT_ID_FRAMEGENERATION:
+            return FFXStructType::FG;
+
+        case 0x00030000u: // don't want to include ffx_api_dx12.h because of enum name pollution
+            return FFXStructType::Swapchain;
+
+        case 0x00040000u: // don't want to include ffx_api_vk.h because of enum name pollution
+            return FFXStructType::VulkanSwapchain;
+
+        default:
+            return FFXStructType::Unknown;
+        }
+    }
 
     // Can't directly check for type when query is used
     // might apply to FFX_API_DESC_TYPE_OVERRIDE_VERSION as well
-    static bool IsFGType(ffxQueryDescHeader* header)
+    static FFXStructType GetType(ffxQueryDescHeader* header)
     {
         ffxStructType_t type = header->type;
 
@@ -92,7 +126,7 @@ class FfxApiProxy
             type = header[1].type;
         }
 
-        return IsFGType(type);
+        return GetType(type);
     }
 
     static bool IsLoader(const std::wstring& filePath)
@@ -579,7 +613,8 @@ class FfxApiProxy
     static ffxReturnCode_t D3D12_CreateContext(ffxContext* context, ffxCreateContextDescHeader* desc,
                                                const ffxAllocationCallbacks* memCb)
     {
-        auto isFg = IsFGType(desc->type);
+        auto type = GetType(desc->type);
+        auto isFg = type == FFXStructType::FG || type == FFXStructType::Swapchain;
 
         if (isFg && _dllDx12_FG != nullptr)
             return _D3D12_CreateContext_FG(context, desc, memCb);
@@ -637,7 +672,8 @@ class FfxApiProxy
 
     static ffxReturnCode_t D3D12_Configure(ffxContext* context, const ffxConfigureDescHeader* desc)
     {
-        auto isFg = IsFGType(desc->type);
+        auto type = GetType(desc->type);
+        auto isFg = type == FFXStructType::FG || type == FFXStructType::Swapchain;
 
         if (isFg && _dllDx12_FG != nullptr)
             return _D3D12_Configure_FG(context, desc);
@@ -666,7 +702,8 @@ class FfxApiProxy
 
     static ffxReturnCode_t D3D12_Query(ffxContext* context, ffxQueryDescHeader* desc)
     {
-        auto isFg = IsFGType(desc);
+        auto type = GetType(desc);
+        auto isFg = type == FFXStructType::FG || type == FFXStructType::Swapchain;
 
         if (isFg && _dllDx12_FG != nullptr)
             return _D3D12_Query_FG(context, desc);
@@ -695,7 +732,8 @@ class FfxApiProxy
 
     static ffxReturnCode_t D3D12_Dispatch(ffxContext* context, const ffxDispatchDescHeader* desc)
     {
-        auto isFg = IsFGType(desc->type);
+        auto type = GetType(desc->type);
+        auto isFg = type == FFXStructType::FG || type == FFXStructType::Swapchain;
 
         if (isFg && _dllDx12_FG != nullptr)
             return _D3D12_Dispatch_FG(context, desc);
