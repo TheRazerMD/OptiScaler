@@ -110,7 +110,7 @@ int IFGFeature::GetDispatchIndex(UINT64& willDispatchFrame)
         return -1;
 
     auto diff = _frameCount - _lastDispatchedFrame;
-    if (diff > 5 || diff < 0)
+    if (diff > 2 || diff < 0)
         willDispatchFrame = _frameCount; // Set dispatch frame as new one
     else
         willDispatchFrame = _lastDispatchedFrame + 1; // Render next one
