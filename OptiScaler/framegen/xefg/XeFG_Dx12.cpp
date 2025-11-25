@@ -1077,16 +1077,14 @@ bool XeFG_Dx12::SetResource(Dx12Resource* inputResource)
     else if (type == FG_ResourceType::HudlessColor)
         _noHudless[fIndex] = false;
 
-    fResource->validity = (fResource->validity != FG_ResourceValidity::ValidNow || willFlip)
-                              ? FG_ResourceValidity::UntilPresent
-                              : FG_ResourceValidity::ValidNow;
-
     // Set it if it's Depth or Velocity or validity is ValidNow or ValidButMakeCopy
     if ((fResource->type == FG_ResourceType::Depth || fResource->type == FG_ResourceType::Velocity) ||
-        (fResource->validity != FG_ResourceValidity::UntilPresent &&
-         fResource->validity != FG_ResourceValidity::UntilPresentFromDispatch &&
-         fResource->validity != FG_ResourceValidity::JustTrackCmdlist))
+        fResource->validity != FG_ResourceValidity::UntilPresent)
     {
+        fResource->validity = (fResource->validity != FG_ResourceValidity::ValidNow || willFlip)
+                                  ? FG_ResourceValidity::UntilPresent
+                                  : FG_ResourceValidity::ValidNow;
+
         if (type == FG_ResourceType::HudlessColor)
         {
             static DXGI_FORMAT lastFormat[BUFFER_COUNT] = {};
