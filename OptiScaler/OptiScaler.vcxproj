@@ -243,9 +243,6 @@
     <PostBuildEvent>
       <Command>md $(SolutionDir)x64\Release\a\
 move $(SolutionDir)x64\Release\$(TargetFileName) $(SolutionDir)x64\Release\a\
-del /Q $(SolutionDir)x64\Release\a\DlssOverrides\*.*
-md $(SolutionDir)x64\Release\a\DlssOverrides
-copy $(SolutionDir)external\nvngx_dlss_sdk\regs\*.* $(SolutionDir)x64\Release\a\DlssOverrides /Y
 md $(SolutionDir)x64\Release\a\Licenses
 del /Q $(SolutionDir)x64\Release\a\Licenses\*.*
 copy $(SolutionDir)external\xess\LICENSE.txt $(SolutionDir)x64\Release\a\Licenses\XeSS_LICENSE.txt /Y
