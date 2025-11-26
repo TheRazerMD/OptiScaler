@@ -564,25 +564,34 @@ bool XeFG_Dx12::Dispatch()
     if (!_noHudless[fIndex])
     {
         auto res = &_frameResources[fIndex][FG_ResourceType::HudlessColor];
-        res->validity = FG_ResourceValidity::UntilPresentFromDispatch;
-        res->frameIndex = fIndex;
-        SetResource(res);
+        if (res->validity != FG_ResourceValidity::ValidNow)
+        {
+            res->validity = FG_ResourceValidity::UntilPresentFromDispatch;
+            res->frameIndex = fIndex;
+            SetResource(res);
+        }
     }
 
     if (!_noUi[fIndex])
     {
         auto res = &_frameResources[fIndex][FG_ResourceType::UIColor];
-        res->validity = FG_ResourceValidity::UntilPresentFromDispatch;
-        res->frameIndex = fIndex;
-        SetResource(res);
+        if (res->validity != FG_ResourceValidity::ValidNow)
+        {
+            res->validity = FG_ResourceValidity::UntilPresentFromDispatch;
+            res->frameIndex = fIndex;
+            SetResource(res);
+        }
     }
 
     if (!_noDistortionField[fIndex])
     {
         auto res = &_frameResources[fIndex][FG_ResourceType::Distortion];
-        res->validity = FG_ResourceValidity::UntilPresentFromDispatch;
-        res->frameIndex = fIndex;
-        SetResource(res);
+        if (res->validity != FG_ResourceValidity::ValidNow)
+        {
+            res->validity = FG_ResourceValidity::UntilPresentFromDispatch;
+            res->frameIndex = fIndex;
+            SetResource(res);
+        }
     }
 
     XeFGProxy::EnableDebugFeature()(_swapChainContext, XEFG_SWAPCHAIN_DEBUG_FEATURE_TAG_INTERPOLATED_FRAMES,
@@ -717,8 +726,7 @@ bool XeFG_Dx12::Dispatch()
                                         Config::Instance()->FGRectWidth.value_or(_interpolationWidth[fIndex])),
                                     (UINT) Config::Instance()->FGRectHeight.value_or(_interpolationHeight[fIndex]) };
 
-        auto result =
-            XeFGProxy::D3D12TagFrameResource()(_swapChainContext, (ID3D12CommandList*) 1, frameId, &backbuffer);
+        result = XeFGProxy::D3D12TagFrameResource()(_swapChainContext, (ID3D12CommandList*) 1, frameId, &backbuffer);
 
         if (result != XEFG_SWAPCHAIN_RESULT_SUCCESS)
         {
@@ -882,6 +890,7 @@ bool XeFG_Dx12::Present()
     {
         auto hudless = GetResource(FG_ResourceType::HudlessColor, fIndex);
         if (hudless != nullptr && (hudless->validity == FG_ResourceValidity::UntilPresent ||
+                                   hudless->validity == FG_ResourceValidity::JustTrackCmdlist ||
                                    hudless->validity == FG_ResourceValidity::UntilPresentFromDispatch))
         {
             if (_hudlessCompare.get() == nullptr)
@@ -952,8 +961,7 @@ bool XeFG_Dx12::SetResource(Dx12Resource* inputResource)
         if (Config::Instance()->FGDisableHudless.value_or_default())
             return false;
 
-        if (!_noHudless[fIndex] && (_frameResources[fIndex][type].validity == FG_ResourceValidity::ValidNow ||
-                                    _frameResources[fIndex][type].validity == FG_ResourceValidity::ValidButMakeCopy))
+        if (!_noHudless[fIndex] && (_frameResources[fIndex][type].validity == FG_ResourceValidity::ValidNow))
         {
             return false;
         }
@@ -964,8 +972,7 @@ bool XeFG_Dx12::SetResource(Dx12Resource* inputResource)
         if (Config::Instance()->FGDisableUI.value_or_default())
             return false;
 
-        if (!_noUi[fIndex] && (_frameResources[fIndex][type].validity == FG_ResourceValidity::ValidNow ||
-                               _frameResources[fIndex][type].validity == FG_ResourceValidity::ValidButMakeCopy))
+        if (!_noUi[fIndex] && (_frameResources[fIndex][type].validity == FG_ResourceValidity::ValidNow))
         {
             return false;
         }
@@ -973,9 +980,7 @@ bool XeFG_Dx12::SetResource(Dx12Resource* inputResource)
 
     if (type == FG_ResourceType::Distortion)
     {
-        if (!_noDistortionField[fIndex] &&
-            (_frameResources[fIndex][type].validity == FG_ResourceValidity::ValidNow ||
-             _frameResources[fIndex][type].validity == FG_ResourceValidity::ValidButMakeCopy))
+        if (!_noDistortionField[fIndex] && (_frameResources[fIndex][type].validity == FG_ResourceValidity::ValidNow))
         {
             return false;
         }
@@ -1079,7 +1084,8 @@ bool XeFG_Dx12::SetResource(Dx12Resource* inputResource)
 
     // Set it if it's Depth or Velocity or validity is ValidNow or ValidButMakeCopy
     if ((fResource->type == FG_ResourceType::Depth || fResource->type == FG_ResourceType::Velocity) ||
-        fResource->validity != FG_ResourceValidity::UntilPresent)
+        (fResource->validity != FG_ResourceValidity::UntilPresent &&
+         fResource->validity != FG_ResourceValidity::JustTrackCmdlist))
     {
         fResource->validity = (fResource->validity != FG_ResourceValidity::ValidNow || willFlip)
                                   ? FG_ResourceValidity::UntilPresent

@@ -8,8 +8,6 @@ class Sl_Inputs_Dx12
 {
   private:
     bool infiniteDepth = false;
-    // index is streamlineFrameId % BUFFER_COUNT
-    // std::optional<sl::Constants> slConstants[BUFFER_COUNT] {};
     sl::EngineType engineType = sl::EngineType::eCount;
 
     std::mutex _frameBoundaryMutex;
@@ -23,13 +21,6 @@ class Sl_Inputs_Dx12
     uint64_t mvsWidth = 0;
     uint32_t mvsHeight = 0;
 
-    // TODO: add full position
-    // uint32_t interpolationTop = 0;
-    // uint32_t interpolationLeft = 0;
-    uint64_t interpolationWidth = 0;
-    uint32_t interpolationHeight = 0;
-
-    // std::optional<sl::Constants>* getFrameData(IFGFeature_Dx12* fgOutput);
     void CheckForFrame(IFGFeature_Dx12* fg, uint32_t frameId);
     int IndexForFrameId(uint32_t frameId);
 

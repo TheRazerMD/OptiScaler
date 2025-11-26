@@ -23,10 +23,6 @@ void Sl_Inputs_Dx12::CheckForFrame(IFGFeature_Dx12* fg, uint32_t frameId)
             _currentFrameId = _lastFrameId + 1;
 
         _frameIdIndex[_currentIndex] = _currentFrameId;
-
-        // Reset local tracking variables for the new frame if needed
-        interpolationWidth = 0;
-        interpolationHeight = 0;
     }
     else if (frameId != 0 && frameId > _currentFrameId)
     {
@@ -34,10 +30,6 @@ void Sl_Inputs_Dx12::CheckForFrame(IFGFeature_Dx12* fg, uint32_t frameId)
         _currentIndex = fg->GetIndex();
         _currentFrameId = frameId;
         _frameIdIndex[_currentIndex] = _currentFrameId;
-
-        // Reset local tracking variables for the new frame if needed
-        interpolationWidth = 0;
-        interpolationHeight = 0;
     }
 }
 
@@ -223,14 +215,9 @@ bool Sl_Inputs_Dx12::setConstants(const sl::Constants& values, uint32_t frameId)
         fgOutput->SetReset(data.reset == sl::Boolean::eTrue);
 
         fgOutput->SetFrameTimeDelta(static_cast<float>(State::Instance().lastFGFrameTime));
-
-        fgOutput->SetInterpolationRect(interpolationWidth, interpolationHeight);
-        interpolationWidth = 0;
-        interpolationHeight = 0;
     }
     else
     {
-
         LOG_ERROR("Wrong constant struct version");
     }
 
@@ -345,9 +332,7 @@ bool Sl_Inputs_Dx12::reportResource(const sl::ResourceTag& tag, ID3D12GraphicsCo
     {
         res.type = FG_ResourceType::HudlessColor;
 
-        interpolationWidth = res.width; // Track for dispatch
-        interpolationHeight = res.height;
-
+        fgOutput->SetInterpolationRect(res.width, res.height);
         fgOutput->SetResource(&res);
     }
     else if (tag.type == sl::kBufferTypeUIColorAndAlpha)
@@ -355,11 +340,13 @@ bool Sl_Inputs_Dx12::reportResource(const sl::ResourceTag& tag, ID3D12GraphicsCo
         res.type = FG_ResourceType::UIColor;
 
         // Fallback size logic
-        if (interpolationWidth == 0)
-        {
-            interpolationWidth = res.width;
-            interpolationHeight = res.height;
-        }
+        UINT64 width = 0;
+        UINT height = 0;
+        fgOutput->GetInterpolationRect(width, height, _currentIndex);
+
+        if (width == 0)
+            fgOutput->SetInterpolationRect(res.width, res.height);
+
         fgOutput->SetResource(&res);
     }
     else
@@ -372,21 +359,6 @@ bool Sl_Inputs_Dx12::reportResource(const sl::ResourceTag& tag, ID3D12GraphicsCo
 
 bool Sl_Inputs_Dx12::dispatchFG()
 {
-    // auto fgOutput = reinterpret_cast<IFGFeature_Dx12*>(State::Instance().currentFG);
-    // if (fgOutput == nullptr)
-    //     return false;
-
-    // auto data = getFrameData(fgOutput);
-    // if (!data->has_value())
-    //     return false;
-
-    // auto& slConstsRef = data->value();
-
-    // if (State::Instance().FGchanged)
-    //     return false;
-
-    // if (!fgOutput->IsActive())
-    //     return false;
     LOG_DEBUG();
     return true;
 }
@@ -396,5 +368,5 @@ void Sl_Inputs_Dx12::markPresent(uint64_t frameId)
     std::scoped_lock lock(_frameBoundaryMutex);
     LOG_TRACE("frameId: {}", frameId);
     _isFrameFinished = true;
-    _lastFrameId = frameId;
+    _lastFrameId = static_cast<uint32_t>(frameId);
 }
