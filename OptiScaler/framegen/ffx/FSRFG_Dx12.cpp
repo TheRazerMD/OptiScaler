@@ -1009,6 +1009,12 @@ bool FSRFG_Dx12::SetResource(Dx12Resource* inputResource)
 
     auto& type = inputResource->type;
 
+    if (_frameResources[fIndex].contains(type) &&
+        _frameResources[fIndex][type].validity == FG_ResourceValidity::ValidNow)
+    {
+        return false;
+    }
+
     if (type == FG_ResourceType::HudlessColor && Config::Instance()->FGDisableHudless.value_or_default())
         return false;
 

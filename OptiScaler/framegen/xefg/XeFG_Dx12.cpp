@@ -527,15 +527,6 @@ bool XeFG_Dx12::Dispatch()
 
     LOG_DEBUG("_frameCount: {}, willDispatchFrame: {}, fIndex: {}", _frameCount, willDispatchFrame, fIndex);
 
-    if (!_resourceReady[fIndex].contains(FG_ResourceType::Depth) ||
-        !_resourceReady[fIndex].at(FG_ResourceType::Depth) ||
-        !_resourceReady[fIndex].contains(FG_ResourceType::Velocity) ||
-        !_resourceReady[fIndex].at(FG_ResourceType::Velocity))
-    {
-        LOG_WARN("Depth or Velocity is not ready, skipping");
-        return false;
-    }
-
     if (!_haveHudless.has_value())
     {
         _haveHudless = IsUsingHudless(fIndex);
@@ -592,6 +583,37 @@ bool XeFG_Dx12::Dispatch()
             res->frameIndex = fIndex;
             SetResource(res);
         }
+    }
+
+    if (_frameResources[fIndex].contains(FG_ResourceType::Depth))
+    {
+        auto res = &_frameResources[fIndex][FG_ResourceType::Depth];
+        if (res->validity != FG_ResourceValidity::ValidNow)
+        {
+            res->validity = FG_ResourceValidity::UntilPresentFromDispatch;
+            res->frameIndex = fIndex;
+            SetResource(res);
+        }
+    }
+
+    if (_frameResources[fIndex].contains(FG_ResourceType::Velocity))
+    {
+        auto res = &_frameResources[fIndex][FG_ResourceType::Velocity];
+        if (res->validity != FG_ResourceValidity::ValidNow)
+        {
+            res->validity = FG_ResourceValidity::UntilPresentFromDispatch;
+            res->frameIndex = fIndex;
+            SetResource(res);
+        }
+    }
+
+    if (!_resourceReady[fIndex].contains(FG_ResourceType::Depth) ||
+        !_resourceReady[fIndex].at(FG_ResourceType::Depth) ||
+        !_resourceReady[fIndex].contains(FG_ResourceType::Velocity) ||
+        !_resourceReady[fIndex].at(FG_ResourceType::Velocity))
+    {
+        LOG_WARN("Depth or Velocity is not ready, skipping");
+        return false;
     }
 
     XeFGProxy::EnableDebugFeature()(_swapChainContext, XEFG_SWAPCHAIN_DEBUG_FEATURE_TAG_INTERPOLATED_FRAMES,
@@ -986,6 +1008,15 @@ bool XeFG_Dx12::SetResource(Dx12Resource* inputResource)
         }
     }
 
+    if (type == FG_ResourceType::Depth || type == FG_ResourceType::Velocity)
+    {
+        if (_frameResources[fIndex].contains(type) &&
+            _frameResources[fIndex][type].validity == FG_ResourceValidity::ValidNow)
+        {
+            return false;
+        }
+    }
+
     std::lock_guard<std::mutex> lock(_frMutex);
 
     if (inputResource->cmdList == nullptr && inputResource->validity == FG_ResourceValidity::ValidNow)
@@ -1082,10 +1113,8 @@ bool XeFG_Dx12::SetResource(Dx12Resource* inputResource)
     else if (type == FG_ResourceType::HudlessColor)
         _noHudless[fIndex] = false;
 
-    // Set it if it's Depth or Velocity or validity is ValidNow or ValidButMakeCopy
-    if ((fResource->type == FG_ResourceType::Depth || fResource->type == FG_ResourceType::Velocity) ||
-        (fResource->validity != FG_ResourceValidity::UntilPresent &&
-         fResource->validity != FG_ResourceValidity::JustTrackCmdlist))
+    if (fResource->validity != FG_ResourceValidity::UntilPresent &&
+        fResource->validity != FG_ResourceValidity::JustTrackCmdlist)
     {
         fResource->validity = (fResource->validity != FG_ResourceValidity::ValidNow || willFlip)
                                   ? FG_ResourceValidity::UntilPresent
