@@ -572,6 +572,15 @@ class XeSSProxy
             if (_xessVKGetResourcesToDump != nullptr)
                 DetourAttach(&(PVOID&) _xessVKGetResourcesToDump, hk_xessVKGetResourcesToDump);
 
+            if (_xessVKGetRequiredDeviceExtensions != nullptr)
+                DetourAttach(&(PVOID&) _xessVKGetRequiredDeviceExtensions, hk_xessVKGetRequiredDeviceExtensions);
+
+            if (_xessVKGetRequiredDeviceFeatures != nullptr)
+                DetourAttach(&(PVOID&) _xessVKGetRequiredDeviceFeatures, hk_xessVKGetRequiredDeviceFeatures);
+
+            if (_xessVKGetRequiredInstanceExtensions != nullptr)
+                DetourAttach(&(PVOID&) _xessVKGetRequiredInstanceExtensions, hk_xessVKGetRequiredInstanceExtensions);
+
             if (_xessGetPipelineBuildStatus != nullptr)
                 DetourAttach(&(PVOID&) _xessGetPipelineBuildStatus, hk_xessGetPipelineBuildStatus);
 

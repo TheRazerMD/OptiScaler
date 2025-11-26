@@ -394,3 +394,47 @@ xess_result_t hk_xessVKGetResourcesToDump(xess_context_handle_t hContext,
     LOG_DEBUG("");
     return XESS_RESULT_SUCCESS;
 }
+
+xess_result_t hk_xessVKGetRequiredInstanceExtensions(uint32_t* instanceExtensionsCount,
+                                                     const char* const** instanceExtensions, uint32_t* minVkApiVersion)
+{
+    LOG_DEBUG();
+
+    State::Instance().skipSpoofing = true;
+
+    auto result =
+        XeSSProxy::VKGetRequiredInstanceExtensions()(instanceExtensionsCount, instanceExtensions, minVkApiVersion);
+
+    State::Instance().skipSpoofing = false;
+
+    return result;
+}
+
+xess_result_t hk_xessVKGetRequiredDeviceExtensions(VkInstance instance, VkPhysicalDevice physicalDevice,
+                                                   uint32_t* deviceExtensionsCount,
+                                                   const char* const** deviceExtensions)
+{
+    LOG_DEBUG();
+
+    State::Instance().skipSpoofing = true;
+
+    auto result =
+        XeSSProxy::VKGetRequiredDeviceExtensions()(instance, physicalDevice, deviceExtensionsCount, deviceExtensions);
+
+    State::Instance().skipSpoofing = false;
+
+    return result;
+}
+
+xess_result_t hk_xessVKGetRequiredDeviceFeatures(VkInstance instance, VkPhysicalDevice physicalDevice, void** features)
+{
+    LOG_DEBUG();
+
+    State::Instance().skipSpoofing = true;
+
+    auto result = XeSSProxy::VKGetRequiredDeviceFeatures()(instance, physicalDevice, features);
+
+    State::Instance().skipSpoofing = false;
+
+    return result;
+}
