@@ -169,7 +169,7 @@ static bool CreateBufferResource(ID3D12Device* InDevice, ID3D12Resource* InResou
 
     CD3DX12_HEAP_PROPERTIES heapProperties(D3D12_HEAP_TYPE_DEFAULT);
 
-    inDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET; //    | D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+    inDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
     hr = InDevice->CreateCommittedResource(&heapProperties, D3D12_HEAP_FLAG_NONE, &inDesc, InState, nullptr,
                                            IID_PPV_ARGS(OutResource));
@@ -507,14 +507,16 @@ ffxReturnCode_t ffxConfigure_Dx12FG(ffxContext* context, ffxConfigureDescHeader*
                 if (fg->FrameGenerationContext() != nullptr && crDesc->uiResource.resource != nullptr)
                 {
                     auto validity = FG_ResourceValidity::UntilPresent;
-                    if ((crDesc->flags & FFX_FRAMEGENERATION_UI_COMPOSITION_FLAG_ENABLE_INTERNAL_UI_DOUBLE_BUFFERING) >
-                        0)
-                    {
-                        LOG_WARN("FFX_FRAMEGENERATION_UI_COMPOSITION_FLAG_ENABLE_INTERNAL_UI_DOUBLE_BUFFERING is set!");
+                    // if ((crDesc->flags & FFX_FRAMEGENERATION_UI_COMPOSITION_FLAG_ENABLE_INTERNAL_UI_DOUBLE_BUFFERING)
+                    // >
+                    //     0)
+                    //{
+                    //     LOG_WARN("FFX_FRAMEGENERATION_UI_COMPOSITION_FLAG_ENABLE_INTERNAL_UI_DOUBLE_BUFFERING is
+                    //     set!");
 
-                        // Not sure which cmdList to use
-                        // validity = FG_ResourceValidity::ValidButMakeCopy;
-                    }
+                    //    // Not sure which cmdList to use
+                    //     validity = FG_ResourceValidity::ValidButMakeCopy;
+                    //}
 
                     Dx12Resource ui {};
                     ui.cmdList = nullptr; // Not sure about this
@@ -1069,7 +1071,7 @@ void ffxPresentCallback()
         currentBuffer->Release();
         currentBuffer->SetName(std::format(L"currentBuffer[{}]", scIndex).c_str());
 
-        if (CreateBufferResource(_device, currentBuffer, D3D12_RESOURCE_STATE_COMMON, &_hudless[fIndex]))
+        if (CreateBufferResource(_device, currentBuffer, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, &_hudless[fIndex]))
             _hudless[fIndex]->SetName(std::format(L"_hudless[{}]", fIndex).c_str());
         else
             return;

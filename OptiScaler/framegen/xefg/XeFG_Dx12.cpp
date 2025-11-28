@@ -900,6 +900,7 @@ void XeFG_Dx12::CreateObjects(ID3D12Device* InDevice)
 bool XeFG_Dx12::Present()
 {
     auto fIndex = GetIndexWillBeDispatched();
+    LOG_DEBUG("fIndex: {}", fIndex);
 
     if (IsActive() && !IsPaused() && State::Instance().FGHudlessCompare)
     {
@@ -908,6 +909,8 @@ bool XeFG_Dx12::Present()
                                    hudless->validity == FG_ResourceValidity::JustTrackCmdlist ||
                                    hudless->validity == FG_ResourceValidity::UntilPresentFromDispatch))
         {
+            LOG_DEBUG("Hudless[{}] resource: {:X}, copy: {}", fIndex, (size_t) hudless->resource,
+                      (size_t) hudless->copy);
             if (_hudlessCompare.get() == nullptr)
             {
                 _hudlessCompare = std::make_unique<HC_Dx12>("HudlessCompare", _device);
@@ -916,7 +919,9 @@ bool XeFG_Dx12::Present()
             {
                 if (_hudlessCompare->IsInit())
                 {
-                    _hudlessCompare->Dispatch((IDXGISwapChain3*) _swapChain, _gameCommandQueue, hudless->GetResource(),
+                    auto commandList = GetUICommandList(fIndex);
+
+                    _hudlessCompare->Dispatch((IDXGISwapChain3*) _swapChain, commandList, hudless->GetResource(),
                                               hudless->state);
                 }
             }
@@ -929,7 +934,7 @@ bool XeFG_Dx12::Present()
 
     bool result = false;
 
-    if (IsActive() && !IsPaused())
+    // if (IsActive() && !IsPaused())
     {
         if (_uiCommandListResetted[fIndex])
         {

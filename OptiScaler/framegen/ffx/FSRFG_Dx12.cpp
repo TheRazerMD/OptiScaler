@@ -1250,7 +1250,9 @@ bool FSRFG_Dx12::Present()
             {
                 if (_hudlessCompare->IsInit())
                 {
-                    _hudlessCompare->Dispatch((IDXGISwapChain3*) _swapChain, _gameCommandQueue, hudless->GetResource(),
+                    auto commandList = GetUICommandList(fIndex);
+
+                    _hudlessCompare->Dispatch((IDXGISwapChain3*) _swapChain, commandList, hudless->GetResource(),
                                               hudless->state);
                 }
             }
@@ -1259,7 +1261,7 @@ bool FSRFG_Dx12::Present()
 
     bool result = false;
 
-    if (IsActive() && !IsPaused())
+    // if (IsActive() && !IsPaused())
     {
         if (_uiCommandListResetted[fIndex])
         {

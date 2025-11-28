@@ -232,31 +232,32 @@ HC_Dx12::HC_Dx12(std::string InName, ID3D12Device* InDevice)
     }
 
     // Command List
-    for (size_t i = 0; i < 2; i++)
-    {
-        result = InDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&_commandAllocator[i]));
+    // for (size_t i = 0; i < 2; i++)
+    //{
+    //    result = InDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
+    //    IID_PPV_ARGS(&_commandAllocator[i]));
 
-        if (result != S_OK)
-        {
-            LOG_ERROR("CreateCommandAllocator error: {:X}", (unsigned long) result);
-            return;
-        }
+    //    if (result != S_OK)
+    //    {
+    //        LOG_ERROR("CreateCommandAllocator error: {:X}", (unsigned long) result);
+    //        return;
+    //    }
 
-        result = InDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, _commandAllocator[i], NULL,
-                                             IID_PPV_ARGS(&_commandList[i]));
-        if (result != S_OK)
-        {
-            LOG_ERROR("CreateCommandList error: {:X}", (unsigned long) result);
-            return;
-        }
+    //    result = InDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, _commandAllocator[i], NULL,
+    //                                         IID_PPV_ARGS(&_commandList[i]));
+    //    if (result != S_OK)
+    //    {
+    //        LOG_ERROR("CreateCommandList error: {:X}", (unsigned long) result);
+    //        return;
+    //    }
 
-        result = _commandList[i]->Close();
-        if (result != S_OK)
-        {
-            LOG_ERROR("_commandList->Close error: {:X}", (unsigned long) result);
-            return;
-        }
-    }
+    //    result = _commandList[i]->Close();
+    //    if (result != S_OK)
+    //    {
+    //        LOG_ERROR("_commandList->Close error: {:X}", (unsigned long) result);
+    //        return;
+    //    }
+    //}
 
     // Create Heaps
     D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
@@ -291,7 +292,7 @@ HC_Dx12::HC_Dx12(std::string InName, ID3D12Device* InDevice)
         _device = InDevice;
 }
 
-bool HC_Dx12::Dispatch(IDXGISwapChain3* sc, ID3D12CommandQueue* queue, ID3D12Resource* hudless,
+bool HC_Dx12::Dispatch(IDXGISwapChain3* sc, ID3D12GraphicsCommandList* cmdList, ID3D12Resource* hudless,
                        D3D12_RESOURCE_STATES state)
 {
     if (sc == nullptr || hudless == nullptr || !_init)
@@ -341,33 +342,32 @@ bool HC_Dx12::Dispatch(IDXGISwapChain3* sc, ID3D12CommandQueue* queue, ID3D12Res
     }
 
     // Reset CommandList
-    result = _commandAllocator[_counter]->Reset();
-    if (result != S_OK)
-    {
-        LOG_ERROR("_commandAllocator->Reset() error: {:X}", (UINT) result);
-        return false;
-    }
+    // result = _commandAllocator[_counter]->Reset();
+    // if (result != S_OK)
+    //{
+    //    LOG_ERROR("_commandAllocator->Reset() error: {:X}", (UINT) result);
+    //    return false;
+    //}
 
-    result = _commandList[_counter]->Reset(_commandAllocator[_counter], nullptr);
-    if (result != S_OK)
-    {
-        LOG_ERROR("_commandList->Reset error: {:X}", (UINT) result);
-        return false;
-    }
+    // result = _commandList[_counter]->Reset(_commandAllocator[_counter], nullptr);
+    // if (result != S_OK)
+    //{
+    //     LOG_ERROR("_commandList->Reset error: {:X}", (UINT) result);
+    //     return false;
+    // }
 
     // Copy Swapchain Buffer to read buffer
-    SetBufferState(_counter, _commandList[_counter], D3D12_RESOURCE_STATE_COPY_DEST);
-    ResourceBarrier(_commandList[_counter], scBuffer, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_COPY_SOURCE);
+    SetBufferState(_counter, cmdList, D3D12_RESOURCE_STATE_COPY_DEST);
+    ResourceBarrier(cmdList, scBuffer, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
     if (_buffer != nullptr)
-        _commandList[_counter]->CopyResource(_buffer[_counter], scBuffer);
+        cmdList->CopyResource(_buffer[_counter], scBuffer);
 
-    ResourceBarrier(_commandList[_counter], scBuffer, D3D12_RESOURCE_STATE_COPY_SOURCE,
-                    D3D12_RESOURCE_STATE_RENDER_TARGET);
-    SetBufferState(_counter, _commandList[_counter], D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+    ResourceBarrier(cmdList, scBuffer, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
+    SetBufferState(_counter, cmdList, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
     if (state != D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE)
-        ResourceBarrier(_commandList[_counter], hudless, state, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        ResourceBarrier(cmdList, hudless, state, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
     // Start setting pipeline
     UINT outWidth = scDesc.BufferDesc.Width;
@@ -479,17 +479,17 @@ bool HC_Dx12::Dispatch(IDXGISwapChain3* sc, ID3D12CommandQueue* queue, ID3D12Res
 
     // Pipeline
     // Bind pipeline + heap
-    _commandList[_counter]->SetGraphicsRootSignature(_rootSignature);
-    _commandList[_counter]->SetPipelineState(_pipelineState);
+    cmdList->SetGraphicsRootSignature(_rootSignature);
+    cmdList->SetPipelineState(_pipelineState);
 
-    _commandList[_counter]->SetDescriptorHeaps(1, &_srvHeap[0]);
+    cmdList->SetDescriptorHeaps(1, &_srvHeap[0]);
 
-    _commandList[_counter]->SetGraphicsRootDescriptorTable(0, _gpuSrv0Handle[_counter]); // t0
-    _commandList[_counter]->SetGraphicsRootDescriptorTable(1, _gpuSrv1Handle[_counter]); // t1
-    _commandList[_counter]->SetGraphicsRootDescriptorTable(2, _gpuCbv0Handle[_counter]); // b0
+    cmdList->SetGraphicsRootDescriptorTable(0, _gpuSrv0Handle[_counter]); // t0
+    cmdList->SetGraphicsRootDescriptorTable(1, _gpuSrv1Handle[_counter]); // t1
+    cmdList->SetGraphicsRootDescriptorTable(2, _gpuCbv0Handle[_counter]); // b0
 
     // Set RTV, viewport, scissor
-    _commandList[_counter]->OMSetRenderTargets(1, &_cpuRtv0Handle[_counter], FALSE, nullptr);
+    cmdList->OMSetRenderTargets(1, &_cpuRtv0Handle[_counter], FALSE, nullptr);
 
     D3D12_VIEWPORT vp {};
     vp.TopLeftX = 0.0f;
@@ -498,29 +498,30 @@ bool HC_Dx12::Dispatch(IDXGISwapChain3* sc, ID3D12CommandQueue* queue, ID3D12Res
     vp.Height = static_cast<FLOAT>(outHeight);
     vp.MinDepth = 0.0f;
     vp.MaxDepth = 1.0f;
-    _commandList[_counter]->RSSetViewports(1, &vp);
+    cmdList->RSSetViewports(1, &vp);
 
     D3D12_RECT rect { 0, 0, (LONG) outWidth, (LONG) outHeight };
-    _commandList[_counter]->RSSetScissorRects(1, &rect);
+    cmdList->RSSetScissorRects(1, &rect);
 
     // Fullscreen triangle
-    _commandList[_counter]->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    _commandList[_counter]->DrawInstanced(3, 1, 0, 0);
+    cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    cmdList->DrawInstanced(3, 1, 0, 0);
 
-    ResourceBarrier(_commandList[_counter], scBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+    ResourceBarrier(cmdList, scBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 
     if (state != D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE)
-        ResourceBarrier(_commandList[_counter], hudless, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, state);
+        ResourceBarrier(cmdList, hudless, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, state);
 
-    result = _commandList[_counter]->Close();
+    // result = cmdList->Close();
 
-    if (result != S_OK)
-    {
-        LOG_ERROR("_commandList[{}]->Close() error: {:X}", _counter, (UINT) result);
-        return false;
-    }
+    // if (result != S_OK)
+    //{
+    //     LOG_ERROR("_commandList[{}]->Close() error: {:X}", _counter, (UINT) result);
+    //     return false;
+    // }
 
-    queue->ExecuteCommandLists(1, (ID3D12CommandList**) &_commandList[_counter]);
+    // queue->ExecuteCommandLists(1, (ID3D12CommandList**) &_commandList[_counter]);
+
     return true;
 }
 
@@ -529,20 +530,20 @@ HC_Dx12::~HC_Dx12()
     if (!_init || State::Instance().isShuttingDown)
         return;
 
-    for (size_t i = 0; i < 2; i++)
-    {
-        if (_commandAllocator[i] != nullptr)
-            _commandAllocator[i]->Release();
+    // for (size_t i = 0; i < 2; i++)
+    //{
+    //     if (_commandAllocator[i] != nullptr)
+    //         _commandAllocator[i]->Release();
 
-        if (_commandList[i] != nullptr)
-            _commandList[i]->Release();
+    //    if (_commandList[i] != nullptr)
+    //        _commandList[i]->Release();
 
-        if (_buffer[i] != nullptr)
-        {
-            _buffer[i]->Release();
-            _buffer[i] = nullptr;
-        }
-    }
+    //    if (_buffer[i] != nullptr)
+    //    {
+    //        _buffer[i]->Release();
+    //        _buffer[i] = nullptr;
+    //    }
+    //}
 
     if (_rootSignature != nullptr)
     {

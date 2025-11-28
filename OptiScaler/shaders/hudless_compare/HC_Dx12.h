@@ -37,8 +37,8 @@ class HC_Dx12
     ID3D12Resource* _constantBuffer = nullptr;
     D3D12_RESOURCE_STATES _bufferState[2] = { D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COMMON };
 
-    ID3D12GraphicsCommandList* _commandList[2] = {};
-    ID3D12CommandAllocator* _commandAllocator[2] = {};
+    // ID3D12GraphicsCommandList* _commandList[2] = {};
+    // ID3D12CommandAllocator* _commandAllocator[2] = {};
 
     static DXGI_FORMAT ToSRGB(DXGI_FORMAT f);
 
@@ -51,7 +51,8 @@ class HC_Dx12
     bool CreateBufferResource(UINT index, ID3D12Device* InDevice, ID3D12Resource* InSource,
                               D3D12_RESOURCE_STATES InState);
     void SetBufferState(UINT index, ID3D12GraphicsCommandList* InCommandList, D3D12_RESOURCE_STATES InState);
-    bool Dispatch(IDXGISwapChain3* sc, ID3D12CommandQueue* queue, ID3D12Resource* hudless, D3D12_RESOURCE_STATES state);
+    bool Dispatch(IDXGISwapChain3* sc, ID3D12GraphicsCommandList* cmdList, ID3D12Resource* hudless,
+                  D3D12_RESOURCE_STATES state);
 
     bool IsInit() const { return _init; }
 
