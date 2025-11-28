@@ -305,8 +305,13 @@ HRESULT FGHooks::hkSetFullscreenState(IDXGISwapChain* This, BOOL Fullscreen, IDX
     if (State::Instance().activeFgOutput == FGOutput::XeFG && Fullscreen)
         LOG_WARN("Using exclusive fullscreen with XeFG!!!");
 
-    auto result = o_FGSCSetFullscreenState(This, Fullscreen, pTarget);
-    LOG_DEBUG("Fullscreen: {}, Result: {:X}", Fullscreen, (UINT) result);
+    auto result = S_OK;
+
+    if (!Config::Instance()->FGXeFGForceBorderless.value_or_default())
+    {
+        result = o_FGSCSetFullscreenState(This, Fullscreen, pTarget);
+        LOG_DEBUG("Fullscreen: {}, Result: {:X}", Fullscreen, (UINT) result);
+    }
 
     if (result == S_OK && modeChanged)
     {
