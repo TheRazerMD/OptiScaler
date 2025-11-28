@@ -773,6 +773,7 @@ bool Hudfix_Dx12::CheckForHudless(ID3D12GraphicsCommandList* cmdList, ResourceIn
                     setResource.height = s.currentSwapchainDesc.BufferDesc.Height;
                     setResource.state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
                     setResource.validity = FG_ResourceValidity::JustTrackCmdlist;
+                    setResource.frameIndex = fg->GetIndexWillBeDispatched();
 
                     fg->SetResource(&setResource);
                 }
@@ -803,6 +804,7 @@ bool Hudfix_Dx12::CheckForHudless(ID3D12GraphicsCommandList* cmdList, ResourceIn
                 setResource.height = s.currentSwapchainDesc.BufferDesc.Height;
                 setResource.state = D3D12_RESOURCE_STATE_COPY_DEST;
                 setResource.validity = FG_ResourceValidity::JustTrackCmdlist;
+                setResource.frameIndex = fg->GetIndexWillBeDispatched();
 
                 fg->SetResource(&setResource);
             }
