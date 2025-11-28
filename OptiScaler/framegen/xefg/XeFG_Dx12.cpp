@@ -122,8 +122,6 @@ bool XeFG_Dx12::DestroySwapchainContext()
 {
     LOG_DEBUG("");
 
-    _isActive = false;
-
     if (_swapChainContext != nullptr && !State::Instance().isShuttingDown)
     {
         auto context = _swapChainContext;
@@ -145,13 +143,19 @@ bool XeFG_Dx12::DestroySwapchainContext()
 
 xefg_swapchain_d3d12_resource_data_t XeFG_Dx12::GetResourceData(FG_ResourceType type, int index)
 {
-    if (index)
+    if (index < 0)
+    {
         index = GetIndex();
+        LOG_WARN("GetResourceData called with -1 index, using current index: {}", index);
+    }
 
     xefg_swapchain_d3d12_resource_data_t resourceParam = {};
 
     if (!_frameResources[index].contains(type))
+    {
+        LOG_WARN("Resource type not found: {} for index: {}", magic_enum::enum_name(type), index);
         return resourceParam;
+    }
 
     auto fResource = &_frameResources[index].at(type);
 
@@ -431,6 +435,14 @@ void XeFG_Dx12::CreateContext(ID3D12Device* device, FG_Constants& fgConstants)
     {
         _fgContext = _swapChainContext;
     }
+
+    if (_isActive)
+    {
+        LOG_INFO("FG context recreated while active, pausing");
+        State::Instance().FGchanged = true;
+        UpdateTarget();
+        Deactivate();
+    }
 }
 
 void XeFG_Dx12::Activate()
@@ -447,7 +459,10 @@ void XeFG_Dx12::Activate()
         auto result = XeFGProxy::SetEnabled()(_swapChainContext, true);
 
         if (result == XEFG_SWAPCHAIN_RESULT_SUCCESS)
+        {
             _isActive = true;
+            _lastDispatchedFrame = 0;
+        }
 
         LOG_INFO("SetEnabled: true, result: {} ({})", magic_enum::enum_name(result), (UINT) result);
     }
@@ -523,9 +538,18 @@ bool XeFG_Dx12::Dispatch()
     if (!IsActive() || IsPaused())
         return false;
 
-    auto& state = State::Instance();
-
     LOG_DEBUG("_frameCount: {}, willDispatchFrame: {}, fIndex: {}", _frameCount, willDispatchFrame, fIndex);
+
+    if (!_resourceReady[fIndex].contains(FG_ResourceType::Depth) ||
+        !_resourceReady[fIndex].at(FG_ResourceType::Depth) ||
+        !_resourceReady[fIndex].contains(FG_ResourceType::Velocity) ||
+        !_resourceReady[fIndex].at(FG_ResourceType::Velocity))
+    {
+        LOG_WARN("Depth or Velocity is not ready, skipping");
+        return false;
+    }
+
+    auto& state = State::Instance();
 
     if (!_haveHudless.has_value())
     {
@@ -583,37 +607,6 @@ bool XeFG_Dx12::Dispatch()
             res->frameIndex = fIndex;
             SetResource(res);
         }
-    }
-
-    if (_frameResources[fIndex].contains(FG_ResourceType::Depth))
-    {
-        auto res = &_frameResources[fIndex][FG_ResourceType::Depth];
-        if (res->validity != FG_ResourceValidity::ValidNow)
-        {
-            res->validity = FG_ResourceValidity::UntilPresentFromDispatch;
-            res->frameIndex = fIndex;
-            SetResource(res);
-        }
-    }
-
-    if (_frameResources[fIndex].contains(FG_ResourceType::Velocity))
-    {
-        auto res = &_frameResources[fIndex][FG_ResourceType::Velocity];
-        if (res->validity != FG_ResourceValidity::ValidNow)
-        {
-            res->validity = FG_ResourceValidity::UntilPresentFromDispatch;
-            res->frameIndex = fIndex;
-            SetResource(res);
-        }
-    }
-
-    if (!_resourceReady[fIndex].contains(FG_ResourceType::Depth) ||
-        !_resourceReady[fIndex].at(FG_ResourceType::Depth) ||
-        !_resourceReady[fIndex].contains(FG_ResourceType::Velocity) ||
-        !_resourceReady[fIndex].at(FG_ResourceType::Velocity))
-    {
-        LOG_WARN("Depth or Velocity is not ready, skipping");
-        return false;
     }
 
     XeFGProxy::EnableDebugFeature()(_swapChainContext, XEFG_SWAPCHAIN_DEBUG_FEATURE_TAG_INTERPOLATED_FRAMES,
@@ -1008,13 +1001,9 @@ bool XeFG_Dx12::SetResource(Dx12Resource* inputResource)
         }
     }
 
-    if (type == FG_ResourceType::Depth || type == FG_ResourceType::Velocity)
+    if ((type == FG_ResourceType::Depth || type == FG_ResourceType::Velocity) && _frameResources[fIndex].contains(type))
     {
-        if (_frameResources[fIndex].contains(type) &&
-            _frameResources[fIndex][type].validity == FG_ResourceValidity::ValidNow)
-        {
-            return false;
-        }
+        return false;
     }
 
     std::lock_guard<std::mutex> lock(_frMutex);
@@ -1113,8 +1102,9 @@ bool XeFG_Dx12::SetResource(Dx12Resource* inputResource)
     else if (type == FG_ResourceType::HudlessColor)
         _noHudless[fIndex] = false;
 
-    if (fResource->validity != FG_ResourceValidity::UntilPresent &&
-        fResource->validity != FG_ResourceValidity::JustTrackCmdlist)
+    if ((type == FG_ResourceType::Depth || type == FG_ResourceType::Velocity) ||
+        (fResource->validity != FG_ResourceValidity::UntilPresent &&
+         fResource->validity != FG_ResourceValidity::JustTrackCmdlist))
     {
         fResource->validity = (fResource->validity != FG_ResourceValidity::ValidNow || willFlip)
                                   ? FG_ResourceValidity::UntilPresent
@@ -1157,15 +1147,18 @@ bool XeFG_Dx12::SetResource(Dx12Resource* inputResource)
             }
         }
 
-        auto frameId = static_cast<uint32_t>(_frameCount);
+        int indexDiff = GetIndex() - fIndex;
+        if (indexDiff < 0)
+            indexDiff += BUFFER_COUNT;
+
+        auto frameId = static_cast<uint32_t>(_frameCount - indexDiff);
         auto result =
             XeFGProxy::D3D12TagFrameResource()(_swapChainContext, fResource->cmdList, frameId, &resourceParam);
+        LOG_DEBUG("D3D12TagFrameResource, frameId: {}, type: {} result: {} ({})", frameId, magic_enum::enum_name(type),
+                  magic_enum::enum_name(result), (int32_t) result);
 
         if (result != XEFG_SWAPCHAIN_RESULT_SUCCESS)
         {
-            LOG_ERROR("D3D12TagFrameResource {} error: {} ({})", magic_enum::enum_name(type),
-                      magic_enum::enum_name(result), (int32_t) result);
-
             State::Instance().FGchanged = true;
             UpdateTarget();
             Deactivate();

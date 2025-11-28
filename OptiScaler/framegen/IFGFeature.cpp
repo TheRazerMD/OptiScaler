@@ -6,13 +6,27 @@ int IFGFeature::GetIndex() { return (_frameCount % BUFFER_COUNT); }
 
 int IFGFeature::GetIndexWillBeDispatched()
 {
-    auto df = _lastDispatchedFrame + 1;
+    auto df = _lastDispatchedFrame;
+
+    if (df == 0)
+        df = _frameCount;
+    else
+        df++;
+
     return (df % BUFFER_COUNT);
 }
 
 UINT64 IFGFeature::StartNewFrame()
 {
     _frameCount++;
+
+    if (_lastDispatchedFrame == 0 || _frameCount - _lastDispatchedFrame > BUFFER_COUNT)
+    {
+        LOG_WARN("Frame count jumped too much! _frameCount: {}, _lastDispatchedFrame: {}", _frameCount,
+                 _lastDispatchedFrame);
+
+        _lastDispatchedFrame = _frameCount - 1;
+    }
 
     auto fIndex = GetIndex();
     LOG_DEBUG("_frameCount: {}, fIndex: {}", _frameCount, fIndex);
@@ -138,48 +152,72 @@ bool IFGFeature::IsInvertedDepth() { return _constants.flags[FG_Flags::InvertedD
 
 bool IFGFeature::IsInfiniteDepth() { return _constants.flags[FG_Flags::InfiniteDepth]; }
 
-void IFGFeature::SetJitter(float x, float y)
+void IFGFeature::SetJitter(float x, float y, int index)
 {
-    auto fIndex = GetIndex();
-    _jitterX[fIndex] = x;
-    _jitterY[fIndex] = y;
+    if (index < 0)
+        index = GetIndex();
+
+    _jitterX[index] = x;
+    _jitterY[index] = y;
 }
 
-void IFGFeature::SetMVScale(float x, float y)
+void IFGFeature::SetMVScale(float x, float y, int index)
 {
-    auto fIndex = GetIndex();
-    _mvScaleX[fIndex] = x;
-    _mvScaleY[fIndex] = y;
+    if (index < 0)
+        index = GetIndex();
+
+    _mvScaleX[index] = x;
+    _mvScaleY[index] = y;
 }
 
-void IFGFeature::SetCameraValues(float nearValue, float farValue, float vFov, float aspectRatio, float meterFactor)
+void IFGFeature::SetCameraValues(float nearValue, float farValue, float vFov, float aspectRatio, float meterFactor,
+                                 int index)
 {
-    auto fIndex = GetIndex();
-    _cameraFar[fIndex] = farValue;
-    _cameraNear[fIndex] = nearValue;
-    _cameraVFov[fIndex] = vFov;
-    _cameraAspectRatio[fIndex] = aspectRatio;
-    _meterFactor[fIndex] = meterFactor;
+    if (index < 0)
+        index = GetIndex();
+
+    _cameraFar[index] = farValue;
+    _cameraNear[index] = nearValue;
+    _cameraVFov[index] = vFov;
+    _cameraAspectRatio[index] = aspectRatio;
+    _meterFactor[index] = meterFactor;
 }
 
-void IFGFeature::SetCameraData(float cameraPosition[3], float cameraUp[3], float cameraRight[3], float cameraForward[3])
+void IFGFeature::SetCameraData(float cameraPosition[3], float cameraUp[3], float cameraRight[3], float cameraForward[3],
+                               int index)
 {
-    auto fIndex = GetIndex();
-    std::memcpy(_cameraPosition[fIndex], cameraPosition, 3 * sizeof(float));
-    std::memcpy(_cameraUp[fIndex], cameraUp, 3 * sizeof(float));
-    std::memcpy(_cameraRight[fIndex], cameraRight, 3 * sizeof(float));
-    std::memcpy(_cameraForward[fIndex], cameraForward, 3 * sizeof(float));
+    if (index < 0)
+        index = GetIndex();
+
+    std::memcpy(_cameraPosition[index], cameraPosition, 3 * sizeof(float));
+    std::memcpy(_cameraUp[index], cameraUp, 3 * sizeof(float));
+    std::memcpy(_cameraRight[index], cameraRight, 3 * sizeof(float));
+    std::memcpy(_cameraForward[index], cameraForward, 3 * sizeof(float));
 }
 
-void IFGFeature::SetFrameTimeDelta(double delta) { _ftDelta[GetIndex()] = delta; }
-
-void IFGFeature::SetReset(UINT reset) { _reset[GetIndex()] = reset; }
-
-void IFGFeature::SetInterpolationRect(UINT64 width, UINT height)
+void IFGFeature::SetFrameTimeDelta(double delta, int index)
 {
-    auto fIndex = GetIndex();
-    _interpolationWidth[fIndex] = width;
-    _interpolationHeight[fIndex] = height;
+    if (index < 0)
+        index = GetIndex();
+
+    _ftDelta[index] = delta;
+}
+
+void IFGFeature::SetReset(UINT reset, int index)
+{
+    if (index < 0)
+        index = GetIndex();
+
+    _reset[index] = reset;
+}
+
+void IFGFeature::SetInterpolationRect(UINT64 width, UINT height, int index)
+{
+    if (index < 0)
+        index = GetIndex();
+
+    _interpolationWidth[index] = width;
+    _interpolationHeight[index] = height;
 }
 
 void IFGFeature::GetInterpolationRect(UINT64& width, UINT& height, int index)
@@ -191,11 +229,13 @@ void IFGFeature::GetInterpolationRect(UINT64& width, UINT& height, int index)
     height = _interpolationHeight[index];
 }
 
-void IFGFeature::SetInterpolationPos(UINT left, UINT top)
+void IFGFeature::SetInterpolationPos(UINT left, UINT top, int index)
 {
-    auto fIndex = GetIndex();
-    _interpolationLeft[fIndex] = left;
-    _interpolationTop[fIndex] = top;
+    if (index < 0)
+        index = GetIndex();
+
+    _interpolationLeft[index] = left;
+    _interpolationTop[index] = top;
 }
 
 void IFGFeature::GetInterpolationPos(UINT& left, UINT& top, int index)
@@ -219,7 +259,7 @@ void IFGFeature::ResetCounters() { _targetFrame = _frameCount; }
 void IFGFeature::UpdateTarget()
 {
     _targetFrame = _frameCount + 10;
-    _lastDispatchedFrame = 0;
+    //_lastDispatchedFrame = 0;
     LOG_DEBUG("Current frame: {} target frame: {}", _frameCount, _targetFrame);
 }
 

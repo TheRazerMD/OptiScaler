@@ -131,15 +131,17 @@ class IFGFeature
     bool IsInvertedDepth();
     bool IsInfiniteDepth();
 
-    void SetJitter(float x, float y);
-    void SetMVScale(float x, float y);
-    void SetCameraValues(float nearValue, float farValue, float vFov, float aspectRatio, float meterFactor = 0.0f);
-    void SetCameraData(float cameraPosition[3], float cameraUp[3], float cameraRight[3], float cameraForward[3]);
-    void SetFrameTimeDelta(double delta);
-    void SetReset(UINT reset);
-    void SetInterpolationRect(UINT64 width, UINT height);
+    void SetJitter(float x, float y, int index = -1);
+    void SetMVScale(float x, float y, int index = -1);
+    void SetCameraValues(float nearValue, float farValue, float vFov, float aspectRatio, float meterFactor = 0.0f,
+                         int index = -1);
+    void SetCameraData(float cameraPosition[3], float cameraUp[3], float cameraRight[3], float cameraForward[3],
+                       int index = -1);
+    void SetFrameTimeDelta(double delta, int index = -1);
+    void SetReset(UINT reset, int index = -1);
+    void SetInterpolationRect(UINT64 width, UINT height, int index = -1);
     void GetInterpolationRect(UINT64& width, UINT& height, int index = -1);
-    void SetInterpolationPos(UINT left, UINT top);
+    void SetInterpolationPos(UINT left, UINT top, int index = -1);
     void GetInterpolationPos(UINT& left, UINT& top, int index = -1);
     void SetResourceReady(FG_ResourceType type, int index = -1);
 
