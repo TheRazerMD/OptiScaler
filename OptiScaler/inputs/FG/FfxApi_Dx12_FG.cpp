@@ -1030,8 +1030,12 @@ void ffxPresentCallback()
         return;
 
     auto fIndex = IndexForFrameId(_callbackFrameId);
+
     if (fIndex < 0)
         fIndex = _currentIndex;
+
+    if (fIndex < 0)
+        return;
 
     auto cmdList = fg->GetUICommandList(fIndex);
 
