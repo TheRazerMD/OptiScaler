@@ -73,6 +73,7 @@ class IFGFeature
 
     UINT64 _frameCount = 1;
     UINT64 _lastDispatchedFrame = 0;
+    UINT64 _lastFGFrame = 0;
     bool _waitingNewFrameData = false;
 
     bool _isActive = false;

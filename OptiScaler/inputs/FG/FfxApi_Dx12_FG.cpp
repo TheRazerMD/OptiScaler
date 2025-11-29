@@ -18,9 +18,8 @@ static void* _presentCallbackUserContext = nullptr;
 static FfxApiFrameGenerationDispatchFunc _fgCallback = nullptr;
 static void* _fgCallbackUserContext = nullptr;
 static UINT64 _callbackFrameId = 0;
+static UINT64 _lastCallbackFrameId = 0;
 static FfxApiRect2D _callbackRect = {};
-
-// static std::mutex _newFrameMutex;
 
 static ID3D12Resource* _hudless[BUFFER_COUNT] = {};
 static ID3D12Resource* _interpolation[BUFFER_COUNT] = {};
@@ -558,19 +557,19 @@ ffxReturnCode_t ffxConfigure_Dx12FG(ffxContext* context, ffxConfigureDescHeader*
         {
             LOG_DEBUG("frameGenerationCallback exist");
 
-            _callbackFrameId = cDesc->frameID;
-            _callbackRect = cDesc->generationRect;
-            _fgCallback = cDesc->frameGenerationCallback;
-            _fgCallbackUserContext = cDesc->frameGenerationCallbackUserContext;
+            //_callbackFrameId = cDesc->frameID;
+            //_callbackRect = cDesc->generationRect;
+            //_fgCallback = cDesc->frameGenerationCallback;
+            //_fgCallbackUserContext = cDesc->frameGenerationCallbackUserContext;
         }
 
         if (cDesc->presentCallback != nullptr)
         {
             LOG_DEBUG("presentCallback exist");
 
+            _callbackFrameId = cDesc->frameID;
             _presentCallback = cDesc->presentCallback;
             _presentCallbackUserContext = cDesc->presentCallbackUserContext;
-            _callbackFrameId = cDesc->frameID;
         }
 
         if (cDesc->allowAsyncWorkloads || cDesc->onlyPresentGenerated)
@@ -788,7 +787,7 @@ ffxReturnCode_t ffxQuery_Dx12FG(ffxContext* context, ffxQueryDescHeader* desc)
 
         if (fg != nullptr)
         {
-            *cDesc->pOutCommandList = fg->GetUICommandList();
+            *cDesc->pOutCommandList = fg->GetUICommandList(fg->GetIndexWillBeDispatched());
             LOG_DEBUG("Returning cmdList: {:X}", (size_t) *cDesc->pOutCommandList);
         }
 
@@ -1031,14 +1030,15 @@ void ffxPresentCallback()
     if (fg == nullptr)
         return;
 
-    auto fIndex = IndexForFrameId(_callbackFrameId);
+    if (_lastCallbackFrameId == 0 || _lastCallbackFrameId > _callbackFrameId ||
+        (_callbackFrameId - _lastCallbackFrameId) > 2)
+    {
+        _lastCallbackFrameId = _callbackFrameId - 1;
+    }
 
-    if (fIndex < 0)
-        fIndex = _currentIndex;
+    _lastCallbackFrameId++;
 
-    if (fIndex < 0)
-        return;
-
+    auto fIndex = fg->GetIndexWillBeDispatched();
     auto cmdList = fg->GetUICommandList(fIndex);
 
     ID3D12Resource* currentBuffer = nullptr;
@@ -1047,7 +1047,7 @@ void ffxPresentCallback()
     {
         ffxCallbackDescFrameGenerationPresent cdfgp {};
         cdfgp.header.type = FFX_API_CALLBACK_DESC_TYPE_FRAMEGENERATION_PRESENT;
-        cdfgp.frameID = _callbackFrameId;
+        cdfgp.frameID = _lastCallbackFrameId;
         cdfgp.device = _device;
         cdfgp.isGeneratedFrame = false;
 
@@ -1131,7 +1131,7 @@ void ffxPresentCallback()
     {
         ffxDispatchDescFrameGeneration ddfg {};
         ddfg.header.type = FFX_API_DISPATCH_DESC_TYPE_FRAMEGENERATION;
-        ddfg.frameID = _callbackFrameId;
+        ddfg.frameID = _lastCallbackFrameId;
         ddfg.generationRect = _callbackRect;
         ddfg.numGeneratedFrames = 1;
 
