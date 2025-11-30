@@ -55,19 +55,21 @@ ID3D12GraphicsCommandList* IFGFeature_Dx12::GetUICommandList(int index)
             return nullptr;
     }
 
-    // for (size_t i = 0; i < BUFFER_COUNT; i++)
-    //{
-    //     if (i != index && _uiCommandListResetted[i])
-    //     {
-    //         LOG_DEBUG("Executing _uiCommandList[{}]: {:X}", i, (size_t) _uiCommandList[i]);
-    //         auto closeResult = _uiCommandList[i]->Close();
+    for (size_t j = 0; j < 2; j++)
+    {
+        auto i = (index + j) % BUFFER_COUNT;
 
-    //        if (closeResult != S_OK)
-    //            LOG_ERROR("_uiCommandList[{}]->Close() error: {:X}", i, (UINT) closeResult);
+        if (i != index && _uiCommandListResetted[i])
+        {
+            LOG_DEBUG("Executing _uiCommandList[{}]: {:X}", i, (size_t) _uiCommandList[i]);
+            auto closeResult = _uiCommandList[i]->Close();
 
-    //        _uiCommandListResetted[i] = false;
-    //    }
-    //}
+            if (closeResult != S_OK)
+                LOG_ERROR("_uiCommandList[{}]->Close() error: {:X}", i, (UINT) closeResult);
+
+            _uiCommandListResetted[i] = false;
+        }
+    }
 
     if (!_uiCommandListResetted[index])
     {
