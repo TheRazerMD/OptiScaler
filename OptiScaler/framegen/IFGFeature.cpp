@@ -20,7 +20,7 @@ UINT64 IFGFeature::StartNewFrame()
 {
     _frameCount++;
 
-    if (_lastDispatchedFrame == 0 || _frameCount - _lastDispatchedFrame > 2)
+    if (_lastDispatchedFrame == 0 || (_frameCount - _lastDispatchedFrame) > 2)
     {
         LOG_WARN("Frame count jumped too much! _frameCount: {}, _lastDispatchedFrame: {}", _frameCount,
                  _lastDispatchedFrame);
@@ -124,8 +124,7 @@ int IFGFeature::GetDispatchIndex(UINT64& willDispatchFrame)
         return -1;
 
     auto diff = _frameCount - _lastDispatchedFrame;
-    auto fgFrameDiff = State::Instance().FGLastFrame - _lastFGFrame;
-    if (diff > 2 || diff < 0 || _lastDispatchedFrame == 0 || fgFrameDiff == 0)
+    if (diff > Config::Instance()->FGAllowedFrameAhead.value_or_default() || diff < 0 || _lastDispatchedFrame == 0)
         willDispatchFrame = _frameCount; // Set dispatch frame as new one
     else
         willDispatchFrame = _lastDispatchedFrame + 1; // Render next one
