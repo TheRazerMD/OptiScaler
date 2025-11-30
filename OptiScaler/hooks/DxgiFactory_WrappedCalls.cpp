@@ -296,10 +296,10 @@ HRESULT DxgiFactoryWrappedCalls::CreateSwapChainForHwnd(IDXGIFactory2* realFacto
     if (pFullscreenDesc != nullptr)
         State::Instance().realExclusiveFullscreen = !pFullscreenDesc->Windowed;
 
-    if (pFullscreenDesc != nullptr && State::Instance().activeFgOutput == FGOutput::XeFG &&
+    if (State::Instance().activeFgOutput == FGOutput::XeFG &&
         Config::Instance()->FGXeFGForceBorderless.value_or_default())
     {
-        if (!pFullscreenDesc->Windowed)
+        if (pFullscreenDesc != nullptr && !pFullscreenDesc->Windowed)
         {
             State::Instance().SCExclusiveFullscreen = true;
             pFullscreenDesc->Windowed = true;
