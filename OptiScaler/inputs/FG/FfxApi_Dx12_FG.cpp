@@ -895,7 +895,7 @@ ffxReturnCode_t ffxDispatch_Dx12FG(ffxContext* context, ffxDispatchDescHeader* d
                 hudless.resource = (ID3D12Resource*) cdDesc->presentColor.resource;
                 hudless.state = GetD3D12State((FfxApiResourceState) cdDesc->presentColor.state);
                 hudless.type = FG_ResourceType::HudlessColor;
-                hudless.validity = FG_ResourceValidity::UntilPresent;
+                hudless.validity = FG_ResourceValidity::ValidNow;
                 hudless.width = width;
                 hudless.top = top;
                 hudless.left = left;
