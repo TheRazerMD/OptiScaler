@@ -43,6 +43,8 @@ void CheckForFrame(IFGFeature_Dx12* fg, uint64_t frameId)
     {
         _isFrameFinished = false;
 
+        LOG_DEBUG("Frame finished, frameId: {}", frameId);
+
         fg->StartNewFrame();
         _currentIndex = fg->GetIndex();
 
@@ -55,6 +57,7 @@ void CheckForFrame(IFGFeature_Dx12* fg, uint64_t frameId)
     }
     else if (frameId != 0 && frameId > _currentFrameId)
     {
+        LOG_DEBUG("frameId: {} > _currentFrameId: {}", frameId, _currentFrameId);
         fg->StartNewFrame();
         _currentIndex = fg->GetIndex();
         _currentFrameId = frameId;
@@ -436,7 +439,7 @@ ffxReturnCode_t ffxConfigure_Dx12FG(ffxContext* context, ffxConfigureDescHeader*
 
         auto fIndex = IndexForFrameId(cDesc->frameID);
         if (fIndex < 0)
-            fIndex = _currentIndex;
+            fIndex = fg->GetIndexWillBeDispatched();
 
         LOG_DEBUG("FFX_API_CONFIGURE_DESC_TYPE_FRAMEGENERATION frameID: {}, enabled: {}, fIndex: {} ", cDesc->frameID,
                   cDesc->frameGenerationEnabled, fIndex);
@@ -536,7 +539,9 @@ ffxReturnCode_t ffxConfigure_Dx12FG(ffxContext* context, ffxConfigureDescHeader*
             }
         }
 
-        if (cDesc->HUDLessColor.resource != nullptr)
+        if (cDesc->HUDLessColor.resource != nullptr &&
+            !Config::Instance()->FSRFGSkipConfigForHudless.value_or_default() &&
+            fg->GetResource(FG_ResourceType::HudlessColor) == nullptr)
         {
             Dx12Resource hudless {};
             hudless.cmdList = nullptr; // Not sure about this
@@ -825,6 +830,7 @@ ffxReturnCode_t ffxQuery_Dx12FG(ffxContext* context, ffxQueryDescHeader* desc)
                 _interpolation[fIndex]->SetName(std::format(L"_interpolation[{}]", fIndex).c_str());
 
             *cDesc->pOutTexture = ffxApiGetResourceDX12(_interpolation[fIndex], FFX_API_RESOURCE_STATE_COMMON);
+            LOG_DEBUG("_interpolation[{}]: {:X}", fIndex, (size_t) _interpolation[fIndex]);
         }
 
         return FFX_API_RETURN_OK;
@@ -874,7 +880,9 @@ ffxReturnCode_t ffxDispatch_Dx12FG(ffxContext* context, ffxDispatchDescHeader* d
             fg->SetInterpolationRect(cdDesc->generationRect.width, cdDesc->generationRect.height, fIndex);
             fg->SetReset(cdDesc->reset ? 1 : 0, fIndex);
 
-            if (cdDesc->presentColor.resource != nullptr && fg->GetResource(FG_ResourceType::HudlessColor) == nullptr)
+            if (cdDesc->presentColor.resource != nullptr &&
+                !Config::Instance()->FSRFGSkipDispatchForHudless.value_or_default() &&
+                fg->GetResource(FG_ResourceType::HudlessColor) == nullptr)
             {
                 UINT width = cdDesc->generationRect.width;
                 UINT height = cdDesc->generationRect.height;
@@ -1015,6 +1023,7 @@ ffxReturnCode_t ffxDispatch_Dx12FG(ffxContext* context, ffxDispatchDescHeader* d
 void ffxPresentCallback()
 {
     _isFrameFinished = true;
+    _lastFrameId = _currentFrameId;
 
 #ifdef PASSTHRU
     return;
@@ -1029,6 +1038,9 @@ void ffxPresentCallback()
 
     if (fg == nullptr)
         return;
+
+    LOG_DEBUG("_callbackFrameId: {}, _lastCallbackFrameId: {}, fIndex: {}", _callbackFrameId, _lastCallbackFrameId,
+              fg->GetIndexWillBeDispatched());
 
     if (_lastCallbackFrameId == 0 || _lastCallbackFrameId > _callbackFrameId ||
         (_callbackFrameId - _lastCallbackFrameId) > 2)
@@ -1045,6 +1057,7 @@ void ffxPresentCallback()
 
     if (_presentCallback != nullptr)
     {
+        LOG_DEBUG("Calling present callback for frameID: {}", _lastCallbackFrameId);
         ffxCallbackDescFrameGenerationPresent cdfgp {};
         cdfgp.header.type = FFX_API_CALLBACK_DESC_TYPE_FRAMEGENERATION_PRESENT;
         cdfgp.frameID = _lastCallbackFrameId;
@@ -1111,7 +1124,7 @@ void ffxPresentCallback()
                 hudless.resource = _hudless[fIndex];
                 hudless.state = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
                 hudless.type = FG_ResourceType::HudlessColor;
-                hudless.validity = FG_ResourceValidity::ValidNow;
+                hudless.validity = FG_ResourceValidity::UntilPresent;
                 hudless.width = hDesc.Width;
                 hudless.frameIndex = fIndex;
 
@@ -1129,6 +1142,7 @@ void ffxPresentCallback()
 
     if (_fgCallback != nullptr)
     {
+        LOG_DEBUG("Calling FG callback for frameID: {}", _lastCallbackFrameId);
         ffxDispatchDescFrameGeneration ddfg {};
         ddfg.header.type = FFX_API_DISPATCH_DESC_TYPE_FRAMEGENERATION;
         ddfg.frameID = _lastCallbackFrameId;
