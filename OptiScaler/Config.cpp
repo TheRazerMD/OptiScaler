@@ -67,6 +67,7 @@ bool Config::Reload(std::filesystem::path iniPath)
         {
             FGEnabled.set_from_config(readBool("FrameGen", "Enabled"));
             FGDebugView.set_from_config(readBool("FrameGen", "DebugView"));
+
             if (auto FGInputString = readString("FrameGen", "FGInput"); FGInputString.has_value())
             {
                 if (lstrcmpiA(FGInputString.value().c_str(), "nofg") == 0)
@@ -98,11 +99,20 @@ bool Config::Reload(std::filesystem::path iniPath)
                 else if (lstrcmpiA(FGOutputString.value().c_str(), "xefg") == 0)
                     FGOutput.set_from_config(FGOutput::XeFG);
             }
+
             FGDrawUIOverFG.set_from_config(readBool("FrameGen", "DrawUIOverFG"));
             FGUIPremultipliedAlpha.set_from_config(readBool("FrameGen", "UIPremultipliedAlpha"));
             FGDisableHudless.set_from_config(readBool("FrameGen", "DisableHudless"));
             FGDisableUI.set_from_config(readBool("FrameGen", "DisableUI"));
             FGSkipReset.set_from_config(readBool("FrameGen", "SkipReset"));
+            FGRectLeft.set_from_config(readInt("FrameGen", "RectLeft"));
+            FGRectTop.set_from_config(readInt("FrameGen", "RectTop"));
+            FGRectWidth.set_from_config(readInt("FrameGen", "RectWidth"));
+            FGRectHeight.set_from_config(readInt("FrameGen", "RectHeight"));
+
+            FGAllowedFrameAhead.set_from_config(readInt("FrameGen", "AllowedFrameAhead"));
+            if (FGAllowedFrameAhead.has_value() && (FGAllowedFrameAhead.value() < 1 || FGAllowedFrameAhead.value() > 3))
+                FGAllowedFrameAhead.reset();
         }
 
         // FSR FG
@@ -111,10 +121,6 @@ bool Config::Reload(std::filesystem::path iniPath)
             FGDebugResetLines.set_from_config(readBool("FSRFG", "DebugResetLines"));
             FGDebugPacingLines.set_from_config(readBool("FSRFG", "DebugPacingLines"));
             FGAsync.set_from_config(readBool("FSRFG", "AllowAsync"));
-            FGRectLeft.set_from_config(readInt("FSRFG", "RectLeft"));
-            FGRectTop.set_from_config(readInt("FSRFG", "RectTop"));
-            FGRectWidth.set_from_config(readInt("FSRFG", "RectWidth"));
-            FGRectHeight.set_from_config(readInt("FSRFG", "RectHeight"));
             FGUseMutexForSwapchain.set_from_config(readBool("FSRFG", "UseMutexForSwapchain"));
             FGFramePacingTuning.set_from_config(readBool("FSRFG", "FramePacingTuning"));
             FGFPTSafetyMarginInMs.set_from_config(readFloat("FSRFG", "FPTSafetyMarginInMs"));
@@ -165,6 +171,12 @@ bool Config::Reload(std::filesystem::path iniPath)
             FGXeFGSkipResizeBuffers.set_from_config(readBool("XeFG", "SkipResizeBuffers"));
             FGXeFGModifyBufferState.set_from_config(readBool("XeFG", "ModifyBufferState"));
             FGXeFGModifySCIndex.set_from_config(readBool("XeFG", "ModifySCIndex"));
+        }
+
+        // FSR FG Inputs
+        {
+            FSRFGSkipConfigForHudless.set_from_config(readBool("FSRFGInputs", "SkipConfigForHudless"));
+            FSRFGSkipDispatchForHudless.set_from_config(readBool("FSRFGInputs", "SkipDispatchForHudless"));
         }
 
         // Framerate
@@ -681,6 +693,12 @@ bool Config::SaveIni()
                      GetBoolValue(Instance()->FGDisableHudless.value_for_config()).c_str());
         ini.SetValue("FrameGen", "DisableUI", GetBoolValue(Instance()->FGDisableUI.value_for_config()).c_str());
         ini.SetValue("FrameGen", "SkipReset", GetBoolValue(Instance()->FGSkipReset.value_for_config()).c_str());
+        ini.SetValue("FrameGen", "RectLeft", GetIntValue(Instance()->FGRectLeft.value_for_config()).c_str());
+        ini.SetValue("FrameGen", "RectTop", GetIntValue(Instance()->FGRectTop.value_for_config()).c_str());
+        ini.SetValue("FrameGen", "RectWidth", GetIntValue(Instance()->FGRectWidth.value_for_config()).c_str());
+        ini.SetValue("FrameGen", "RectHeight", GetIntValue(Instance()->FGRectHeight.value_for_config()).c_str());
+        ini.SetValue("FrameGen", "AllowedFrameAhead",
+                     GetIntValue(Instance()->FGAllowedFrameAhead.value_for_config()).c_str());
     }
 
     // FSR FG output
@@ -693,10 +711,6 @@ bool Config::SaveIni()
         ini.SetValue("FSRFG", "AllowAsync", GetBoolValue(Instance()->FGAsync.value_for_config()).c_str());
         ini.SetValue("FSRFG", "UseMutexForSwapchain",
                      GetBoolValue(Instance()->FGUseMutexForSwapchain.value_for_config()).c_str());
-        ini.SetValue("FSRFG", "RectLeft", GetIntValue(Instance()->FGRectLeft.value_for_config()).c_str());
-        ini.SetValue("FSRFG", "RectTop", GetIntValue(Instance()->FGRectTop.value_for_config()).c_str());
-        ini.SetValue("FSRFG", "RectWidth", GetIntValue(Instance()->FGRectWidth.value_for_config()).c_str());
-        ini.SetValue("FSRFG", "RectHeight", GetIntValue(Instance()->FGRectHeight.value_for_config()).c_str());
         ini.SetValue("FSRFG", "FramePacingTuning",
                      GetBoolValue(Instance()->FGFramePacingTuning.value_for_config()).c_str());
         ini.SetValue("FSRFG", "FPTSafetyMarginInMs",
@@ -773,6 +787,14 @@ bool Config::SaveIni()
 
         ini.SetValue("OptiFG", "AlwaysCaptureFSRFGSwapchain",
                      GetBoolValue(Instance()->FGAlwaysCaptureFSRFGSwapchain.value_for_config()).c_str());
+    }
+
+    // FSR FG Inputs
+    {
+        ini.SetValue("FSRFGInputs", "SkipConfigForHudless",
+                     GetBoolValue(Instance()->FSRFGSkipConfigForHudless.value_for_config()).c_str());
+        ini.SetValue("FSRFGInputs", "SkipDispatchForHudless",
+                     GetBoolValue(Instance()->FSRFGSkipDispatchForHudless.value_for_config()).c_str());
     }
 
     // Framerate

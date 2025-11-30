@@ -3167,7 +3167,7 @@ bool MenuCommon::RenderMenu()
 
                             ImGui::EndDisabled();
 
-                            ImGui::SameLine();
+                            ImGui::SameLine(0.0f, 16.0f);
 
                             ImGui::BeginDisabled(!isUsingUIAny);
 
@@ -3188,6 +3188,22 @@ bool MenuCommon::RenderMenu()
                             ShowHelpMarker("Don't use reset signals from FG Inputs");
 
                             ImGui::EndDisabled();
+
+                            ImGui::SameLine(0.0f, 16.0f);
+
+                            ImGui::PushItemWidth(95.0f * config->MenuScale.value_or_default());
+
+                            auto frameAhead = config->FGAllowedFrameAhead.value_or_default();
+                            if (ImGui::InputInt("Allowed Frame Ahead", &frameAhead, 1, 1) && frameAhead > 0 &&
+                                frameAhead < 4)
+                            {
+                                config->FGAllowedFrameAhead = frameAhead;
+                            }
+
+                            ShowHelpMarker("Number of frames the FG is allowed to be ahead of the game\n"
+                                           "Might prevent FG on/off switching but also might cause issues");
+
+                            ImGui::PopItemWidth();
                         }
                     }
                 }
@@ -3942,6 +3958,20 @@ bool MenuCommon::RenderMenu()
                                         "You might need to select FSR first");
                         }
                     }
+
+                    bool skipConfig = config->FSRFGSkipConfigForHudless.value_or_default();
+                    if (ImGui::Checkbox("Skip Config for Hudless", &skipConfig))
+                        config->FSRFGSkipConfigForHudless = skipConfig;
+
+                    ShowHelpMarker("Do not use Hudless set at ffxConfig");
+
+                    ImGui::SameLine(0.0f, 6.0f);
+
+                    bool skipDispatch = config->FSRFGSkipDispatchForHudless.value_or_default();
+                    if (ImGui::Checkbox("Skip Dispatch for Hudless", &skipDispatch))
+                        config->FSRFGSkipDispatchForHudless = skipDispatch;
+
+                    ShowHelpMarker("Do not use Hudless set at ffxDispatch");
                 }
 
                 // Streamline FG Inputs

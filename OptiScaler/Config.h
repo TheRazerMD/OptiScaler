@@ -102,12 +102,13 @@ template <class T, HasDefaultValue defaultState = WithDefault> class CustomOptio
     }
 
     constexpr T value_or_default() &&
-        requires(defaultState != NoDefault) {
-            return this->has_value() ? std::move(this->value()) : std::move(_defaultValue);
-        }
+        requires(defaultState != NoDefault)
+    {
+        return this->has_value() ? std::move(this->value()) : std::move(_defaultValue);
+    }
 
-        constexpr std::optional<T> value_for_config()
-            requires(defaultState == WithDefault)
+    constexpr std::optional<T> value_for_config()
+        requires(defaultState == WithDefault)
     {
         if (_volatile)
         {
@@ -395,6 +396,7 @@ class Config
     CustomOptional<bool> FGDisableHudless { false };
     CustomOptional<bool> FGDisableUI { true };
     CustomOptional<bool> FGSkipReset { false };
+    CustomOptional<int> FGAllowedFrameAhead { 1 };
 
     // OptiFG
     CustomOptional<bool> FGEnabled { false };
@@ -447,6 +449,9 @@ class Config
     CustomOptional<bool> FGFPTAllowHybridSpin { false };
     CustomOptional<int> FGFPTHybridSpinTime { 2 };
     CustomOptional<bool> FGFPTAllowWaitForSingleObjectOnFence { false };
+
+    CustomOptional<bool> FSRFGSkipConfigForHudless { false };
+    CustomOptional<bool> FSRFGSkipDispatchForHudless { false };
 
     // OptiFG - XeFG
     CustomOptional<bool> FGXeFGDepthInverted { false };
