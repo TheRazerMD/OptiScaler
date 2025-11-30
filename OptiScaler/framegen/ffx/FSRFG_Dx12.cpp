@@ -1265,7 +1265,7 @@ bool FSRFG_Dx12::Present()
     {
         if (_uiCommandListResetted[fIndex])
         {
-            LOG_DEBUG("Executing _uiCommandList[fIndex][{}]: {:X}", fIndex, (size_t) _uiCommandList[fIndex]);
+            LOG_DEBUG("Executing _uiCommandList[{}]: {:X}", fIndex, (size_t) _uiCommandList[fIndex]);
             auto closeResult = _uiCommandList[fIndex]->Close();
 
             if (closeResult == S_OK)
