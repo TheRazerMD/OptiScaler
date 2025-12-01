@@ -39,23 +39,7 @@ void CheckForFrame(IFGFeature_Dx12* fg, uint64_t frameId)
 {
     std::scoped_lock lock(_frameBoundaryMutex);
 
-    if (_isFrameFinished && _lastFrameId == _currentFrameId)
-    {
-        _isFrameFinished = false;
-
-        LOG_DEBUG("Frame finished, frameId: {}", frameId);
-
-        fg->StartNewFrame();
-        _currentIndex = fg->GetIndex();
-
-        if (frameId != 0)
-            _currentFrameId = frameId;
-        else
-            _currentFrameId = _lastFrameId + 1;
-
-        _frameIdIndex[_currentIndex] = _currentFrameId;
-    }
-    else if (frameId != 0 && frameId > _currentFrameId)
+    if (frameId != 0 && frameId > _currentFrameId)
     {
         LOG_DEBUG("frameId: {} > _currentFrameId: {}", frameId, _currentFrameId);
         fg->StartNewFrame();
