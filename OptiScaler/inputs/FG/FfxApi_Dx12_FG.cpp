@@ -524,8 +524,7 @@ ffxReturnCode_t ffxConfigure_Dx12FG(ffxContext* context, ffxConfigureDescHeader*
         }
 
         if (cDesc->HUDLessColor.resource != nullptr &&
-            !Config::Instance()->FSRFGSkipConfigForHudless.value_or_default() &&
-            fg->GetResource(FG_ResourceType::HudlessColor) == nullptr)
+            !Config::Instance()->FSRFGSkipConfigForHudless.value_or_default())
         {
             Dx12Resource hudless {};
             hudless.cmdList = nullptr; // Not sure about this
