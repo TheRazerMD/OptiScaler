@@ -1019,19 +1019,21 @@ void ffxPresentCallback()
 
     auto fg = State::Instance().currentFG;
 
-    if (fg == nullptr)
+    if (fg == nullptr && fg->FrameGenerationContext() != nullptr)
         return;
+
+    // if (_lastCallbackFrameId == 0 || _lastCallbackFrameId > _callbackFrameId ||
+    //     (_callbackFrameId - _lastCallbackFrameId) > 2)
+    //{
+    //     _lastCallbackFrameId = _callbackFrameId - 1;
+    // }
+
+    //_lastCallbackFrameId++;
+
+    _lastCallbackFrameId = _callbackFrameId;
 
     LOG_DEBUG("_callbackFrameId: {}, _lastCallbackFrameId: {}, fIndex: {}", _callbackFrameId, _lastCallbackFrameId,
               fg->GetIndexWillBeDispatched());
-
-    if (_lastCallbackFrameId == 0 || _lastCallbackFrameId > _callbackFrameId ||
-        (_callbackFrameId - _lastCallbackFrameId) > 2)
-    {
-        _lastCallbackFrameId = _callbackFrameId - 1;
-    }
-
-    _lastCallbackFrameId++;
 
     auto fIndex = fg->GetIndexWillBeDispatched();
     auto cmdList = fg->GetUICommandList(fIndex);
