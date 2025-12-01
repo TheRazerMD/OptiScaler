@@ -542,15 +542,15 @@ ffxReturnCode_t ffxConfigure_Dx12FG(ffxContext* context, ffxConfigureDescHeader*
             fg->SetResource(&hudless);
         }
 
-        // if (cDesc->frameGenerationCallback != nullptr && cDesc->frameGenerationEnabled)
-        //{
-        //     LOG_DEBUG("frameGenerationCallback exist");
+        if (cDesc->frameGenerationCallback != nullptr && cDesc->frameGenerationEnabled)
+        {
+            LOG_DEBUG("frameGenerationCallback exist");
 
-        //    _callbackFrameId = cDesc->frameID;
-        //    _callbackRect = cDesc->generationRect;
-        //    _fgCallback = cDesc->frameGenerationCallback;
-        //    _fgCallbackUserContext = cDesc->frameGenerationCallbackUserContext;
-        //}
+            _callbackFrameId = cDesc->frameID;
+            _callbackRect = cDesc->generationRect;
+            _fgCallback = cDesc->frameGenerationCallback;
+            _fgCallbackUserContext = cDesc->frameGenerationCallbackUserContext;
+        }
 
         if (cDesc->presentCallback != nullptr)
         {
