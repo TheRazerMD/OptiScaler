@@ -177,6 +177,7 @@ bool Config::Reload(std::filesystem::path iniPath)
         {
             FSRFGSkipConfigForHudless.set_from_config(readBool("FSRFGInputs", "SkipConfigForHudless"));
             FSRFGSkipDispatchForHudless.set_from_config(readBool("FSRFGInputs", "SkipDispatchForHudless"));
+            FSRFGDepthAndVelocityValidNow.set_from_config(readBool("FSRFGInputs", "DepthAndVelocityValidNow"));
         }
 
         // Framerate
@@ -795,6 +796,8 @@ bool Config::SaveIni()
                      GetBoolValue(Instance()->FSRFGSkipConfigForHudless.value_for_config()).c_str());
         ini.SetValue("FSRFGInputs", "SkipDispatchForHudless",
                      GetBoolValue(Instance()->FSRFGSkipDispatchForHudless.value_for_config()).c_str());
+        ini.SetValue("FSRFGInputs", "DepthAndVelocityValidNow",
+                     GetBoolValue(Instance()->FSRFGDepthAndVelocityValidNow.value_for_config()).c_str());
     }
 
     // Framerate

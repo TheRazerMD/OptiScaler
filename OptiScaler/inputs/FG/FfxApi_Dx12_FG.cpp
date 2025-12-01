@@ -28,7 +28,6 @@ static Dx12Resource _uiRes[BUFFER_COUNT] = {};
 // #define PASSTHRU
 
 std::mutex _frameBoundaryMutex;
-bool _isFrameFinished = true;
 
 uint64_t _currentFrameId = 0;
 int _currentIndex = -1;
@@ -423,7 +422,7 @@ ffxReturnCode_t ffxConfigure_Dx12FG(ffxContext* context, ffxConfigureDescHeader*
 
         auto fIndex = IndexForFrameId(cDesc->frameID);
         if (fIndex < 0)
-            fIndex = fg->GetIndexWillBeDispatched();
+            fIndex = fg->GetIndex();
 
         LOG_DEBUG("FFX_API_CONFIGURE_DESC_TYPE_FRAMEGENERATION frameID: {}, enabled: {}, fIndex: {} ", cDesc->frameID,
                   cDesc->frameGenerationEnabled, fIndex);
@@ -955,7 +954,12 @@ ffxReturnCode_t ffxDispatch_Dx12FG(ffxContext* context, ffxDispatchDescHeader* d
             depth.resource = (ID3D12Resource*) cdDesc->depth.resource;
             depth.state = GetD3D12State((FfxApiResourceState) cdDesc->depth.state);
             depth.type = FG_ResourceType::Depth;
-            depth.validity = FG_ResourceValidity::JustTrackCmdlist;
+
+            if (Config::Instance()->FSRFGDepthAndVelocityValidNow.value_or_default())
+                depth.validity = FG_ResourceValidity::ValidNow;
+            else
+                depth.validity = FG_ResourceValidity::JustTrackCmdlist;
+
             depth.width = cdDesc->renderSize.width; // cdDesc->depth.description.height;
             depth.frameIndex = fIndex;
 
@@ -984,7 +988,12 @@ ffxReturnCode_t ffxDispatch_Dx12FG(ffxContext* context, ffxDispatchDescHeader* d
             velocity.resource = (ID3D12Resource*) cdDesc->motionVectors.resource;
             velocity.state = GetD3D12State((FfxApiResourceState) cdDesc->motionVectors.state);
             velocity.type = FG_ResourceType::Velocity;
-            velocity.validity = FG_ResourceValidity::JustTrackCmdlist;
+
+            if (Config::Instance()->FSRFGDepthAndVelocityValidNow.value_or_default())
+                velocity.validity = FG_ResourceValidity::ValidNow;
+            else
+                velocity.validity = FG_ResourceValidity::JustTrackCmdlist;
+
             velocity.width = width; // cdDesc->motionVectors.description.height;
             velocity.frameIndex = fIndex;
 
@@ -1005,7 +1014,6 @@ ffxReturnCode_t ffxDispatch_Dx12FG(ffxContext* context, ffxDispatchDescHeader* d
 
 void ffxPresentCallback()
 {
-    _isFrameFinished = true;
     _lastFrameId = _currentFrameId;
 
 #ifdef PASSTHRU

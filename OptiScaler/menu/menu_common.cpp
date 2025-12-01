@@ -3972,6 +3972,13 @@ bool MenuCommon::RenderMenu()
                         config->FSRFGSkipDispatchForHudless = skipDispatch;
 
                     ShowHelpMarker("Do not use Hudless set at ffxDispatch");
+
+                    bool dmvValidNow = config->FSRFGDepthAndVelocityValidNow.value_or_default();
+                    if (ImGui::Checkbox("Set Depth and Velocity as ValidNow", &dmvValidNow))
+                        config->FSRFGDepthAndVelocityValidNow = dmvValidNow;
+
+                    ShowHelpMarker("Will use more VRAM but Uniscaler needs this\n"
+                                   "Maybe some other games might need too");
                 }
 
                 // Streamline FG Inputs
