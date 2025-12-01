@@ -268,22 +268,22 @@ class FfxApiProxy
             {
                 LOG_DEBUG("Trying to load {}", wstring_to_string(dllNames[i]));
 
-                if (upscaling_dx12.dll == nullptr && Config::Instance()->FfxDx12Path.has_value())
-                {
-                    std::filesystem::path libPath(Config::Instance()->FfxDx12Path.value().c_str());
+                // if (upscaling_dx12.dll == nullptr && Config::Instance()->FfxDx12Path.has_value())
+                //{
+                //     std::filesystem::path libPath(Config::Instance()->FfxDx12Path.value().c_str());
 
-                    if (libPath.has_filename())
-                        upscaling_dx12.dll = NtdllProxy::LoadLibraryExW_Ldr(libPath.c_str(), NULL, 0);
-                    else
-                        upscaling_dx12.dll = NtdllProxy::LoadLibraryExW_Ldr((libPath / dllNames[i]).c_str(), NULL, 0);
+                //    if (libPath.has_filename())
+                //        upscaling_dx12.dll = NtdllProxy::LoadLibraryExW_Ldr(libPath.c_str(), NULL, 0);
+                //    else
+                //        upscaling_dx12.dll = NtdllProxy::LoadLibraryExW_Ldr((libPath / dllNames[i]).c_str(), NULL, 0);
 
-                    if (upscaling_dx12.dll != nullptr)
-                    {
-                        LOG_INFO("{} loaded from {}", wstring_to_string(dllNames[i]),
-                                 wstring_to_string(Config::Instance()->FfxDx12Path.value()));
-                        break;
-                    }
-                }
+                //    if (upscaling_dx12.dll != nullptr)
+                //    {
+                //        LOG_INFO("{} loaded from {}", wstring_to_string(dllNames[i]),
+                //                 wstring_to_string(Config::Instance()->FfxDx12Path.value()));
+                //        break;
+                //    }
+                //}
 
                 if (upscaling_dx12.dll == nullptr)
                 {
@@ -368,22 +368,22 @@ class FfxApiProxy
             {
                 LOG_DEBUG("Trying to load {}", wstring_to_string(dllNames[i]));
 
-                if (fg_dx12.dll == nullptr && Config::Instance()->FfxDx12Path.has_value())
-                {
-                    std::filesystem::path libPath(Config::Instance()->FfxDx12Path.value().c_str());
+                // if (fg_dx12.dll == nullptr && Config::Instance()->FfxDx12Path.has_value())
+                //{
+                //     std::filesystem::path libPath(Config::Instance()->FfxDx12Path.value().c_str());
 
-                    if (libPath.has_filename())
-                        fg_dx12.dll = NtdllProxy::LoadLibraryExW_Ldr(libPath.c_str(), NULL, 0);
-                    else
-                        fg_dx12.dll = NtdllProxy::LoadLibraryExW_Ldr((libPath / dllNames[i]).c_str(), NULL, 0);
+                //    if (libPath.has_filename())
+                //        fg_dx12.dll = NtdllProxy::LoadLibraryExW_Ldr(libPath.c_str(), NULL, 0);
+                //    else
+                //        fg_dx12.dll = NtdllProxy::LoadLibraryExW_Ldr((libPath / dllNames[i]).c_str(), NULL, 0);
 
-                    if (fg_dx12.dll != nullptr)
-                    {
-                        LOG_INFO("{} loaded from {}", wstring_to_string(dllNames[i]),
-                                 wstring_to_string(Config::Instance()->FfxDx12Path.value()));
-                        break;
-                    }
-                }
+                //    if (fg_dx12.dll != nullptr)
+                //    {
+                //        LOG_INFO("{} loaded from {}", wstring_to_string(dllNames[i]),
+                //                 wstring_to_string(Config::Instance()->FfxDx12Path.value()));
+                //        break;
+                //    }
+                //}
 
                 if (fg_dx12.dll == nullptr)
                 {
