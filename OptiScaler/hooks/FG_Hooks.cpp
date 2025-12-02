@@ -386,6 +386,25 @@ HRESULT FGHooks::hkResizeBuffers(IDXGISwapChain* This, UINT BufferCount, UINT Wi
         return o_FGSCResizeBuffers(This, BufferCount, Width, Height, NewFormat, SwapChainFlags);
     }
 
+    if (State::Instance().activeFgOutput == FGOutput::XeFG)
+    {
+        if (Config::Instance()->FGXeFGForceBorderless.value_or_default())
+        {
+            SwapChainFlags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+        }
+
+        if (State::Instance().SCLastFlags != SwapChainFlags)
+        {
+            LOG_WARN("SwapChainFlags changed from {} to {}", State::Instance().SCLastFlags, SwapChainFlags);
+
+            if (State::Instance().activeFgOutput == FGOutput::XeFG)
+            {
+                LOG_WARN("Preventing flag change for XeFG!");
+                SwapChainFlags = State::Instance().SCLastFlags;
+            }
+        }
+    }
+
     LOG_DEBUG("BufferCount: {}, Width: {}, Height: {}, NewFormat:{}, SwapChainFlags: {}", BufferCount, Width, Height,
               (UINT) NewFormat, SwapChainFlags);
 
@@ -405,7 +424,8 @@ HRESULT FGHooks::hkResizeBuffers(IDXGISwapChain* This, UINT BufferCount, UINT Wi
                 BufferCount = desc.BufferCount;
 
             if (desc.BufferDesc.Width == Width && desc.BufferDesc.Height == Height &&
-                NewFormat == desc.BufferDesc.Format && State::Instance().SCLastFlags == SwapChainFlags)
+                NewFormat == desc.BufferDesc.Format && State::Instance().SCLastFlags == SwapChainFlags &&
+                BufferCount == desc.BufferCount)
             {
                 LOG_DEBUG("Skipping resize");
 
@@ -426,14 +446,15 @@ HRESULT FGHooks::hkResizeBuffers(IDXGISwapChain* This, UINT BufferCount, UINT Wi
                             for (size_t i = 0; i < desc.BufferCount; i++)
                             {
                                 ID3D12Resource* backBuffer = nullptr;
-                                swapchain->GetBuffer(swapchainIndex, IID_PPV_ARGS(&backBuffer));
+                                if (swapchain->GetBuffer(swapchainIndex, IID_PPV_ARGS(&backBuffer)) == S_OK)
+                                {
+                                    auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+                                        backBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COMMON);
 
-                                auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-                                    backBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COMMON);
+                                    cmdList->ResourceBarrier(1, &barrier);
 
-                                cmdList->ResourceBarrier(1, &barrier);
-
-                                backBuffer->Release();
+                                    backBuffer->Release();
+                                }
                             }
                         }
                     }
@@ -460,17 +481,6 @@ HRESULT FGHooks::hkResizeBuffers(IDXGISwapChain* This, UINT BufferCount, UINT Wi
     }
 
     State::Instance().SCAllowTearing = (SwapChainFlags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) > 0;
-
-    if (State::Instance().SCLastFlags != SwapChainFlags)
-    {
-        LOG_WARN("SwapChainFlags changed from {} to {}", State::Instance().SCLastFlags, SwapChainFlags);
-
-        if (State::Instance().activeFgOutput == FGOutput::XeFG)
-        {
-            LOG_WARN("Preventing flag change for XeFG!");
-            SwapChainFlags = State::Instance().SCLastFlags;
-        }
-    }
 
     State::Instance().SCLastFlags = SwapChainFlags;
 
@@ -552,6 +562,25 @@ HRESULT FGHooks::hkResizeBuffers1(IDXGISwapChain* This, UINT BufferCount, UINT W
                                     ppPresentQueue);
     }
 
+    if (State::Instance().activeFgOutput == FGOutput::XeFG)
+    {
+        if (Config::Instance()->FGXeFGForceBorderless.value_or_default())
+        {
+            SwapChainFlags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+        }
+
+        if (State::Instance().SCLastFlags != SwapChainFlags)
+        {
+            LOG_WARN("SwapChainFlags changed from {} to {}", State::Instance().SCLastFlags, SwapChainFlags);
+
+            if (State::Instance().activeFgOutput == FGOutput::XeFG)
+            {
+                LOG_WARN("Preventing flag change for XeFG!");
+                SwapChainFlags = State::Instance().SCLastFlags;
+            }
+        }
+    }
+
     LOG_DEBUG("BufferCount: {}, Width: {}, Height: {}, NewFormat:{}, SwapChainFlags: {}, Caller: {}", BufferCount,
               Width, Height, (UINT) Format, SwapChainFlags, Util::WhoIsTheCaller(_ReturnAddress()));
 
@@ -570,7 +599,8 @@ HRESULT FGHooks::hkResizeBuffers1(IDXGISwapChain* This, UINT BufferCount, UINT W
                 BufferCount = desc.BufferCount;
 
             if (desc.BufferDesc.Width == Width && desc.BufferDesc.Height == Height &&
-                Format == desc.BufferDesc.Format && State::Instance().SCLastFlags == SwapChainFlags)
+                Format == desc.BufferDesc.Format && State::Instance().SCLastFlags == SwapChainFlags &&
+                BufferCount == desc.BufferCount)
             {
                 LOG_DEBUG("Skipping resize");
 
@@ -591,14 +621,15 @@ HRESULT FGHooks::hkResizeBuffers1(IDXGISwapChain* This, UINT BufferCount, UINT W
                             for (size_t i = 0; i < desc.BufferCount; i++)
                             {
                                 ID3D12Resource* backBuffer = nullptr;
-                                swapchain->GetBuffer(swapchainIndex, IID_PPV_ARGS(&backBuffer));
+                                if (swapchain->GetBuffer(swapchainIndex, IID_PPV_ARGS(&backBuffer)) == S_OK)
+                                {
+                                    auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+                                        backBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COMMON);
 
-                                auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-                                    backBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COMMON);
+                                    cmdList->ResourceBarrier(1, &barrier);
 
-                                cmdList->ResourceBarrier(1, &barrier);
-
-                                backBuffer->Release();
+                                    backBuffer->Release();
+                                }
                             }
                         }
                     }
@@ -625,17 +656,6 @@ HRESULT FGHooks::hkResizeBuffers1(IDXGISwapChain* This, UINT BufferCount, UINT W
     }
 
     State::Instance().SCAllowTearing = (SwapChainFlags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) > 0;
-
-    if (State::Instance().SCLastFlags != SwapChainFlags)
-    {
-        LOG_WARN("SwapChainFlags changed from {} to {}", State::Instance().SCLastFlags, SwapChainFlags);
-
-        if (State::Instance().activeFgOutput == FGOutput::XeFG)
-        {
-            LOG_WARN("Preventing flag change for XeFG!");
-            SwapChainFlags = State::Instance().SCLastFlags;
-        }
-    }
 
     State::Instance().SCLastFlags = SwapChainFlags;
 
@@ -798,13 +818,15 @@ HRESULT FGHooks::FGPresent(void* This, UINT SyncInterval, UINT Flags, const DXGI
         ID3D12Resource* backBuffer = nullptr;
         auto swapchain = ((IDXGISwapChain3*) This);
         auto swapchainIndex = swapchain->GetCurrentBackBufferIndex();
-        swapchain->GetBuffer(swapchainIndex, IID_PPV_ARGS(&backBuffer));
-        backBuffer->Release();
 
-        auto result = fg->GetResourceCopy(FG_ResourceType::HudlessColor, D3D12_RESOURCE_STATE_PRESENT, backBuffer);
+        if (swapchain->GetBuffer(swapchainIndex, IID_PPV_ARGS(&backBuffer)) == S_OK)
+        {
+            auto result = fg->GetResourceCopy(FG_ResourceType::HudlessColor, D3D12_RESOURCE_STATE_PRESENT, backBuffer);
+            backBuffer->Release();
 
-        if (!result)
-            LOG_WARN("Couldn't copy hudless into the backbuffer");
+            if (!result)
+                LOG_WARN("Couldn't copy hudless into the backbuffer");
+        }
     }
 
     if (willPresent && Config::Instance()->ForceVsync.has_value())
