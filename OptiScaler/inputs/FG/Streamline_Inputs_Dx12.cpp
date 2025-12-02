@@ -76,6 +76,8 @@ bool Sl_Inputs_Dx12::setConstants(const sl::Constants& values, uint32_t frameId)
 
     if (dataFound)
     {
+        auto config = Config::Instance();
+
         // FG Evaluate part
         FG_Constants fgConstants {};
 
@@ -97,27 +99,32 @@ bool Sl_Inputs_Dx12::setConstants(const sl::Constants& values, uint32_t frameId)
         if (data.motionVectorsDilated)
             fgConstants.flags |= FG_Flags::DisplayResolutionMVs;
 
-        if (Config::Instance()->FGAsync.value_or_default())
+        if (config->FGAsync.value_or_default())
             fgConstants.flags |= FG_Flags::Async;
 
         if (infiniteDepth)
             fgConstants.flags |= FG_Flags::InfiniteDepth;
 
-        if (Config::Instance()->FGXeFGDepthInverted.value_or_default() != (data.depthInverted == sl::Boolean::eTrue) ||
-            Config::Instance()->FGXeFGJitteredMV.value_or_default() !=
-                (data.motionVectorsJittered == sl::Boolean::eTrue) ||
-            Config::Instance()->FGXeFGHighResMV.value_or_default() != (data.motionVectorsDilated == sl::Boolean::eTrue))
+        if (config->FGXeFGDepthInverted.value_or_default() != (data.depthInverted == sl::Boolean::eTrue) ||
+            config->FGXeFGJitteredMV.value_or_default() != (data.motionVectorsJittered == sl::Boolean::eTrue) ||
+            config->FGXeFGHighResMV.value_or_default() != (data.motionVectorsDilated == sl::Boolean::eTrue))
         {
-            Config::Instance()->FGXeFGDepthInverted = (data.depthInverted == sl::Boolean::eTrue);
-            Config::Instance()->FGXeFGJitteredMV = (data.motionVectorsJittered == sl::Boolean::eTrue);
-            Config::Instance()->FGXeFGHighResMV = (data.motionVectorsDilated == sl::Boolean::eTrue);
-            LOG_DEBUG("XeFG DepthInverted: {}", Config::Instance()->FGXeFGDepthInverted.value_or_default());
-            LOG_DEBUG("XeFG JitteredMV: {}", Config::Instance()->FGXeFGJitteredMV.value_or_default());
-            LOG_DEBUG("XeFG HighResMV: {}", Config::Instance()->FGXeFGHighResMV.value_or_default());
-            Config::Instance()->SaveXeFG();
+            config->FGXeFGDepthInverted = (data.depthInverted == sl::Boolean::eTrue);
+            config->FGXeFGJitteredMV = (data.motionVectorsJittered == sl::Boolean::eTrue);
+            config->FGXeFGHighResMV = (data.motionVectorsDilated == sl::Boolean::eTrue);
+            LOG_DEBUG("XeFG DepthInverted: {}", config->FGXeFGDepthInverted.value_or_default());
+            LOG_DEBUG("XeFG JitteredMV: {}", config->FGXeFGJitteredMV.value_or_default());
+            LOG_DEBUG("XeFG HighResMV: {}", config->FGXeFGHighResMV.value_or_default());
+            config->SaveXeFG();
         }
 
         fgOutput->EvaluateState(State::Instance().currentD3D12Device, fgConstants);
+
+        if (!config->FGEnabled.value_or_default() || !fgOutput->IsActive() || fgOutput->IsPaused())
+        {
+            LOG_TRACE("FG not active or paused");
+            return true;
+        }
 
         // Frame data part
 
