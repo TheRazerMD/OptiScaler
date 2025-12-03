@@ -159,7 +159,8 @@ static const QuirkEntry quirkTable[] = {
 
     // Avowed
     // NoBarriers needed to avoid post-loading crash with DLSS
-    QUIRK_ENTRY_UE(avowed, GameQuirk::ForceAutoExposure, GameQuirk::DontUseUnrealBarriers),
+    QUIRK_ENTRY_UE(avowed, GameQuirk::ForceAutoExposure, GameQuirk::DontUseUnrealBarriers, GameQuirk::DisableFSR2Inputs,
+                   GameQuirk::DisableFSR3Inputs),
 
     // SL spoof enough to unlock everything DLSS/No spoof needed for DLSS inputs
     //
@@ -241,7 +242,7 @@ static const QuirkEntry quirkTable[] = {
     // Self-explanatory
     //
     // The Persistence, Split Fiction, Minecraft Bedrock, Ghostwire: Tokyo, RoadCraft, STAR WARS Jedi:
-    // Survivor, FINAL FANTASY VII REBIRTH, Witchfire, MechWarrior 5: Mercenaries
+    // Survivor, FINAL FANTASY VII REBIRTH, Witchfire, MechWarrior 5: Mercenaries, Ghostrunner, Ghostrunner 2
     QUIRK_ENTRY_UE(persistence, GameQuirk::ForceUnrealEngine),
     QUIRK_ENTRY("splitfiction.exe", GameQuirk::FastFeatureReset),
     QUIRK_ENTRY("minecraft.windows.exe", GameQuirk::KernelBaseHooks),
