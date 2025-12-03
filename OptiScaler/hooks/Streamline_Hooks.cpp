@@ -616,7 +616,6 @@ sl::Result StreamlineHooks::hkslDLSSGSetOptions(const sl::ViewportHandle& viewpo
 sl::Result StreamlineHooks::hkslDLSSGGetState(const sl::ViewportHandle& viewport, sl::DLSSGState& state,
                                               const sl::DLSSGOptions* options)
 {
-
     auto result = o_slDLSSGGetState(viewport, state, options);
 
     auto& s = State::Instance();
@@ -626,14 +625,11 @@ sl::Result StreamlineHooks::hkslDLSSGGetState(const sl::ViewportHandle& viewport
     {
         state.estimatedVRAMUsageInBytes = 256 * 1024 * 1024;
 
-        auto fc = s.frameCount;
-
         if (fg->IsActive() && !fg->IsPaused())
             state.numFramesActuallyPresented = 2;
         else
             state.numFramesActuallyPresented = 1;
 
-        state.lastPresentInputsProcessingCompletionFenceValue = fg->FrameCount();
         state.numFramesToGenerateMax = 1;
     }
 
