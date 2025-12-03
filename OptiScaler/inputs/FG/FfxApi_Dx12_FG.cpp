@@ -29,10 +29,11 @@ static Dx12Resource _uiRes[BUFFER_COUNT] = {};
 
 std::mutex _frameBoundaryMutex;
 
-uint64_t _currentFrameId = 0;
-int _currentIndex = -1;
-uint64_t _lastFrameId = UINT32_MAX;
-uint64_t _frameIdIndex[BUFFER_COUNT] = { UINT64_MAX, UINT64_MAX, UINT64_MAX, UINT64_MAX };
+static uint64_t _currentFrameId = 0;
+static int _currentIndex = -1;
+static uint64_t _lastFrameId = UINT32_MAX;
+static uint64_t _frameIdIndex[BUFFER_COUNT] = { UINT64_MAX, UINT64_MAX, UINT64_MAX, UINT64_MAX };
+static bool _fgCallbackCalled = false;
 
 void CheckForFrame(IFGFeature_Dx12* fg, uint64_t frameId)
 {
@@ -846,52 +847,55 @@ ffxReturnCode_t ffxDispatch_Dx12FG(ffxContext* context, ffxDispatchDescHeader* d
 
     if (desc->type == FFX_API_DISPATCH_DESC_TYPE_FRAMEGENERATION)
     {
-        auto cdDesc = (ffxDispatchDescFrameGeneration*) desc;
-
-        if (fg != nullptr)
+        if (!_fgCallbackCalled)
         {
-            auto fIndex = IndexForFrameId(cdDesc->frameID);
+            auto cdDesc = (ffxDispatchDescFrameGeneration*) desc;
 
-            if (fIndex < 0)
+            if (fg != nullptr)
             {
-                LOG_ERROR("Invalid frameID: {}", cdDesc->frameID);
-                fIndex = _currentIndex;
-            }
+                auto fIndex = IndexForFrameId(cdDesc->frameID);
 
-            fg->SetInterpolationPos(cdDesc->generationRect.left, cdDesc->generationRect.top, fIndex);
-            fg->SetInterpolationRect(cdDesc->generationRect.width, cdDesc->generationRect.height, fIndex);
-            fg->SetReset(cdDesc->reset ? 1 : 0, fIndex);
-
-            if (cdDesc->presentColor.resource != nullptr &&
-                !Config::Instance()->FSRFGSkipDispatchForHudless.value_or_default() &&
-                fg->GetResource(FG_ResourceType::HudlessColor) == nullptr)
-            {
-                UINT width = cdDesc->generationRect.width;
-                UINT height = cdDesc->generationRect.height;
-                UINT left = cdDesc->generationRect.left;
-                UINT top = cdDesc->generationRect.top;
-
-                if (width == 0)
+                if (fIndex < 0)
                 {
-                    width = s.currentSwapchainDesc.BufferDesc.Width;
-                    height = s.currentSwapchainDesc.BufferDesc.Height;
-                    top = 0;
-                    left = 0;
+                    LOG_ERROR("Invalid frameID: {}", cdDesc->frameID);
+                    fIndex = _currentIndex;
                 }
 
-                Dx12Resource hudless {};
-                hudless.cmdList = (ID3D12GraphicsCommandList*) cdDesc->commandList;
-                hudless.height = height;
-                hudless.resource = (ID3D12Resource*) cdDesc->presentColor.resource;
-                hudless.state = GetD3D12State((FfxApiResourceState) cdDesc->presentColor.state);
-                hudless.type = FG_ResourceType::HudlessColor;
-                hudless.validity = FG_ResourceValidity::ValidNow;
-                hudless.width = width;
-                hudless.top = top;
-                hudless.left = left;
-                hudless.frameIndex = fIndex;
+                fg->SetInterpolationPos(cdDesc->generationRect.left, cdDesc->generationRect.top, fIndex);
+                fg->SetInterpolationRect(cdDesc->generationRect.width, cdDesc->generationRect.height, fIndex);
+                fg->SetReset(cdDesc->reset ? 1 : 0, fIndex);
 
-                fg->SetResource(&hudless);
+                if (cdDesc->presentColor.resource != nullptr &&
+                    !Config::Instance()->FSRFGSkipDispatchForHudless.value_or_default() &&
+                    fg->GetResource(FG_ResourceType::HudlessColor) == nullptr)
+                {
+                    UINT width = cdDesc->generationRect.width;
+                    UINT height = cdDesc->generationRect.height;
+                    UINT left = cdDesc->generationRect.left;
+                    UINT top = cdDesc->generationRect.top;
+
+                    if (width == 0)
+                    {
+                        width = s.currentSwapchainDesc.BufferDesc.Width;
+                        height = s.currentSwapchainDesc.BufferDesc.Height;
+                        top = 0;
+                        left = 0;
+                    }
+
+                    Dx12Resource hudless {};
+                    hudless.cmdList = (ID3D12GraphicsCommandList*) cdDesc->commandList;
+                    hudless.height = height;
+                    hudless.resource = (ID3D12Resource*) cdDesc->presentColor.resource;
+                    hudless.state = GetD3D12State((FfxApiResourceState) cdDesc->presentColor.state);
+                    hudless.type = FG_ResourceType::HudlessColor;
+                    hudless.validity = FG_ResourceValidity::ValidNow;
+                    hudless.width = width;
+                    hudless.top = top;
+                    hudless.left = left;
+                    hudless.frameIndex = fIndex;
+
+                    fg->SetResource(&hudless);
+                }
             }
         }
 
@@ -1187,7 +1191,9 @@ void ffxPresentCallback()
         ddfg.presentColor = ffxApiGetResourceDX12(_hudless[fIndex], FFX_API_RESOURCE_STATE_GENERIC_READ);
         ddfg.reset = false;
 
+        _fgCallbackCalled = true;
         auto result = _fgCallback(&ddfg, _fgCallbackUserContext);
+        _fgCallbackCalled = false;
 
         ResourceBarrier(cmdList, currentBuffer,
                         D3D12_RESOURCE_STATE_COPY_SOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
