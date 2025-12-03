@@ -27,6 +27,7 @@ enum class GameQuirk : uint64_t
     UseNtDllHooks,
     UseFSR2PatternMatching,
     AlwaysCaptureFSRFGSwapchain,
+    AllowedFrameAhead2,
 
     // Quirks that are applied deeper in code
     CyberpunkHudlessStateOverride,
@@ -85,6 +86,10 @@ static const QuirkEntry quirkTable[] = {
     QUIRK_ENTRY("pathofexile_x64.exe", GameQuirk::LoadD3D12Manually),
     QUIRK_ENTRY("pathofexilesteam.exe", GameQuirk::LoadD3D12Manually),
     QUIRK_ENTRY("pathofexile_x64steam.exe", GameQuirk::LoadD3D12Manually),
+
+    // The Last of Us Part I
+    QUIRK_ENTRY("tlou-i.exe", GameQuirk::AllowedFrameAhead2),
+    QUIRK_ENTRY("tlou-i-l.exe", GameQuirk::AllowedFrameAhead2),
 
     // Crapcom Games, DLSS without dxgi spoofing needs restore compute in those
     //
@@ -347,6 +352,8 @@ static void printQuirks(flag_set<GameQuirk>& quirks)
         spdlog::info("Quirk: Use FSR2 pattern matching");
     if (quirks & GameQuirk::AlwaysCaptureFSRFGSwapchain)
         spdlog::info("Quirk: Always capture FSR-FG swapchain");
+    if (quirks & GameQuirk::AllowedFrameAhead2)
+        spdlog::info("Quirk: Allowed Frame Ahead: 2");
 
     return;
 }

@@ -1057,6 +1057,9 @@ static void CheckQuirks()
         !Config::Instance()->FGAlwaysCaptureFSRFGSwapchain.has_value())
         Config::Instance()->FGAlwaysCaptureFSRFGSwapchain.set_volatile_value(true);
 
+    if (quirks & GameQuirk::AllowedFrameAhead2 && !Config::Instance()->FGAllowedFrameAhead.has_value())
+        Config::Instance()->FGAllowedFrameAhead.set_volatile_value(2);
+
     State::Instance().gameQuirks = quirks;
 }
 
