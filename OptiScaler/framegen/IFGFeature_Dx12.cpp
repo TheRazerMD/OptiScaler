@@ -38,6 +38,16 @@ bool IFGFeature_Dx12::GetResourceCopy(FG_ResourceType type, D3D12_RESOURCE_STATE
 
 ID3D12CommandQueue* IFGFeature_Dx12::GetCommandQueue() { return _gameCommandQueue; }
 
+bool IFGFeature_Dx12::HasResource(FG_ResourceType type, int index)
+{
+    std::lock_guard<std::mutex> lock(_frMutex);
+
+    if (index < 0)
+        index = GetIndex();
+
+    return _frameResources[index].contains(type);
+}
+
 ID3D12GraphicsCommandList* IFGFeature_Dx12::GetUICommandList(int index)
 {
     if (index < 0)

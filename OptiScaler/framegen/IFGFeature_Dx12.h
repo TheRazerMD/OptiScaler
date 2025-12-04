@@ -100,6 +100,8 @@ class IFGFeature_Dx12 : public virtual IFGFeature
     bool GetResourceCopy(FG_ResourceType type, D3D12_RESOURCE_STATES bufferState, ID3D12Resource* output);
     ID3D12CommandQueue* GetCommandQueue();
 
+    bool HasResource(FG_ResourceType type, int index = -1) override final;
+
     IFGFeature_Dx12() = default;
     virtual ~IFGFeature_Dx12() { DestroyCopyCmdList(); }
 };

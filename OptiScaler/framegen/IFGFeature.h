@@ -106,6 +106,7 @@ class IFGFeature
     virtual void DestroyFGContext() = 0;
     virtual bool ReleaseSwapchain(HWND hwnd) = 0;
     virtual bool Shutdown() = 0;
+    virtual bool HasResource(FG_ResourceType type, int index = -1) = 0;
 
     int GetIndex();
     int GetIndexWillBeDispatched();

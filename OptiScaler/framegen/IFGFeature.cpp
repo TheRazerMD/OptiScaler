@@ -6,12 +6,28 @@ int IFGFeature::GetIndex() { return (_frameCount % BUFFER_COUNT); }
 
 int IFGFeature::GetIndexWillBeDispatched()
 {
-    auto df = _lastDispatchedFrame;
+    UINT64 df;
 
-    if (df == 0)
-        df = _frameCount;
+    auto diff = _frameCount - _lastDispatchedFrame;
+    if (diff > Config::Instance()->FGAllowedFrameAhead.value_or_default() || diff < 0 || _lastDispatchedFrame == 0)
+    {
+        // If current index has resources, skip to it
+        if (HasResource(FG_ResourceType::Depth))
+        {
+            LOG_DEBUG("Skipping not presented frames! _frameCount: {}, _lastDispatchedFrame: {}", _frameCount,
+                      _lastDispatchedFrame);
+
+            df = _frameCount; // Set dispatch frame as new one
+        }
+        else
+        {
+            df = _lastDispatchedFrame + 1; // Render next one
+        }
+    }
     else
-        df++;
+    {
+        df = _lastDispatchedFrame + 1; // Render next one
+    }
 
     return (df % BUFFER_COUNT);
 }
@@ -125,9 +141,16 @@ int IFGFeature::GetDispatchIndex(UINT64& willDispatchFrame)
 
     auto diff = _frameCount - _lastDispatchedFrame;
     if (diff > Config::Instance()->FGAllowedFrameAhead.value_or_default() || diff < 0 || _lastDispatchedFrame == 0)
-        willDispatchFrame = _frameCount; // Set dispatch frame as new one
+    {
+        if (HasResource(FG_ResourceType::Depth))
+            willDispatchFrame = _frameCount; // Set dispatch frame as new one
+        else
+            willDispatchFrame = _lastDispatchedFrame + 1; // Render next one
+    }
     else
+    {
         willDispatchFrame = _lastDispatchedFrame + 1; // Render next one
+    }
 
     _lastDispatchedFrame = willDispatchFrame;
     _lastFGFrame = State::Instance().FGLastFrame;
