@@ -28,6 +28,7 @@ enum class GameQuirk : uint64_t
     UseFSR2PatternMatching,
     AlwaysCaptureFSRFGSwapchain,
     AllowedFrameAhead2,
+    DisableXeFGChecks,
 
     // Quirks that are applied deeper in code
     CyberpunkHudlessStateOverride,
@@ -86,6 +87,9 @@ static const QuirkEntry quirkTable[] = {
     QUIRK_ENTRY("pathofexile_x64.exe", GameQuirk::LoadD3D12Manually),
     QUIRK_ENTRY("pathofexilesteam.exe", GameQuirk::LoadD3D12Manually),
     QUIRK_ENTRY("pathofexile_x64steam.exe", GameQuirk::LoadD3D12Manually),
+
+    // Where Winds Meet
+    QUIRK_ENTRY("wwm.exe", GameQuirk::DisableXeFGChecks),
 
     // The Last of Us Part I
     QUIRK_ENTRY("tlou-i.exe", GameQuirk::AllowedFrameAhead2),
@@ -354,6 +358,8 @@ static void printQuirks(flag_set<GameQuirk>& quirks)
         spdlog::info("Quirk: Always capture FSR-FG swapchain");
     if (quirks & GameQuirk::AllowedFrameAhead2)
         spdlog::info("Quirk: Allowed Frame Ahead: 2");
+    if (quirks & GameQuirk::DisableXeFGChecks)
+        spdlog::info("Quirk: Skip pre init checks for XeFG");
 
     return;
 }

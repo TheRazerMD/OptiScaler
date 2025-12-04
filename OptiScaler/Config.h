@@ -454,6 +454,7 @@ class Config
     CustomOptional<bool> FSRFGDepthAndVelocityValidNow { false };
 
     // OptiFG - XeFG
+    CustomOptional<bool> FGXeFGIgnoreInitChecks { false };
     CustomOptional<bool> FGXeFGDepthInverted { false };
     CustomOptional<bool> FGXeFGJitteredMV { false };
     CustomOptional<bool> FGXeFGHighResMV { false };

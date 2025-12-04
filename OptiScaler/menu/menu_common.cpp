@@ -3409,17 +3409,18 @@ bool MenuCommon::RenderMenu()
                 if (state.activeFgOutput == FGOutput::XeFG && state.activeFgInput != FGInput::NoFG &&
                     !state.isWorkingAsNvngx && state.currentFGSwapchain != nullptr)
                 {
-                    if (state.activeFgInput != FGInput::Upscaler ||
-                        (currentFeature != nullptr && !currentFeature->IsFrozen()) && XeFGProxy::InitXeFG())
+                    if (XeFGProxy::InitXeFG() && currentFeature != nullptr && !currentFeature->IsFrozen())
                     {
                         ImGui::SeparatorText("Frame Generation (XeFG)");
+
+                        bool ignoreChecks = config->FGXeFGIgnoreInitChecks.value_or_default();
 
                         bool nativeAA = false;
                         if (state.activeFgInput == FGInput::Upscaler && currentFeature != nullptr)
                             nativeAA = currentFeature->RenderWidth() == currentFeature->DisplayWidth();
 
                         auto fgOutput = reinterpret_cast<IFGFeature_Dx12*>(state.currentFG);
-                        const bool correctMVs = fgOutput && fgOutput->IsLowResMV() || nativeAA;
+                        const bool correctMVs = fgOutput && fgOutput->IsLowResMV() || nativeAA || ignoreChecks;
 
                         if (!correctMVs || state.realExclusiveFullscreen)
                         {
@@ -3445,28 +3446,14 @@ bool MenuCommon::RenderMenu()
                                 ImGui::TextColored(ImVec4(1.f, 0.f, 0.f, 1.f),
                                                    "Requires disabling dilated motion vectors");
 
-                            if (state.realExclusiveFullscreen)
+                            if (!ignoreChecks && state.realExclusiveFullscreen)
                             {
                                 cantActivate = true;
                                 ImGui::TextColored(ImVec4(1.f, 0.f, 0.f, 1.f), "Borderless display mode required");
                             }
 
-                            if (state.isHdrActive)
+                            if (!ignoreChecks && state.isHdrActive)
                             {
-                                // DXGI_FORMAT_R32G32B32A32_TYPELESS = 1
-                                // DXGI_FORMAT_R32G32B32A32_FLOAT
-                                // DXGI_FORMAT_R32G32B32A32_UINT
-                                // DXGI_FORMAT_R32G32B32A32_SINT
-                                // DXGI_FORMAT_R32G32B32_TYPELESS
-                                // DXGI_FORMAT_R32G32B32_FLOAT
-                                // DXGI_FORMAT_R32G32B32_UINT
-                                // DXGI_FORMAT_R32G32B32_SINT
-                                // DXGI_FORMAT_R16G16B16A16_TYPELESS
-                                // DXGI_FORMAT_R16G16B16A16_FLOAT
-                                // DXGI_FORMAT_R16G16B16A16_UNORM
-                                // DXGI_FORMAT_R16G16B16A16_UINT
-                                // DXGI_FORMAT_R16G16B16A16_SNORM
-                                // DXGI_FORMAT_R16G16B16A16_SINT = 14
                                 if (state.currentSwapchainDesc.BufferDesc.Format > 0 &&
                                     state.currentSwapchainDesc.BufferDesc.Format < 15)
                                 {
@@ -3474,6 +3461,16 @@ bool MenuCommon::RenderMenu()
                                     ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.f), "XeFG only supports HDR10");
                                 }
                             }
+                        }
+
+                        if (!correctMVs || cantActivate || ignoreChecks)
+                        {
+                            if (ImGui::Checkbox("Ignore Init Checks", &ignoreChecks))
+                                config->FGXeFGIgnoreInitChecks = ignoreChecks;
+
+                            ShowHelpMarker("Ignores all prechecks for XeFG\n"
+                                           "Don't this option to skip MV size warning for UE games!"
+                                           "It might cause crashes and bad IQ!");
                         }
 
                         ImGui::BeginDisabled(!correctMVs || cantActivate);

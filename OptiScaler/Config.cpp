@@ -163,6 +163,7 @@ bool Config::Reload(std::filesystem::path iniPath)
         }
 
         {
+            FGXeFGIgnoreInitChecks.set_from_config(readBool("XeFG", "IgnoreInitChecks"));
             FGXeFGDepthInverted.set_from_config(readBool("XeFG", "DepthInverted"));
             FGXeFGJitteredMV.set_from_config(readBool("XeFG", "JitteredMV"));
             FGXeFGHighResMV.set_from_config(readBool("XeFG", "HighResMV"));
@@ -728,6 +729,8 @@ bool Config::SaveIni()
 
     // XeFG output
     {
+        ini.SetValue("XeFG", "IgnoreInitChecks",
+                     GetBoolValue(Instance()->FGXeFGIgnoreInitChecks.value_for_config()).c_str());
         ini.SetValue("XeFG", "DepthInverted", GetBoolValue(Instance()->FGXeFGDepthInverted.value_for_config()).c_str());
         ini.SetValue("XeFG", "JitteredMV", GetBoolValue(Instance()->FGXeFGJitteredMV.value_for_config()).c_str());
         ini.SetValue("XeFG", "HighResMV", GetBoolValue(Instance()->FGXeFGHighResMV.value_for_config()).c_str());

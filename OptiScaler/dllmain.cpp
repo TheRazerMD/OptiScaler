@@ -1060,6 +1060,9 @@ static void CheckQuirks()
     if (quirks & GameQuirk::AllowedFrameAhead2 && !Config::Instance()->FGAllowedFrameAhead.has_value())
         Config::Instance()->FGAllowedFrameAhead.set_volatile_value(2);
 
+    if (quirks & GameQuirk::DisableXeFGChecks && !Config::Instance()->FGXeFGIgnoreInitChecks.has_value())
+        Config::Instance()->FGXeFGIgnoreInitChecks.set_volatile_value(true);
+
     State::Instance().gameQuirks = quirks;
 }
 

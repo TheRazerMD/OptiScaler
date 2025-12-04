@@ -454,7 +454,8 @@ void XeFG_Dx12::Activate()
     if (State::Instance().activeFgInput == FGInput::Upscaler && currentFeature != nullptr)
         nativeAA = currentFeature->RenderWidth() == currentFeature->DisplayWidth();
 
-    if (_swapChainContext != nullptr && _fgContext != nullptr && !_isActive && (IsLowResMV() || nativeAA))
+    if (_swapChainContext != nullptr && _fgContext != nullptr && !_isActive &&
+        (IsLowResMV() || nativeAA || Config::Instance()->FGXeFGIgnoreInitChecks.value_or_default()))
     {
         auto result = XeFGProxy::SetEnabled()(_swapChainContext, true);
 
