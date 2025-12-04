@@ -852,17 +852,26 @@ void FSRFG_Dx12::Deactivate()
             _uiCommandListResetted[fIndex] = false;
         }
 
-        ffxConfigureDescFrameGeneration fgConfig = {};
-        fgConfig.header.type = FFX_API_CONFIGURE_DESC_TYPE_FRAMEGENERATION;
-        fgConfig.frameGenerationEnabled = false;
-        fgConfig.swapChain = _swapChain;
-        fgConfig.presentCallback = nullptr;
-        fgConfig.HUDLessColor = FfxApiResource({});
+        ffxReturnCode_t result = FFX_API_RETURN_OK;
 
-        auto result = FfxApiProxy::D3D12_Configure(&_fgContext, &fgConfig.header);
+        if (_fgContext != nullptr)
+        {
+            ffxConfigureDescFrameGeneration fgConfig = {};
+            fgConfig.header.type = FFX_API_CONFIGURE_DESC_TYPE_FRAMEGENERATION;
+            fgConfig.frameGenerationEnabled = false;
+            fgConfig.swapChain = _swapChain;
+            fgConfig.presentCallback = nullptr;
+            fgConfig.HUDLessColor = FfxApiResource({});
 
-        if (result == FFX_API_RETURN_OK)
+            auto result = FfxApiProxy::D3D12_Configure(&_fgContext, &fgConfig.header);
+
+            if (result == FFX_API_RETURN_OK)
+                _isActive = false;
+        }
+        else
+        {
             _isActive = false;
+        }
 
         _lastDispatchedFrame = 0;
 

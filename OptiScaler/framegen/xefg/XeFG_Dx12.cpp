@@ -489,10 +489,18 @@ void XeFG_Dx12::Deactivate()
             _uiCommandListResetted[fIndex] = false;
         }
 
-        auto result = XeFGProxy::SetEnabled()(_swapChainContext, false);
+        xefg_swapchain_result_t result = XEFG_SWAPCHAIN_RESULT_SUCCESS;
 
-        if (result == XEFG_SWAPCHAIN_RESULT_SUCCESS)
+        if (_swapChainContext != nullptr)
+        {
+            result = XeFGProxy::SetEnabled()(_swapChainContext, false);
+            if (result == XEFG_SWAPCHAIN_RESULT_SUCCESS)
+                _isActive = false;
+        }
+        else
+        {
             _isActive = false;
+        }
 
         _lastDispatchedFrame = 0;
         _waitingNewFrameData = false;
