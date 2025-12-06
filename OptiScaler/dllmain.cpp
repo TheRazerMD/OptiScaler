@@ -1063,9 +1063,10 @@ static void CheckQuirks()
     if (quirks & GameQuirk::DisableXeFGChecks && !Config::Instance()->FGXeFGIgnoreInitChecks.has_value())
         Config::Instance()->FGXeFGIgnoreInitChecks.set_volatile_value(true);
 
+    State::Instance().gameQuirks = quirks;
+
     // For Luma, we assume if Luma addon in game folder it's used
-    if (!Config::Instance()->DontUseNTShared.has_value() &&
-        std::filesystem::exists(Util::ExePath().parent_path() / L"Luma-Unreal Engine.addon"))
+    if (!Config::Instance()->DontUseNTShared.has_value())
     {
         const auto dir = Util::ExePath().parent_path();
         bool lumaDetected = false;
@@ -1094,7 +1095,13 @@ static void CheckQuirks()
         }
     }
 
-    State::Instance().gameQuirks = quirks;
+    // For Luma Unreal Engine games
+    if (!Config::Instance()->DxgiSpoofing.has_value() &&
+        std::filesystem::exists(Util::ExePath().parent_path() / L"Luma-Unreal Engine.addon"))
+    {
+        LOG_INFO("Luma UE detected, disabling DxgiSpoofing");
+        Config::Instance()->DxgiSpoofing.set_volatile_value(false);
+    }
 }
 
 bool isNvidia()
