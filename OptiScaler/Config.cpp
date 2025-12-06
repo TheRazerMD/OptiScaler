@@ -915,7 +915,7 @@ bool Config::SaveIni()
 
     // Menu
     {
-        ini.SetValue("Menu", "Scale", GetFloatValue(Instance()->MenuScale.value_for_config()).c_str());
+        ini.SetValue("Menu", "Scale", GetFloatValue(Instance()->MenuScale.value_for_config(true)).c_str());
         ini.SetValue("Menu", "OverlayMenu", GetBoolValue(Instance()->OverlayMenu.value_for_config()).c_str());
 
         auto setting = Instance()->ShortcutKey.value_for_config();

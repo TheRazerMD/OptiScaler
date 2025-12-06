@@ -102,12 +102,13 @@ template <class T, HasDefaultValue defaultState = WithDefault> class CustomOptio
     }
 
     constexpr T value_or_default() &&
-        requires(defaultState != NoDefault) {
-            return this->has_value() ? std::move(this->value()) : std::move(_defaultValue);
-        }
+        requires(defaultState != NoDefault)
+    {
+        return this->has_value() ? std::move(this->value()) : std::move(_defaultValue);
+    }
 
-        constexpr std::optional<T> value_for_config()
-            requires(defaultState == WithDefault)
+    constexpr std::optional<T> value_for_config(bool forceSave = false)
+        requires(defaultState == WithDefault)
     {
         if (_volatile)
         {
@@ -117,7 +118,7 @@ template <class T, HasDefaultValue defaultState = WithDefault> class CustomOptio
             return std::nullopt;
         }
 
-        if (!this->has_value() || *this == _defaultValue)
+        if (!this->has_value() || (!forceSave && *this == _defaultValue))
             return std::nullopt;
 
         return this->value();
