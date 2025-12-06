@@ -1063,6 +1063,37 @@ static void CheckQuirks()
     if (quirks & GameQuirk::DisableXeFGChecks && !Config::Instance()->FGXeFGIgnoreInitChecks.has_value())
         Config::Instance()->FGXeFGIgnoreInitChecks.set_volatile_value(true);
 
+    // For Luma, we assume if Luma addon in game folder it's used
+    if (!Config::Instance()->DontUseNTShared.has_value() &&
+        std::filesystem::exists(Util::ExePath().parent_path() / L"Luma-Unreal Engine.addon"))
+    {
+        const auto dir = Util::ExePath().parent_path();
+        bool lumaDetected = false;
+
+        for (const auto& entry : std::filesystem::directory_iterator(dir))
+        {
+            if (!entry.is_regular_file())
+                continue;
+
+            const auto& path = entry.path();
+            if (path.extension() == L".addon")
+            {
+                const auto fname = path.filename().wstring();
+                if (fname.rfind(L"Luma-", 0) == 0) // starts with "Luma-"
+                {
+                    lumaDetected = true;
+                    break;
+                }
+            }
+        }
+
+        if (lumaDetected)
+        {
+            LOG_INFO("Luma detected, enabling DontUseNTShared");
+            Config::Instance()->DontUseNTShared.set_volatile_value(true);
+        }
+    }
+
     State::Instance().gameQuirks = quirks;
 }
 
