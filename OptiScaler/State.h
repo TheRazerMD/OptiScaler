@@ -162,14 +162,19 @@ class State
     bool skipDxgiLoadChecks = false;
     bool skipParentWrapping = false;
 
+    // quirks
+    std::vector<std::string> detectedQuirks {};
+
     // FSR3.x
     std::vector<const char*> fsr3xVersionNames {};
     std::vector<uint64_t> fsr3xVersionIds {};
     uint32_t currentFsr4Model {};
 
-    // Linux check
+    // Linux checks
     bool isRunningOnLinux = false;
     bool isRunningOnDXVK = false;
+
+    // Other checks
     bool isRunningOnNvidia = false;
     bool isPascalOrOlder = false;
     bool isDxgiMode = false;

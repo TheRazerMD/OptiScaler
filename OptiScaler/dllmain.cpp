@@ -964,6 +964,199 @@ static void CheckWorkingMode()
     LOG_ERROR("Unsupported dll name: {0}", filename);
 }
 
+static void printQuirks(flag_set<GameQuirk>& quirks)
+{
+    auto state = &State::Instance();
+
+    if (quirks & GameQuirk::CyberpunkHudlessStateOverride)
+    {
+        spdlog::info("Quirk: Fixing DLSSG's hudless in Cyberpunk");
+        state->detectedQuirks.push_back("Fixing DLSSG's hudless in Cyberpunk");
+    }
+
+    if (quirks & GameQuirk::SkipFsr3Method)
+    {
+        spdlog::info("Quirk: Skipping first FSR 3 method");
+        state->detectedQuirks.push_back("Skipping first FSR 3 method");
+    }
+
+    if (quirks & GameQuirk::FastFeatureReset)
+    {
+        spdlog::info("Quirk: Quick upscaler reinit");
+        state->detectedQuirks.push_back("Quick upscaler reinit");
+    }
+
+    if (quirks & GameQuirk::LoadD3D12Manually)
+    {
+        spdlog::info("Quirk: Load d3d12.dll");
+        state->detectedQuirks.push_back("Load d3d12.dll");
+    }
+
+    if (quirks & GameQuirk::KernelBaseHooks)
+    {
+        spdlog::info("Quirk: Enable KernelBase hooks");
+        state->detectedQuirks.push_back("Enable KernelBase hooks");
+    }
+
+    if (quirks & GameQuirk::VulkanDLSSBarrierFixup)
+    {
+        spdlog::info("Quirk: Fix DLSS/DLSSG barriers on Vulkan");
+        state->detectedQuirks.push_back("Fix DLSS/DLSSG barriers on Vulkan");
+    }
+
+    if (quirks & GameQuirk::ForceUnrealEngine)
+    {
+        spdlog::info("Quirk: Force detected engine as Unreal Engine");
+        state->detectedQuirks.push_back("Force detected engine as Unreal Engine");
+    }
+
+    if (quirks & GameQuirk::DisableHudfix)
+    {
+        spdlog::info("Quirk: Disabling Hudfix due to known issues");
+        state->detectedQuirks.push_back("Disabling Hudfix due to known issues");
+    }
+
+    if (quirks & GameQuirk::ForceAutoExposure)
+    {
+        spdlog::info("Quirk: Enabling AutoExposure");
+        state->detectedQuirks.push_back("Enabling AutoExposure");
+    }
+
+    if (quirks & GameQuirk::DisableFFXInputs)
+    {
+        spdlog::info("Quirk: Disable FSR 3.1 Inputs");
+        state->detectedQuirks.push_back("Enabling AutoExposure");
+    }
+
+    if (quirks & GameQuirk::DisableFSR3Inputs)
+    {
+        spdlog::info("Quirk: Disable FSR 3.0 Inputs");
+        state->detectedQuirks.push_back("Disable FSR 3.0 Inputs");
+    }
+
+    if (quirks & GameQuirk::DisableFSR2Inputs)
+    {
+        spdlog::info("Quirk: Disable FSR 2.X Inputs");
+        state->detectedQuirks.push_back("Disable FSR 2.X Inputs");
+    }
+
+    if (quirks & GameQuirk::DisableReactiveMasks)
+    {
+        spdlog::info("Quirk: Disable Reactive Masks");
+        state->detectedQuirks.push_back("Disable Reactive Masks");
+    }
+
+    if (quirks & GameQuirk::RestoreComputeSigOnNonNvidia)
+    {
+        spdlog::info("Quirk: Enabling restore compute signature on AMD/Intel");
+        state->detectedQuirks.push_back("Enabling restore compute signature on AMD/Intel");
+    }
+
+    if (quirks & GameQuirk::RestoreComputeSigOnNvidia)
+    {
+        spdlog::info("Quirk: Enabling restore compute signature on Nvidia");
+        state->detectedQuirks.push_back("Enabling restore compute signature on Nvidia");
+    }
+
+    if (quirks & GameQuirk::DisableDxgiSpoofing)
+    {
+        spdlog::info("Quirk: Dxgi spoofing disabled by default");
+        state->detectedQuirks.push_back("Dxgi spoofing disabled by default");
+    }
+
+    if (quirks & GameQuirk::DisableUseFsrInputValues)
+    {
+        spdlog::info("Quirk: Disable Use FSR Input Values");
+        state->detectedQuirks.push_back("Disable Use FSR Input Values");
+    }
+
+    if (quirks & GameQuirk::DisableOptiXessPipelineCreation)
+    {
+        spdlog::info("Quirk: Disable custom pipeline creation for XeSS");
+        state->detectedQuirks.push_back("Disable custom pipeline creation for XeSS");
+    }
+
+    if (quirks & GameQuirk::DontUseNTShared)
+    {
+        spdlog::info("Quirk: Don't use NTShared enabled");
+        state->detectedQuirks.push_back("Don't use NTShared enabled");
+    }
+
+    if (quirks & GameQuirk::DontUseUnrealBarriers)
+    {
+        spdlog::info("Quirk: Don't use resource barrier fix for Unreal Engine games");
+        state->detectedQuirks.push_back("Don't use resource barrier fix for Unreal Engine games");
+    }
+
+    if (quirks & GameQuirk::SkipFirst10Frames)
+    {
+        spdlog::info("Quirk: Skipping upscaling for first 10 frames");
+        state->detectedQuirks.push_back("Skipping upscaling for first 10 frames");
+    }
+
+    if (quirks & GameQuirk::NoFSRFGFirstSwapchain)
+    {
+        spdlog::info("Quirk: Skip turning the first swapchain created into an FSR swapchain");
+        state->detectedQuirks.push_back("Skip turning the first swapchain created into an FSR swapchain");
+    }
+
+    if (quirks & GameQuirk::FixSlSimulationMarkers)
+    {
+        spdlog::info("Quirk: Correct simulation start marker's frame id");
+        state->detectedQuirks.push_back("Correct simulation start marker's frame id");
+    }
+
+    if (quirks & GameQuirk::DisableVsyncOverride)
+    {
+        spdlog::info("Quirk: Don't use V-Sync overrides");
+        state->detectedQuirks.push_back("Don't use V-Sync overrides");
+    }
+
+    if (quirks & GameQuirk::HitmanReflexHacks)
+    {
+        spdlog::info("Quirk: Hack for broken Hitman reflex");
+        state->detectedQuirks.push_back("Hack for broken Hitman reflex");
+    }
+
+    if (quirks & GameQuirk::SkipD3D11FeatureLevelElevation)
+    {
+        spdlog::info("Quirk: Skipping D3D11 feature level elevation, native FSR3.1 will be disabled!");
+        state->detectedQuirks.push_back("Skipping D3D11 feature level elevation, native FSR3.1 will be disabled!");
+    }
+
+    if (quirks & GameQuirk::UseNtDllHooks)
+    {
+        spdlog::info("Quirk: Using NTdll hooks instead of kernel ones");
+        state->detectedQuirks.push_back("Using NTdll hooks instead of kernel ones");
+    }
+
+    if (quirks & GameQuirk::UseFSR2PatternMatching)
+    {
+        spdlog::info("Quirk: Use FSR2 pattern matching");
+        state->detectedQuirks.push_back("Use FSR2 pattern matching");
+    }
+
+    if (quirks & GameQuirk::AlwaysCaptureFSRFGSwapchain)
+    {
+        spdlog::info("Quirk: Always capture FSR-FG swapchain");
+        state->detectedQuirks.push_back("Always capture FSR-FG swapchain");
+    }
+
+    if (quirks & GameQuirk::AllowedFrameAhead2)
+    {
+        spdlog::info("Quirk: Allowed Frame Ahead: 2");
+        state->detectedQuirks.push_back("Allowed Frame Ahead: 2");
+    }
+
+    if (quirks & GameQuirk::DisableXeFGChecks)
+    {
+        spdlog::info("Quirk: Skip pre init checks for XeFG");
+        state->detectedQuirks.push_back("Skip pre init checks for XeFG");
+    }
+
+    return;
+}
+
 static void CheckQuirks()
 {
     auto exePathFilename = wstring_to_string(Util::ExePath().filename().wstring()); // .string() can crash
@@ -976,6 +1169,8 @@ static void CheckQuirks()
 
     auto quirks = getQuirksForExe(exePathFilename);
     printQuirks(quirks);
+
+    auto state = &State::Instance();
 
     // Apply config-level quirks
     if (quirks & GameQuirk::DisableHudfix && Config::Instance()->FGInput.value_or_default() == FGInput::Upscaler)
@@ -1091,6 +1286,7 @@ static void CheckQuirks()
         if (lumaDetected)
         {
             LOG_INFO("Luma detected, enabling DontUseNTShared");
+            State::Instance().detectedQuirks.push_back("Luma detected, enabling DontUseNTShared");
             Config::Instance()->DontUseNTShared.set_volatile_value(true);
         }
     }
@@ -1100,6 +1296,7 @@ static void CheckQuirks()
         std::filesystem::exists(Util::ExePath().parent_path() / L"Luma-Unreal Engine.addon"))
     {
         LOG_INFO("Luma UE detected, disabling DxgiSpoofing");
+        State::Instance().detectedQuirks.push_back("Luma UE detected, disabling DxgiSpoofing");
         Config::Instance()->DxgiSpoofing.set_volatile_value(false);
     }
 }
