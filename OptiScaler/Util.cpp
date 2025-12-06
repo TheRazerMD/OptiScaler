@@ -411,6 +411,32 @@ std::optional<std::filesystem::path> Util::FindFilePath(const std::filesystem::p
     return std::nullopt;
 }
 
+int Util::GetActiveRefreshRate(HWND hwnd)
+{
+    // Step 1: Get monitor handle
+    HMONITOR hMon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+    if (!hMon)
+        return 0;
+
+    // Step 2: Get monitor device name
+    MONITORINFOEXW mi = {};
+    mi.cbSize = sizeof(mi);
+
+    if (!GetMonitorInfoW(hMon, &mi))
+        return 0;
+
+    // Step 3: Query active display mode
+    DEVMODEW dm = {};
+    dm.dmSize = sizeof(dm);
+
+    // Use ENUM_CURRENT_SETTINGS to get ACTUAL active mode
+    if (!EnumDisplaySettingsW(mi.szDevice, ENUM_CURRENT_SETTINGS, &dm))
+        return 0;
+
+    // Note: dmDisplayFrequency may contain 0 or 1 for "unspecified" in rare driver cases.
+    return dm.dmDisplayFrequency;
+}
+
 Util::MonitorInfo Util::GetMonitorInfoForWindow(HWND hwnd)
 {
     MonitorInfo out {};

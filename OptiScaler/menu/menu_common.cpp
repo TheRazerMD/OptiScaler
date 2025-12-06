@@ -44,6 +44,7 @@ static std::string windowTitle;
 static std::string selectedUpscalerName = "";
 static std::string currentBackend = "";
 static std::string currentBackendName = "";
+static int refreshRate = 0;
 
 static ImVec2 splashPosition(-1000.0f, -1000.0f);
 static ImVec2 splashSize(0.0f, 0.0f);
@@ -1531,6 +1532,7 @@ bool MenuCommon::RenderMenu()
 
             if (_isVisible)
             {
+                refreshRate = Util::GetActiveRefreshRate(_handle);
                 config->ReloadFakenvapi();
                 auto dllPath = Util::DllPath().parent_path() / "dlssg_to_fsr3_amd_is_better.dll";
                 state.NukemsFilesAvailable = gExists.Get(dllPath);
@@ -4166,6 +4168,38 @@ bool MenuCommon::RenderMenu()
                     if (ImGui::Button("Apply Limit"))
                     {
                         config->FramerateLimit = _limitFps;
+                    }
+
+                    ImGui::SameLine(0.0f, 16.0f);
+
+                    if (ImGui::Button("Reset Limit"))
+                    {
+                        _limitFps = 0.0f;
+                        config->FramerateLimit = _limitFps;
+                }
+
+                    ImGui::Spacing();
+                    if (ImGui::CollapsingHeader("VRR Frame Cap Calculator"))
+                    {
+                        ScopedIndent indent {};
+                        ImGui::Spacing();
+
+                        ImGui::PushItemWidth(105.0f * config->MenuScale.value());
+                        ImGui::InputInt("Refresh Rate", &refreshRate, 1, 1, ImGuiInputTextFlags_None);
+                        ImGui::PopItemWidth();
+
+                        float rr = static_cast<float>(refreshRate);
+                        float frameCap = std::floor(rr - (rr * (rr / 3600.0f)));
+
+                        ImGui::Text("Calculated Cap: %.1f", frameCap);
+
+                        ImGui::SameLine(0.0f, 16.0f);
+
+                        if (ImGui::Button("Set as FPS Limit"))
+                        {
+                            _limitFps = frameCap;
+                            config->FramerateLimit = _limitFps;
+                        }
                     }
                 }
 
