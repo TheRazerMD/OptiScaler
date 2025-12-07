@@ -91,7 +91,7 @@ static void InitD3D12DeviceForLuma(IDXGIFactory* factory)
     LOG_DEBUG("D3D12CreateDevice result: {0:x}", result);
 }
 
-static void CreateLumaD3D12Device(IDXGIFactory* factory)
+static void CheckLumaAndReShade(IDXGIFactory* factory)
 {
     if (creatingD3D12DeviceForLuma)
         return;
@@ -110,22 +110,22 @@ static void CreateLumaD3D12Device(IDXGIFactory* factory)
         creatingD3D12DeviceForLuma = false;
         State::Instance().skipSpoofing = false;
         State::Instance().skipDxgiLoadChecks = false;
+    }
 
-        // Loading Reshade after Luma's D3D12 device creation to prevent conflicts
-        if (reshadeModule == nullptr && Config::Instance()->LoadReShade.value_or_default())
-        {
-            auto rsFile = Util::DllPath().parent_path() / L"ReShade64.dll";
-            SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
+    // Loading Reshade after Luma's D3D12 device creation to prevent conflicts
+    if (reshadeModule == nullptr && Config::Instance()->LoadReShade.value_or_default())
+    {
+        auto rsFile = Util::DllPath().parent_path() / L"ReShade64.dll";
+        SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
 
-            if (skModule != nullptr)
-                SetEnvironmentVariableW(L"RESHADE_DISABLE_GRAPHICS_HOOK", L"1");
+        if (skModule != nullptr)
+            SetEnvironmentVariableW(L"RESHADE_DISABLE_GRAPHICS_HOOK", L"1");
 
-            State::EnableServeOriginal(201);
-            reshadeModule = NtdllProxy::LoadLibraryExW_Ldr(rsFile.c_str(), NULL, 0);
-            State::DisableServeOriginal(201);
+        State::EnableServeOriginal(201);
+        reshadeModule = NtdllProxy::LoadLibraryExW_Ldr(rsFile.c_str(), NULL, 0);
+        State::DisableServeOriginal(201);
 
-            LOG_INFO("Loading ReShade64.dll, result: {0:X}", (size_t) reshadeModule);
-        }
+        LOG_INFO("Loading ReShade64.dll, result: {0:X}", (size_t) reshadeModule);
     }
 }
 
@@ -170,12 +170,12 @@ inline static HRESULT hkCreateDXGIFactory(REFIID riid, IDXGIFactory** ppFactory)
 
     real = (IDXGIFactory*) (*ppFactory);
 
-    CreateLumaD3D12Device(real);
-
     if (Config::Instance()->DxgiFactoryWrapping.value_or_default())
         *ppFactory = (IDXGIFactory*) (new WrappedIDXGIFactory7(real));
     else
         DxgiFactoryHooks::HookToFactory(real);
+
+    CheckLumaAndReShade(real);
 
     return result;
 }
@@ -221,12 +221,12 @@ inline static HRESULT hkCreateDXGIFactory1(REFIID riid, IDXGIFactory1** ppFactor
 
     real = (IDXGIFactory1*) (*ppFactory);
 
-    CreateLumaD3D12Device(real);
-
     if (Config::Instance()->DxgiFactoryWrapping.value_or_default())
         *ppFactory = (IDXGIFactory1*) (new WrappedIDXGIFactory7(real));
     else
         DxgiFactoryHooks::HookToFactory(real);
+
+    CheckLumaAndReShade(real);
 
     return result;
 }
@@ -274,12 +274,12 @@ inline static HRESULT hkCreateDXGIFactory2(UINT Flags, REFIID riid, IDXGIFactory
 
     real = (IDXGIFactory2*) (*ppFactory);
 
-    CreateLumaD3D12Device(real);
-
     if (Config::Instance()->DxgiFactoryWrapping.value_or_default())
         *ppFactory = (IDXGIFactory2*) (new WrappedIDXGIFactory7(real));
     else
         DxgiFactoryHooks::HookToFactory(real);
+
+    CheckLumaAndReShade(real);
 
     return result;
 }

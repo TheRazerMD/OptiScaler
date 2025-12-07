@@ -714,10 +714,12 @@ static void CheckWorkingMode()
                 D3D12Hooks::Hook();
             }
 
-            if (D3d12Proxy::Module() == nullptr && State::Instance().gameQuirks & GameQuirk::LoadD3D12Manually)
+            if (D3d12Proxy::Module() == nullptr && (State::Instance().gameQuirks & GameQuirk::LoadD3D12Manually ||
+                                                    Config::Instance()->LoadReShade.value_or_default()))
             {
                 LOG_DEBUG("Loading d3d12.dll manually");
                 D3d12Proxy::Init();
+                D3D12Hooks::Hook();
             }
 
             // DirectX 11
@@ -895,21 +897,21 @@ static void CheckWorkingMode()
             // ReShade
             // Do not load Reshade here is Luma is active and we will create D3D12 device for it
             // We will load Reshade after D3D12 device creation in that case
-            if (reshadeModule == nullptr && Config::Instance()->LoadReShade.value_or_default() &&
-                !(State::Instance().gameQuirks & GameQuirk::CreateD3D12DeviceForLuma))
-            {
-                auto rsFile = Util::DllPath().parent_path() / L"ReShade64.dll";
-                SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
+            // if (reshadeModule == nullptr && Config::Instance()->LoadReShade.value_or_default() &&
+            //    !(State::Instance().gameQuirks & GameQuirk::CreateD3D12DeviceForLuma))
+            //{
+            //    auto rsFile = Util::DllPath().parent_path() / L"ReShade64.dll";
+            //    SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
 
-                if (skModule != nullptr)
-                    SetEnvironmentVariableW(L"RESHADE_DISABLE_GRAPHICS_HOOK", L"1");
+            //    if (skModule != nullptr)
+            //        SetEnvironmentVariableW(L"RESHADE_DISABLE_GRAPHICS_HOOK", L"1");
 
-                State::EnableServeOriginal(201);
-                reshadeModule = NtdllProxy::LoadLibraryExW_Ldr(rsFile.c_str(), NULL, 0);
-                State::DisableServeOriginal(201);
+            //    State::EnableServeOriginal(201);
+            //    reshadeModule = NtdllProxy::LoadLibraryExW_Ldr(rsFile.c_str(), NULL, 0);
+            //    State::DisableServeOriginal(201);
 
-                LOG_INFO("Loading ReShade64.dll, result: {0:X}", (size_t) reshadeModule);
-            }
+            //    LOG_INFO("Loading ReShade64.dll, result: {0:X}", (size_t) reshadeModule);
+            //}
 
             // Hook kernel32 methods
             if (!Config::Instance()->EarlyHooking.value_or_default())
@@ -1296,14 +1298,14 @@ static void CheckQuirks()
                 LOG_INFO("Luma detected, enabling DontUseNTShared");
                 State::Instance().detectedQuirks.push_back("Luma detected, enabling DontUseNTShared");
                 Config::Instance()->DontUseNTShared.set_volatile_value(true);
-            }
 
-            // If early creating of D3D12 device is not disabled and FSR Agility SDK Upgrade is enabled
-            if (!Config::Instance()->DontCreateD3D12DeviceForLuma.value_or_default() &&
-                Config::Instance()->FsrAgilitySDKUpgrade.value_or_default())
-            {
-                quirks |= GameQuirk::LoadD3D12Manually;
-                quirks |= GameQuirk::CreateD3D12DeviceForLuma;
+                // If early creating of D3D12 device is not disabled and FSR Agility SDK Upgrade is enabled
+                if (!Config::Instance()->DontCreateD3D12DeviceForLuma.value_or_default() &&
+                    Config::Instance()->FsrAgilitySDKUpgrade.value_or_default())
+                {
+                    quirks |= GameQuirk::LoadD3D12Manually;
+                    quirks |= GameQuirk::CreateD3D12DeviceForLuma;
+                }
             }
         }
 
@@ -1318,6 +1320,22 @@ static void CheckQuirks()
             }
         }
     }
+
+    if ((Config::Instance()->LoadReShade.value_or_default() || Config::Instance()->LoadSpecialK.value_or_default()) &&
+        State::Instance().activeFgInput != FGInput::NoFG && State::Instance().activeFgInput != FGInput::Nukems)
+    {
+        Config::Instance()->DxgiFactoryWrapping.set_volatile_value(true);
+        State::Instance().detectedQuirks.push_back("DXGI Factory wrapping enabled due to ReShade + FG");
+        LOG_INFO("DXGI Factory wrapping enabled due to ReShade + FG");
+    }
+
+    // if (Config::Instance()->LoadSpecialK.value_or_default() && State::Instance().activeFgInput != FGInput::NoFG &&
+    //     State::Instance().activeFgInput != FGInput::Nukems)
+    //{
+    //     Config::Instance()->LoadSpecialK.set_volatile_value(false);
+    //     State::Instance().detectedQuirks.push_back("FG Inputs are enabled, LoadSpecialK disabled");
+    //     LOG_INFO("FG Inputs are enabled, LoadSpecialK disabled");
+    // }
 
     State::Instance().gameQuirks = quirks;
 
