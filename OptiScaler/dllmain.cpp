@@ -893,7 +893,10 @@ static void CheckWorkingMode()
             }
 
             // ReShade
-            if (reshadeModule == nullptr && Config::Instance()->LoadReShade.value_or_default())
+            // Do not load Reshade here is Luma is active and we will create D3D12 device for it
+            // We will load Reshade after D3D12 device creation in that case
+            if (reshadeModule == nullptr && Config::Instance()->LoadReShade.value_or_default() &&
+                !(State::Instance().gameQuirks & GameQuirk::CreateD3D12DeviceForLuma))
             {
                 auto rsFile = Util::DllPath().parent_path() / L"ReShade64.dll";
                 SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
@@ -1154,6 +1157,12 @@ static void printQuirks(flag_set<GameQuirk>& quirks)
         state->detectedQuirks.push_back("Skip pre init checks for XeFG");
     }
 
+    if (quirks & GameQuirk::CreateD3D12DeviceForLuma)
+    {
+        spdlog::info("Quirk: Create D3D12 device for Luma before loading Reshade");
+        state->detectedQuirks.push_back("Create D3D12 device for Luma before loading Reshade");
+    }
+
     return;
 }
 
@@ -1168,7 +1177,6 @@ static void CheckQuirks()
     LOG_INFO("Game Name: {0}", State::Instance().GameName);
 
     auto quirks = getQuirksForExe(exePathFilename);
-    printQuirks(quirks);
 
     auto state = &State::Instance();
 
@@ -1258,47 +1266,62 @@ static void CheckQuirks()
     if (quirks & GameQuirk::DisableXeFGChecks && !Config::Instance()->FGXeFGIgnoreInitChecks.has_value())
         Config::Instance()->FGXeFGIgnoreInitChecks.set_volatile_value(true);
 
-    State::Instance().gameQuirks = quirks;
-
-    // For Luma, we assume if Luma addon in game folder it's used
-    if (!Config::Instance()->DontUseNTShared.has_value())
+    if (Config::Instance()->LoadReShade.value_or_default())
     {
-        const auto dir = Util::ExePath().parent_path();
-        bool lumaDetected = false;
-
-        for (const auto& entry : std::filesystem::directory_iterator(dir))
+        // For Luma, we assume if Luma addon in game folder it's used
+        if (!Config::Instance()->DontUseNTShared.has_value())
         {
-            if (!entry.is_regular_file())
-                continue;
+            const auto dir = Util::ExePath().parent_path();
+            bool lumaDetected = false;
 
-            const auto& path = entry.path();
-            if (path.extension() == L".addon")
+            for (const auto& entry : std::filesystem::directory_iterator(dir))
             {
-                const auto fname = path.filename().wstring();
-                if (fname.rfind(L"Luma-", 0) == 0) // starts with "Luma-"
+                if (!entry.is_regular_file())
+                    continue;
+
+                const auto& path = entry.path();
+                if (path.extension() == L".addon")
                 {
-                    lumaDetected = true;
-                    break;
+                    const auto fname = path.filename().wstring();
+                    if (fname.rfind(L"Luma-", 0) == 0) // starts with "Luma-"
+                    {
+                        lumaDetected = true;
+                        break;
+                    }
                 }
+            }
+
+            if (lumaDetected)
+            {
+                LOG_INFO("Luma detected, enabling DontUseNTShared");
+                State::Instance().detectedQuirks.push_back("Luma detected, enabling DontUseNTShared");
+                Config::Instance()->DontUseNTShared.set_volatile_value(true);
+            }
+
+            // If early creating of D3D12 device is not disabled and FSR Agility SDK Upgrade is enabled
+            if (!Config::Instance()->DontCreateD3D12DeviceForLuma.value_or_default() &&
+                Config::Instance()->FsrAgilitySDKUpgrade.value_or_default())
+            {
+                quirks |= GameQuirk::LoadD3D12Manually;
+                quirks |= GameQuirk::CreateD3D12DeviceForLuma;
             }
         }
 
-        if (lumaDetected)
+        // For Luma Unreal Engine games
+        if (std::filesystem::exists(Util::ExePath().parent_path() / L"Luma-Unreal Engine.addon"))
         {
-            LOG_INFO("Luma detected, enabling DontUseNTShared");
-            State::Instance().detectedQuirks.push_back("Luma detected, enabling DontUseNTShared");
-            Config::Instance()->DontUseNTShared.set_volatile_value(true);
+            if (!Config::Instance()->DxgiSpoofing.has_value())
+            {
+                LOG_INFO("Luma UE detected, disabling DxgiSpoofing");
+                State::Instance().detectedQuirks.push_back("Luma UE detected, disabling DxgiSpoofing");
+                Config::Instance()->DxgiSpoofing.set_volatile_value(false);
+            }
         }
     }
 
-    // For Luma Unreal Engine games
-    if (!Config::Instance()->DxgiSpoofing.has_value() &&
-        std::filesystem::exists(Util::ExePath().parent_path() / L"Luma-Unreal Engine.addon"))
-    {
-        LOG_INFO("Luma UE detected, disabling DxgiSpoofing");
-        State::Instance().detectedQuirks.push_back("Luma UE detected, disabling DxgiSpoofing");
-        Config::Instance()->DxgiSpoofing.set_volatile_value(false);
-    }
+    State::Instance().gameQuirks = quirks;
+
+    printQuirks(quirks);
 }
 
 bool isNvidia()
@@ -1435,6 +1458,9 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
         KernelBaseProxy::Init();
         Kernel32Proxy::Init();
 
+        spdlog::info("");
+        CheckQuirks();
+
         // Check for working mode and attach hooks
         spdlog::info("");
         CheckWorkingMode();
@@ -1465,9 +1491,6 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
                 Config::Instance()->DLSSEnabled.set_volatile_value(false);
             }
         }
-
-        spdlog::info("");
-        CheckQuirks();
 
         // OptiFG & Overlay Checks
         // TODO: Either FGInput == FGInput::Upscaler or FGOutput == FGOutput::FSRFG

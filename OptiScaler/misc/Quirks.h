@@ -42,6 +42,7 @@ enum class GameQuirk : uint64_t
     FixSlSimulationMarkers,
     HitmanReflexHacks,
     SkipD3D11FeatureLevelElevation,
+    CreateD3D12DeviceForLuma,
     // Don't forget to add the new entry to printQuirks
     _
 };

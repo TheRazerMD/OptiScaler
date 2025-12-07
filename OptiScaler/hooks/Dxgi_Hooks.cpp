@@ -3,6 +3,7 @@
 #include "DxgiFactory_Hooks.h"
 
 #include <proxies/Dxgi_Proxy.h>
+#include <proxies/D3D12_Proxy.h>
 #include <wrapped/wrapped_factory.h>
 
 #include <DllNames.h>
@@ -10,13 +11,134 @@
 static DxgiProxy::PFN_CreateDxgiFactory o_CreateDXGIFactory = nullptr;
 static DxgiProxy::PFN_CreateDxgiFactory1 o_CreateDXGIFactory1 = nullptr;
 static DxgiProxy::PFN_CreateDxgiFactory2 o_CreateDXGIFactory2 = nullptr;
+static bool creatingD3D12DeviceForLuma = false;
 
 #pragma intrinsic(_ReturnAddress)
+
+static void GetHardwareAdapter(IDXGIFactory* InFactory, IDXGIAdapter** InAdapter, D3D_FEATURE_LEVEL InFeatureLevel,
+                               bool InRequestHighPerformanceAdapter)
+{
+    LOG_FUNC();
+
+    *InAdapter = nullptr;
+
+    IDXGIAdapter1* adapter;
+    IDXGIFactory1* factory1;
+    IDXGIFactory6* factory6;
+
+    if (SUCCEEDED(InFactory->QueryInterface(IID_PPV_ARGS(&factory6))))
+    {
+        LOG_DEBUG("Using IDXGIFactory6 & EnumAdapterByGpuPreference");
+        factory6->Release();
+
+        for (UINT adapterIndex = 0;
+             DXGI_ERROR_NOT_FOUND != factory6->EnumAdapterByGpuPreference(adapterIndex,
+                                                                          InRequestHighPerformanceAdapter == true
+                                                                              ? DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE
+                                                                              : DXGI_GPU_PREFERENCE_UNSPECIFIED,
+                                                                          IID_PPV_ARGS(&adapter));
+             ++adapterIndex)
+        {
+            DXGI_ADAPTER_DESC1 desc;
+            adapter->GetDesc1(&desc);
+
+            if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
+                continue;
+
+            *InAdapter = adapter;
+            break;
+        }
+    }
+    else if (SUCCEEDED(InFactory->QueryInterface(IID_PPV_ARGS(&factory1))))
+    {
+        factory1->Release();
+
+        LOG_DEBUG("Using InFactory & EnumAdapters1");
+        for (UINT adapterIndex = 0; DXGI_ERROR_NOT_FOUND != factory1->EnumAdapters1(adapterIndex, &adapter);
+             ++adapterIndex)
+        {
+            DXGI_ADAPTER_DESC1 desc;
+            adapter->GetDesc1(&desc);
+
+            if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
+                continue;
+
+            // Check to see whether the adapter supports Direct3D 12, but don't create the
+            // actual device yet.
+            auto result = D3d12Proxy::D3D12CreateDevice_()(adapter, InFeatureLevel, _uuidof(ID3D12Device), nullptr);
+
+            if (result == S_FALSE)
+            {
+                LOG_DEBUG("D3D12CreateDevice test result: {:X}", (UINT) result);
+                *InAdapter = adapter;
+                break;
+            }
+        }
+    }
+}
+
+static void InitD3D12DeviceForLuma(IDXGIFactory* factory)
+{
+    IDXGIAdapter* hardwareAdapter = nullptr;
+    GetHardwareAdapter(factory, &hardwareAdapter, D3D_FEATURE_LEVEL_11_0, true);
+
+    if (hardwareAdapter == nullptr)
+        LOG_WARN("Can't get hardwareAdapter, will try nullptr!");
+
+    auto result = D3d12Proxy::D3D12CreateDevice_()(hardwareAdapter, D3D_FEATURE_LEVEL_11_0,
+                                                   IID_PPV_ARGS(&State::Instance().currentD3D12Device));
+
+    LOG_DEBUG("D3D12CreateDevice result: {0:x}", result);
+}
+
+static void CreateLumaD3D12Device(IDXGIFactory* factory)
+{
+    if (creatingD3D12DeviceForLuma)
+        return;
+
+    // For Luma mod + Agility update we are creating D3D12 device early to prevent issues with Luma
+    if (State::Instance().gameQuirks & GameQuirk::CreateD3D12DeviceForLuma &&
+        State::Instance().currentD3D12Device == nullptr)
+    {
+        State::Instance().skipDxgiLoadChecks = true;
+        State::Instance().skipSpoofing = true;
+        creatingD3D12DeviceForLuma = true;
+
+        LOG_INFO("Applying Luma DX12 workaround - creating D3D12 device early");
+        InitD3D12DeviceForLuma(factory);
+
+        creatingD3D12DeviceForLuma = false;
+        State::Instance().skipSpoofing = false;
+        State::Instance().skipDxgiLoadChecks = false;
+
+        // Loading Reshade after Luma's D3D12 device creation to prevent conflicts
+        if (reshadeModule == nullptr && Config::Instance()->LoadReShade.value_or_default())
+        {
+            auto rsFile = Util::DllPath().parent_path() / L"ReShade64.dll";
+            SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
+
+            if (skModule != nullptr)
+                SetEnvironmentVariableW(L"RESHADE_DISABLE_GRAPHICS_HOOK", L"1");
+
+            State::EnableServeOriginal(201);
+            reshadeModule = NtdllProxy::LoadLibraryExW_Ldr(rsFile.c_str(), NULL, 0);
+            State::DisableServeOriginal(201);
+
+            LOG_INFO("Loading ReShade64.dll, result: {0:X}", (size_t) reshadeModule);
+        }
+    }
+}
 
 inline static HRESULT hkCreateDXGIFactory(REFIID riid, IDXGIFactory** ppFactory)
 {
     auto caller = Util::WhoIsTheCaller(_ReturnAddress());
     LOG_DEBUG("Caller: {}", caller);
+
+    if (creatingD3D12DeviceForLuma)
+    {
+        LOG_DEBUG("Bypassing hooking/wrapping during Luma D3D12 device creation");
+        return o_CreateDXGIFactory(riid, ppFactory);
+    }
 
     if (Config::Instance()->DxgiFactoryWrapping.value_or_default() && CheckDllName(&caller, &skipDxgiWrappingNames))
     {
@@ -48,6 +170,8 @@ inline static HRESULT hkCreateDXGIFactory(REFIID riid, IDXGIFactory** ppFactory)
 
     real = (IDXGIFactory*) (*ppFactory);
 
+    CreateLumaD3D12Device(real);
+
     if (Config::Instance()->DxgiFactoryWrapping.value_or_default())
         *ppFactory = (IDXGIFactory*) (new WrappedIDXGIFactory7(real));
     else
@@ -60,6 +184,12 @@ inline static HRESULT hkCreateDXGIFactory1(REFIID riid, IDXGIFactory1** ppFactor
 {
     auto caller = Util::WhoIsTheCaller(_ReturnAddress());
     LOG_DEBUG("Caller: {}", caller);
+
+    if (creatingD3D12DeviceForLuma)
+    {
+        LOG_DEBUG("Bypassing hooking/wrapping during Luma D3D12 device creation");
+        return o_CreateDXGIFactory1(riid, ppFactory);
+    }
 
     if (Config::Instance()->DxgiFactoryWrapping.value_or_default() && CheckDllName(&caller, &skipDxgiWrappingNames))
     {
@@ -91,6 +221,8 @@ inline static HRESULT hkCreateDXGIFactory1(REFIID riid, IDXGIFactory1** ppFactor
 
     real = (IDXGIFactory1*) (*ppFactory);
 
+    CreateLumaD3D12Device(real);
+
     if (Config::Instance()->DxgiFactoryWrapping.value_or_default())
         *ppFactory = (IDXGIFactory1*) (new WrappedIDXGIFactory7(real));
     else
@@ -103,6 +235,12 @@ inline static HRESULT hkCreateDXGIFactory2(UINT Flags, REFIID riid, IDXGIFactory
 {
     auto caller = Util::WhoIsTheCaller(_ReturnAddress());
     LOG_DEBUG("Caller: {}", caller);
+
+    if (creatingD3D12DeviceForLuma)
+    {
+        LOG_DEBUG("Bypassing hooking/wrapping during Luma D3D12 device creation");
+        return o_CreateDXGIFactory2(Flags, riid, ppFactory);
+    }
 
     if (Config::Instance()->DxgiFactoryWrapping.value_or_default() && CheckDllName(&caller, &skipDxgiWrappingNames))
     {
@@ -135,6 +273,8 @@ inline static HRESULT hkCreateDXGIFactory2(UINT Flags, REFIID riid, IDXGIFactory
         *ppFactory = real;
 
     real = (IDXGIFactory2*) (*ppFactory);
+
+    CreateLumaD3D12Device(real);
 
     if (Config::Instance()->DxgiFactoryWrapping.value_or_default())
         *ppFactory = (IDXGIFactory2*) (new WrappedIDXGIFactory7(real));
