@@ -2,6 +2,9 @@
 
 #include <Config.h>
 
+#include <proxies/DXGI_Proxy.h>
+#include <proxies/D3D12_Proxy.h>
+
 #define ASSIGN_DESC(dest, src)                                                                                         \
     dest.Width = src.Width;                                                                                            \
     dest.Height = src.Height;                                                                                          \
@@ -323,7 +326,7 @@ void IFeature_Dx11wDx12::GetHardwareAdapter(IDXGIFactory1* InFactory, IDXGIAdapt
 
             // Check to see whether the adapter supports Direct3D 12, but don't create the
             // actual device yet.
-            // auto result = D3D12CreateDevice(adapter, InFeatureLevel, _uuidof(ID3D12Device), nullptr);
+            // auto result = D3d12Proxy::D3D12CreateDevice_()(adapter, InFeatureLevel, _uuidof(ID3D12Device), nullptr);
             // LOG_DEBUG("D3D12CreateDevice test result: {:X}", (UINT) result);
 
             // if (result == S_FALSE)
@@ -347,7 +350,7 @@ void IFeature_Dx11wDx12::GetHardwareAdapter(IDXGIFactory1* InFactory, IDXGIAdapt
 
             // Check to see whether the adapter supports Direct3D 12, but don't create the
             // actual device yet.
-            auto result = D3D12CreateDevice(adapter, InFeatureLevel, _uuidof(ID3D12Device), nullptr);
+            auto result = D3d12Proxy::D3D12CreateDevice_()(adapter, InFeatureLevel, _uuidof(ID3D12Device), nullptr);
 
             if (result == S_FALSE)
             {
@@ -370,8 +373,12 @@ HRESULT IFeature_Dx11wDx12::CreateDx12Device(D3D_FEATURE_LEVEL InFeatureLevel)
 
     if (State::Instance().currentD3D12Device == nullptr)
     {
-        IDXGIFactory4* factory;
-        result = CreateDXGIFactory2(0, IID_PPV_ARGS(&factory));
+        IDXGIFactory2* factory;
+
+        if (DxgiProxy::Module() == nullptr)
+            result = CreateDXGIFactory2(0, IID_PPV_ARGS(&factory));
+        else
+            result = DxgiProxy::CreateDxgiFactory2_()(0, __uuidof(factory), &factory);
 
         if (result != S_OK)
         {
@@ -387,8 +394,8 @@ HRESULT IFeature_Dx11wDx12::CreateDx12Device(D3D_FEATURE_LEVEL InFeatureLevel)
         if (hardwareAdapter == nullptr)
             LOG_WARN("Can't get hardwareAdapter, will try nullptr!");
 
-        result =
-            D3D12CreateDevice(hardwareAdapter, InFeatureLevel, IID_PPV_ARGS(&State::Instance().currentD3D12Device));
+        result = D3d12Proxy::D3D12CreateDevice_()(hardwareAdapter, InFeatureLevel,
+                                                  IID_PPV_ARGS(&State::Instance().currentD3D12Device));
 
         if (result != S_OK)
         {
