@@ -1318,11 +1318,26 @@ static void CheckQuirks()
                 Config::Instance()->DxgiSpoofing.set_volatile_value(false);
             }
         }
+
+        // For Sekiro TSR
+        if (std::filesystem::exists(Util::ExePath().parent_path() / L"SekiroTSRLoader.addon"))
+        {
+            LOG_INFO("Sekiro TSR detected");
+
+            if (!Config::Instance()->DxgiSpoofing.has_value())
+            {
+                State::Instance().detectedQuirks.push_back("Sekiro TSR detected, disabling DxgiSpoofing");
+                Config::Instance()->DxgiSpoofing.set_volatile_value(false);
     }
 
-    if ((Config::Instance()->LoadReShade.value_or_default() || Config::Instance()->LoadSpecialK.value_or_default()) &&
-        State::Instance().activeFgInput != FGInput::NoFG && State::Instance().activeFgInput != FGInput::Nukems)
+            // If early creating of D3D12 device is not disabled and FSR Agility SDK Upgrade is enabled
+            if (!Config::Instance()->DontCreateD3D12DeviceForLuma.value_or_default() &&
+                Config::Instance()->FsrAgilitySDKUpgrade.value_or_default())
     {
+                quirks |= GameQuirk::LoadD3D12Manually;
+                quirks |= GameQuirk::CreateD3D12DeviceForLuma;
+            }
+        }
         Config::Instance()->DxgiFactoryWrapping.set_volatile_value(true);
         State::Instance().detectedQuirks.push_back("DXGI Factory wrapping enabled due to ReShade + FG");
         LOG_INFO("DXGI Factory wrapping enabled due to ReShade + FG");
