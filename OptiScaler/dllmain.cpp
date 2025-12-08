@@ -714,8 +714,7 @@ static void CheckWorkingMode()
                 D3D12Hooks::Hook();
             }
 
-            if (D3d12Proxy::Module() == nullptr && (State::Instance().gameQuirks & GameQuirk::LoadD3D12Manually ||
-                                                    Config::Instance()->LoadReShade.value_or_default()))
+            if (D3d12Proxy::Module() == nullptr && State::Instance().gameQuirks & GameQuirk::LoadD3D12Manually)
             {
                 LOG_DEBUG("Loading d3d12.dll manually");
                 D3d12Proxy::Init();
