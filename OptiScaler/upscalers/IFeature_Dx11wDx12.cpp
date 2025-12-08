@@ -373,7 +373,7 @@ HRESULT IFeature_Dx11wDx12::CreateDx12Device(D3D_FEATURE_LEVEL InFeatureLevel)
 
     if (State::Instance().currentD3D12Device == nullptr)
     {
-        IDXGIFactory2* factory;
+        IDXGIFactory2* factory = nullptr;
 
         if (DxgiProxy::Module() == nullptr)
             result = CreateDXGIFactory2(0, IID_PPV_ARGS(&factory));
@@ -388,14 +388,17 @@ HRESULT IFeature_Dx11wDx12::CreateDx12Device(D3D_FEATURE_LEVEL InFeatureLevel)
             return result;
         }
 
-        IDXGIAdapter* hardwareAdapter = nullptr;
-        GetHardwareAdapter(factory, &hardwareAdapter, InFeatureLevel, true);
+        IDXGIAdapter* hwAdapter = nullptr;
+        GetHardwareAdapter(factory, &hwAdapter, InFeatureLevel, true);
 
-        if (hardwareAdapter == nullptr)
-            LOG_WARN("Can't get hardwareAdapter, will try nullptr!");
+        if (hwAdapter == nullptr)
+            LOG_WARN("Can't get hwAdapter, will try nullptr!");
 
-        result = D3d12Proxy::D3D12CreateDevice_()(hardwareAdapter, InFeatureLevel,
-                                                  IID_PPV_ARGS(&State::Instance().currentD3D12Device));
+        if (D3d12Proxy::Module() == nullptr)
+            result = D3D12CreateDevice(hwAdapter, InFeatureLevel, IID_PPV_ARGS(&State::Instance().currentD3D12Device));
+        else
+            result = D3d12Proxy::D3D12CreateDevice_()(hwAdapter, InFeatureLevel,
+                                                      IID_PPV_ARGS(&State::Instance().currentD3D12Device));
 
         if (result != S_OK)
         {
@@ -405,10 +408,10 @@ HRESULT IFeature_Dx11wDx12::CreateDx12Device(D3D_FEATURE_LEVEL InFeatureLevel)
             return result;
         }
 
-        if (hardwareAdapter != nullptr)
+        if (hwAdapter != nullptr)
         {
             DXGI_ADAPTER_DESC desc {};
-            if (hardwareAdapter->GetDesc(&desc) == S_OK)
+            if (hwAdapter->GetDesc(&desc) == S_OK)
             {
                 auto adapterDesc = wstring_to_string(desc.Description);
                 LOG_INFO("D3D12Device created with adapter: {}", adapterDesc);
