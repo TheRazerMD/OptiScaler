@@ -896,21 +896,21 @@ static void CheckWorkingMode()
             // ReShade
             // Do not load Reshade here is Luma is active and we will create D3D12 device for it
             // We will load Reshade after D3D12 device creation in that case
-            // if (reshadeModule == nullptr && Config::Instance()->LoadReShade.value_or_default() &&
-            //    !(State::Instance().gameQuirks & GameQuirk::CreateD3D12DeviceForLuma))
-            //{
-            //    auto rsFile = Util::DllPath().parent_path() / L"ReShade64.dll";
-            //    SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
+            if (reshadeModule == nullptr && Config::Instance()->LoadReShade.value_or_default() &&
+                !(State::Instance().gameQuirks & GameQuirk::CreateD3D12DeviceForLuma))
+            {
+                auto rsFile = Util::DllPath().parent_path() / L"ReShade64.dll";
+                SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
 
-            //    if (skModule != nullptr)
-            //        SetEnvironmentVariableW(L"RESHADE_DISABLE_GRAPHICS_HOOK", L"1");
+                if (skModule != nullptr)
+                    SetEnvironmentVariableW(L"RESHADE_DISABLE_GRAPHICS_HOOK", L"1");
 
-            //    State::EnableServeOriginal(201);
-            //    reshadeModule = NtdllProxy::LoadLibraryExW_Ldr(rsFile.c_str(), NULL, 0);
-            //    State::DisableServeOriginal(201);
+                State::EnableServeOriginal(201);
+                reshadeModule = NtdllProxy::LoadLibraryExW_Ldr(rsFile.c_str(), NULL, 0);
+                State::DisableServeOriginal(201);
 
-            //    LOG_INFO("Loading ReShade64.dll, result: {0:X}", (size_t) reshadeModule);
-            //}
+                LOG_INFO("Loading ReShade64.dll, result: {0:X}", (size_t) reshadeModule);
+            }
 
             // Hook kernel32 methods
             if (!Config::Instance()->EarlyHooking.value_or_default())
