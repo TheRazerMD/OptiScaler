@@ -317,7 +317,6 @@ class Config
 
     CustomOptional<bool> DontCreateD3D12DeviceForLuma { false };
 
-
     // Upscalers
     CustomOptional<std::string, SoftDefault> Dx11Upscaler { "fsr22" };
     CustomOptional<std::string, SoftDefault> Dx12Upscaler { "xess" };

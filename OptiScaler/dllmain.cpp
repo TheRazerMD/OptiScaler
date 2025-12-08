@@ -1328,12 +1328,12 @@ static void CheckQuirks()
             {
                 State::Instance().detectedQuirks.push_back("Sekiro TSR detected, disabling DxgiSpoofing");
                 Config::Instance()->DxgiSpoofing.set_volatile_value(false);
-    }
+            }
 
             // If early creating of D3D12 device is not disabled and FSR Agility SDK Upgrade is enabled
             if (!Config::Instance()->DontCreateD3D12DeviceForLuma.value_or_default() &&
                 Config::Instance()->FsrAgilitySDKUpgrade.value_or_default())
-    {
+            {
                 quirks |= GameQuirk::LoadD3D12Manually;
                 quirks |= GameQuirk::CreateD3D12DeviceForLuma;
             }
@@ -1342,19 +1342,19 @@ static void CheckQuirks()
         if (quirks & GameQuirk::CreateD3D12DeviceForLuma && State::Instance().activeFgInput != FGInput::NoFG &&
             State::Instance().activeFgInput != FGInput::Nukems)
         {
-        Config::Instance()->DxgiFactoryWrapping.set_volatile_value(true);
+            Config::Instance()->DxgiFactoryWrapping.set_volatile_value(true);
             State::Instance().detectedQuirks.push_back("Factory wrapping enabled due to delayed ReShade + FG");
             LOG_INFO("Factory wrapping enabled due to delayed ReShade + FG");
-    }
+        }
     }
 
-    // if (Config::Instance()->LoadSpecialK.value_or_default() && State::Instance().activeFgInput != FGInput::NoFG &&
-    //     State::Instance().activeFgInput != FGInput::Nukems)
-    //{
-    //     Config::Instance()->LoadSpecialK.set_volatile_value(false);
-    //     State::Instance().detectedQuirks.push_back("FG Inputs are enabled, LoadSpecialK disabled");
-    //     LOG_INFO("FG Inputs are enabled, LoadSpecialK disabled");
-    // }
+    if (Config::Instance()->LoadSpecialK.value_or_default() && State::Instance().activeFgInput != FGInput::NoFG &&
+        State::Instance().activeFgInput != FGInput::Nukems)
+    {
+        Config::Instance()->LoadSpecialK.set_volatile_value(false);
+        State::Instance().detectedQuirks.push_back("FG Inputs are enabled, LoadSpecialK disabled");
+        LOG_INFO("FG Inputs are enabled, LoadSpecialK disabled");
+    }
 
     State::Instance().gameQuirks = quirks;
 
