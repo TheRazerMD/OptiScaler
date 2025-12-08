@@ -1338,9 +1338,14 @@ static void CheckQuirks()
                 quirks |= GameQuirk::CreateD3D12DeviceForLuma;
             }
         }
+
+        if (quirks & GameQuirk::CreateD3D12DeviceForLuma && State::Instance().activeFgInput != FGInput::NoFG &&
+            State::Instance().activeFgInput != FGInput::Nukems)
+        {
         Config::Instance()->DxgiFactoryWrapping.set_volatile_value(true);
-        State::Instance().detectedQuirks.push_back("DXGI Factory wrapping enabled due to ReShade + FG");
-        LOG_INFO("DXGI Factory wrapping enabled due to ReShade + FG");
+            State::Instance().detectedQuirks.push_back("Factory wrapping enabled due to delayed ReShade + FG");
+            LOG_INFO("Factory wrapping enabled due to delayed ReShade + FG");
+    }
     }
 
     // if (Config::Instance()->LoadSpecialK.value_or_default() && State::Instance().activeFgInput != FGInput::NoFG &&
