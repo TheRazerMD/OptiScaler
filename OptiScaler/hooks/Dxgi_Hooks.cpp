@@ -93,8 +93,20 @@ static void InitD3D12DeviceForLuma(IDXGIFactory* factory)
 
 static void CheckLumaAndReShade(IDXGIFactory* factory)
 {
-    if (creatingD3D12DeviceForLuma)
+    if (!Config::Instance()->LoadReShade.value_or_default() ||
+        !(State::Instance().gameQuirks & GameQuirk::CreateD3D12DeviceForLuma) ||
+        State::Instance().currentD3D12Device != nullptr || creatingD3D12DeviceForLuma)
+    {
         return;
+    }
+
+    auto rsFile = Util::ExePath().parent_path() / L"ReShade64.dll";
+    auto rsFileExist = std::filesystem::exists(rsFile);
+    if (reshadeModule == nullptr && !rsFileExist)
+    {
+        Config::Instance()->LoadReShade.set_volatile_value(false);
+        return;
+    }
 
     // For Luma mod + Agility update we are creating D3D12 device early to prevent issues with Luma
     if (State::Instance().gameQuirks & GameQuirk::CreateD3D12DeviceForLuma &&
@@ -115,7 +127,6 @@ static void CheckLumaAndReShade(IDXGIFactory* factory)
     // Loading Reshade after Luma's D3D12 device creation to prevent conflicts
     if (reshadeModule == nullptr && Config::Instance()->LoadReShade.value_or_default())
     {
-        auto rsFile = Util::DllPath().parent_path() / L"ReShade64.dll";
         SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
 
         if (skModule != nullptr)
