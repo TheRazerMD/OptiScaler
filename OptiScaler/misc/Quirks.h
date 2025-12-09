@@ -180,7 +180,7 @@ static const QuirkEntry quirkTable[] = {
     // Ronin, DYNASTY WARRIORS: ORIGINS, Crysis Remastered, Crysis 2 Remastered, Mortal Shell, Sekiro: Shadows Die
     // Twice (for SekiroTSR mod), The Medium, NINJA GAIDEN 4 (+ WinGDK), Dead Space Remake, God of War (2018), Europa
     // Universalis V, Need for Speed Unbound, Nioh 2 – The Complete Edition, Control Ultimate Edition, Deathloop, Where
-    // Winds Meet
+    // Winds Meet, FINAL FANTASY VII REMAKE INTERGRADE (for Luma mod)
     QUIRK_ENTRY("witcher3.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("alanwake2.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("crysis3remastered.exe", GameQuirk::DisableDxgiSpoofing),
@@ -202,7 +202,7 @@ static const QuirkEntry quirkTable[] = {
     QUIRK_ENTRY("crysisremastered.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("crysis2remastered.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY_UE(dungeonhaven, GameQuirk::DisableDxgiSpoofing),
-    QUIRK_ENTRY("sekiro.exe", GameQuirk::DisableDxgiSpoofing),
+    QUIRK_ENTRY("sekiro.exe", GameQuirk::DisableDxgiSpoofing), // Sekiro TSR mod required for upscalers
     QUIRK_ENTRY_UE(medium, GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("ninjagaiden4-steam.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("ninjagaiden4-wingdk.exe", GameQuirk::DisableDxgiSpoofing), // NG4 WinGDK
@@ -214,6 +214,7 @@ static const QuirkEntry quirkTable[] = {
     QUIRK_ENTRY("control_dx12.exe", GameQuirk::DisableDxgiSpoofing, GameQuirk::ForceAutoExposure),
     QUIRK_ENTRY("deathloop.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("wwm.exe", GameQuirk::DisableDxgiSpoofing),
+    QUIRK_ENTRY("ff7remake_.exe", GameQuirk::DisableDxgiSpoofing), // Luma mod required for upscalers
 
     // FSR2 only, no spoof needed
     //
@@ -296,5 +297,3 @@ static flag_set<GameQuirk> getQuirksForExe(std::string exeName)
 
     return result;
 }
-
-
