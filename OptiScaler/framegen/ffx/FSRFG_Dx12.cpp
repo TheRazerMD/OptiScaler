@@ -196,10 +196,10 @@ feature_version FSRFG_Dx12::Version()
 
     if (_fgContext == nullptr && _version.major == 0)
     {
-    if (!FfxApiProxy::IsFGReady())
-        FfxApiProxy::InitFfxDx12();
+        if (!FfxApiProxy::IsFGReady())
+            FfxApiProxy::InitFfxDx12();
 
-    if (FfxApiProxy::IsFGReady())
+        if (FfxApiProxy::IsFGReady())
             _version = FfxApiProxy::VersionDx12_FG();
     }
 
@@ -1178,10 +1178,12 @@ bool FSRFG_Dx12::SetResource(Dx12Resource* inputResource)
         LOG_TRACE("Made a copy: {:X} of input: {:X}", (size_t) fResource->copy, (size_t) fResource->resource);
     }
 
-    if (inputResource->validity == FG_ResourceValidity::UntilPresent)
-        SetResourceReady(type, fIndex);
-    else
-        ResTrack_Dx12::SetResourceCmdList(type, inputResource->cmdList);
+    SetResourceReady(type, fIndex);
+
+    // if (inputResource->validity == FG_ResourceValidity::UntilPresent)
+    //     SetResourceReady(type, fIndex);
+    // else
+    //     ResTrack_Dx12::SetResourceCmdList(type, inputResource->cmdList);
 
     LOG_TRACE("_frameResources[{}][{}]: {:X}", fIndex, magic_enum::enum_name(type), (size_t) fResource->GetResource());
     return true;
