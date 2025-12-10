@@ -128,6 +128,7 @@ bool Config::Reload(std::filesystem::path iniPath)
             FGFPTAllowHybridSpin.set_from_config(readBool("FSRFG", "FPTHybridSpin"));
             FGFPTHybridSpinTime.set_from_config(readInt("FSRFG", "FPTHybridSpinTime"));
             FGFPTAllowWaitForSingleObjectOnFence.set_from_config(readInt("FSRFG", "FPTWaitForSingleObjectOnFence"));
+            FSRFGEnableWatermark.set_from_config(readBool("FSRFG", "EnableWatermark"));
         }
 
         // OptiFG
@@ -727,6 +728,8 @@ bool Config::SaveIni()
                      GetIntValue(Instance()->FGFPTHybridSpinTime.value_for_config()).c_str());
         ini.SetValue("FSRFG", "FPTWaitForSingleObjectOnFence",
                      GetBoolValue(Instance()->FGFPTAllowWaitForSingleObjectOnFence.value_for_config()).c_str());
+        ini.SetValue("FSRFG", "EnableWatermark",
+                     GetBoolValue(Instance()->FSRFGEnableWatermark.value_for_config()).c_str());
     }
 
     // XeFG output

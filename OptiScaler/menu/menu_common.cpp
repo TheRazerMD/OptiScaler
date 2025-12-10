@@ -3295,6 +3295,20 @@ bool MenuCommon::RenderMenu()
                         }
                         ShowHelpMarker("Enable FSR 3.1 frame generation debug view");
 
+                        ImGui::SameLine(0.0f, 16.0f);
+
+                        if (state.currentFG->Version().major > 3)
+                        {
+                            if (bool wm = config->FSRFGEnableWatermark.value_or_default();
+                                ImGui::Checkbox("Enable Watermark", &wm))
+                            {
+                                config->FSRFGEnableWatermark = wm;
+                            }
+
+                            ShowHelpMarker("After changing this option please Save INI\n"
+                                           "It will be applied on next launch.");
+                        }
+
                         ImGui::Spacing();
                         if (ImGui::CollapsingHeader("Advanced FSR FG Settings"))
                         {

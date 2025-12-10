@@ -1556,6 +1556,23 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
             }
         }
 
+        if (Config::Instance()->FSRFGEnableWatermark.has_value())
+        {
+            if (Config::Instance()->FSRFGEnableWatermark.value())
+            {
+                _wputenv_s(L"MLFI-WATERMARK", L"1");
+                SetEnvironmentVariableW(L"MLFI-WATERMARK", L"1");
+
+                if (!Config::Instance()->FpsOverlayPos.has_value())
+                    Config::Instance()->FpsOverlayPos.set_volatile_value(1); // Top right
+            }
+            else
+            {
+                _wputenv_s(L"MLFI-WATERMARK", L"0");
+                SetEnvironmentVariableW(L"MLFI-WATERMARK", L"0");
+            }
+        }
+
         // Hook FSR4 stuff as early as possible
         spdlog::info("");
         InitFSR4Update();
