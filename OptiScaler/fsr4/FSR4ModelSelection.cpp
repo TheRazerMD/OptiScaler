@@ -58,13 +58,22 @@ void FSR4ModelSelection::Hook(HMODULE module, bool unhookOld)
     if (module == nullptr)
         return;
 
-    if (o_getModelBlob != nullptr && unhookOld)
+    if (unhookOld && (o_getModelBlob || o_createModel))
     {
         DetourTransactionBegin();
         DetourUpdateThread(GetCurrentThread());
 
-        DetourDetach(&(PVOID&) o_getModelBlob, hkgetModelBlob);
-        o_getModelBlob = nullptr;
+        if (o_getModelBlob != nullptr)
+        {
+            DetourDetach(&(PVOID&) o_getModelBlob, hkgetModelBlob);
+            o_getModelBlob = nullptr;
+        }
+
+        if (o_createModel != nullptr)
+        {
+            DetourDetach(&(PVOID&) o_createModel, hkcreateModel);
+            o_createModel = nullptr;
+        }
 
         DetourTransactionCommit();
     }
