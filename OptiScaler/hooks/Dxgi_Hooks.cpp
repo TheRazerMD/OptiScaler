@@ -101,11 +101,14 @@ static void CheckLumaAndReShade(IDXGIFactory* factory)
     }
 
     auto rsFile = Util::ExePath().parent_path() / L"ReShade64.dll";
-    auto rsFileExist = std::filesystem::exists(rsFile);
-    if (reshadeModule == nullptr && !rsFileExist)
+    if (reshadeModule == nullptr)
     {
-        Config::Instance()->LoadReShade.set_volatile_value(false);
-        return;
+        auto rsFileExist = std::filesystem::exists(rsFile);
+        if (!rsFileExist)
+        {
+            Config::Instance()->LoadReShade.set_volatile_value(false);
+            return;
+        }
     }
 
     // For Luma mod + Agility update we are creating D3D12 device early to prevent issues with Luma
