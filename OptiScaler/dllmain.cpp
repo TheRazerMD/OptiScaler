@@ -23,9 +23,6 @@
 
 #include "inputs/FSR2_Dx12.h"
 #include "inputs/FSR3_Dx12.h"
-#include "inputs/FfxApi_Dx12.h"
-#include "inputs/FfxApi_Vk.h"
-#include "inputs/FfxApiExe_Dx12.h"
 #include "inputs/FG/FSR3_Dx12_FG.h"
 
 #include "spoofing/Vulkan_Spoofing.h"
@@ -897,7 +894,8 @@ static void CheckWorkingMode()
             // Do not load Reshade here is Luma is active and we will create D3D12 device for it
             // We will load Reshade after D3D12 device creation in that case
             if (reshadeModule == nullptr && Config::Instance()->LoadReShade.value_or_default() &&
-                !(State::Instance().gameQuirks & GameQuirk::CreateD3D12DeviceForLuma))
+                (!(State::Instance().gameQuirks & GameQuirk::CreateD3D12DeviceForLuma) ||
+                 Config::Instance()->DontCreateD3D12DeviceForLuma.value_or_default()))
             {
                 auto rsFile = Util::ExePath().parent_path() / L"ReShade64.dll";
                 SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
@@ -1292,8 +1290,8 @@ static void CheckQuirks()
     {
         if (!Config::Instance()->DxgiSpoofing.has_value())
         {
-            LOG_INFO("Luma UE detected, disabling DxgiSpoofing");
-            State::Instance().detectedQuirks.push_back("Luma UE detected, disabling DxgiSpoofing");
+            LOG_INFO("Luma detected, disabling DxgiSpoofing");
+            State::Instance().detectedQuirks.push_back("Luma detected, disabling DxgiSpoofing");
             Config::Instance()->DxgiSpoofing.set_volatile_value(false);
         }
 
@@ -1304,7 +1302,6 @@ static void CheckQuirks()
             Config::Instance()->DontUseNTShared.set_volatile_value(true);
         }
 
-        // If early creating of D3D12 device is not disabled and FSR Agility SDK Upgrade is enabled
         if (!Config::Instance()->DontCreateD3D12DeviceForLuma.value_or_default())
         {
             quirks |= GameQuirk::LoadD3D12Manually;
@@ -1331,7 +1328,6 @@ static void CheckQuirks()
             Config::Instance()->DontUseNTShared.set_volatile_value(true);
         }
 
-        // If early creating of D3D12 device is not disabled and FSR Agility SDK Upgrade is enabled
         if (!Config::Instance()->DontCreateD3D12DeviceForLuma.value_or_default())
         {
             quirks |= GameQuirk::LoadD3D12Manually;
