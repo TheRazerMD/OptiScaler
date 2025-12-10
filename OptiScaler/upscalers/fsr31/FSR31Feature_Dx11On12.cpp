@@ -214,6 +214,8 @@ bool FSR31FeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_
 
     ffxReturnCode_t ffxresult = FFX_API_RETURN_ERROR;
 
+    uint8_t state = 0;
+
     do
     {
         if (!ProcessDx11Textures(InParameters))
@@ -243,6 +245,7 @@ bool FSR31FeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_
                                            D3D12_RESOURCE_STATE_UNORDERED_ACCESS) &&
                 Bias->CanRender())
             {
+                state = 1;
                 Bias->SetBufferState(cmdList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
                 if (Bias->Dispatch(State::Instance().currentD3D12Device, cmdList, dx11Reactive.Dx12Resource,
@@ -261,6 +264,8 @@ bool FSR31FeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_
                                                    TargetWidth(), TargetHeight(),
                                                    D3D12_RESOURCE_STATE_UNORDERED_ACCESS))
             {
+                state = 1;
+
                 OutputScaler->SetBufferState(cmdList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
                 params.output = ffxApiGetResourceDX12(OutputScaler->Buffer(), FFX_API_RESOURCE_STATE_UNORDERED_ACCESS);
             }
@@ -278,6 +283,7 @@ bool FSR31FeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_
             RCAS->CreateBufferResource(State::Instance().currentD3D12Device, (ID3D12Resource*) params.output.resource,
                                        D3D12_RESOURCE_STATE_UNORDERED_ACCESS))
         {
+            state = 1;
             RCAS->SetBufferState(cmdList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             params.output = ffxApiGetResourceDX12(RCAS->Buffer(), FFX_API_RESOURCE_STATE_UNORDERED_ACCESS);
         }
@@ -437,6 +443,7 @@ bool FSR31FeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_
 
         LOG_DEBUG("Dispatch!!");
         ffxresult = FfxApiProxy::D3D12_Dispatch(&_context, &params.header);
+        state = 1;
 
         if (ffxresult != FFX_API_RETURN_OK)
         {
@@ -505,17 +512,25 @@ bool FSR31FeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_
             }
         }
 
+        state = 2;
+
     } while (false);
 
-    cmdList->Close();
-    ID3D12CommandList* ppCommandLists[] = { cmdList };
-    Dx12CommandQueue->ExecuteCommandLists(1, ppCommandLists);
-    Dx12CommandQueue->Signal(dx12FenceTextureCopy, _fenceValue);
+    if (state > 0)
+    {
+        cmdList->Close();
+        ID3D12CommandList* ppCommandLists[] = { cmdList };
+        Dx12CommandQueue->ExecuteCommandLists(1, ppCommandLists);
+        Dx12CommandQueue->Signal(dx12FenceTextureCopy, _fenceValue);
+    }
 
     auto evalResult = false;
 
     do
     {
+        if (state != 2)
+            break;
+
         if (ffxresult != FFX_API_RETURN_OK)
             break;
 

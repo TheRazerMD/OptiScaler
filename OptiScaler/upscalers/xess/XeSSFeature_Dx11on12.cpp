@@ -187,6 +187,8 @@ bool XeSSFeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_N
     auto frame = _frameCount % 2;
     auto cmdList = Dx12CommandList[frame];
 
+    uint8_t state = 0;
+
     do
     {
         if (!ProcessDx11Textures(InParameters))
@@ -211,6 +213,7 @@ bool XeSSFeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_N
                                                    TargetWidth(), TargetHeight(),
                                                    D3D12_RESOURCE_STATE_UNORDERED_ACCESS))
             {
+                state = 1;
                 OutputScaler->SetBufferState(cmdList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
                 params.pOutputTexture = OutputScaler->Buffer();
             }
@@ -230,6 +233,7 @@ bool XeSSFeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_N
             RCAS->CreateBufferResource(State::Instance().currentD3D12Device, params.pOutputTexture,
                                        D3D12_RESOURCE_STATE_UNORDERED_ACCESS))
         {
+            state = 1;
             RCAS->SetBufferState(cmdList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             params.pOutputTexture = RCAS->Buffer();
         }
@@ -256,6 +260,7 @@ bool XeSSFeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_N
                                                D3D12_RESOURCE_STATE_UNORDERED_ACCESS) &&
                     Bias->CanRender())
                 {
+                    state = 1;
                     Bias->SetBufferState(cmdList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
                     if (Bias->Dispatch(State::Instance().currentD3D12Device, cmdList, dx11Reactive.Dx12Resource,
@@ -312,6 +317,7 @@ bool XeSSFeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_N
         // Execute xess
         LOG_DEBUG("Executing!!");
         xessResult = XeSSProxy::D3D12Execute()(_xessContext, cmdList, &params);
+        state = 1;
 
         if (xessResult != XESS_RESULT_SUCCESS)
         {
@@ -378,17 +384,25 @@ bool XeSSFeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_N
             }
         }
 
+        state = 2;
+
     } while (false);
 
-    cmdList->Close();
-    ID3D12CommandList* ppCommandLists[] = { cmdList };
-    Dx12CommandQueue->ExecuteCommandLists(1, ppCommandLists);
-    Dx12CommandQueue->Signal(dx12FenceTextureCopy, _fenceValue);
+    if (state > 0)
+    {
+        cmdList->Close();
+        ID3D12CommandList* ppCommandLists[] = { cmdList };
+        Dx12CommandQueue->ExecuteCommandLists(1, ppCommandLists);
+        Dx12CommandQueue->Signal(dx12FenceTextureCopy, _fenceValue);
+    }
 
     auto evalResult = false;
 
     do
     {
+        if (state != 2)
+            break;
+
         if (xessResult != XESS_RESULT_SUCCESS)
             break;
 
