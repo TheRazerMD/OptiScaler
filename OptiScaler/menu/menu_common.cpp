@@ -4237,8 +4237,14 @@ bool MenuCommon::RenderMenu()
                         ImGui::InputInt("Refresh Rate", &refreshRate, 1, 1, ImGuiInputTextFlags_None);
                         ImGui::PopItemWidth();
 
-                        float rr = static_cast<float>(refreshRate);
-                        float frameCap = std::floor(rr - (rr * (rr / 3600.0f)));
+                        float refreshRateF = static_cast<float>(refreshRate);
+                        // it's fine to use with real reflex, we only care about antilag
+                        auto fpsLimitTech = fakenvapi::getCurrentMode();
+                        constexpr float margin = 0.3; // in ms
+                        float frameCap = std::round(10000.f / (1000.f / refreshRateF + margin)) / 10.f;
+
+                        if (fpsLimitTech == Mode::AntiLag2 || fpsLimitTech == Mode::AntiLagVk)
+                            frameCap = std::round(frameCap);
 
                         ImGui::Text("Calculated Cap: %.1f", frameCap);
 
