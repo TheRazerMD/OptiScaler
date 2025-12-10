@@ -497,7 +497,7 @@ bool Config::Reload(std::filesystem::path iniPath)
             MaskResourceBarrier.set_from_config(readInt("Hotfix", "ColorMaskResourceBarrier"));
             ExposureResourceBarrier.set_from_config(readInt("Hotfix", "ExposureResourceBarrier"));
             OutputResourceBarrier.set_from_config(readInt("Hotfix", "OutputResourceBarrier"));
-            DontCreateD3D12DeviceForLuma.set_from_config(readInt("Hotfix", "DontCreateD3D12DeviceForLuma"));
+            DontCreateD3D12DeviceForLuma.set_from_config(readBool("Hotfix", "DontCreateD3D12DeviceForLuma"));
         }
 
         // Dx11 with Dx12
