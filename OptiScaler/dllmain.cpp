@@ -1305,8 +1305,7 @@ static void CheckQuirks()
         }
 
         // If early creating of D3D12 device is not disabled and FSR Agility SDK Upgrade is enabled
-        if (!Config::Instance()->DontCreateD3D12DeviceForLuma.value_or_default() &&
-            Config::Instance()->FsrAgilitySDKUpgrade.value_or_default())
+        if (!Config::Instance()->DontCreateD3D12DeviceForLuma.value_or_default())
         {
             quirks |= GameQuirk::LoadD3D12Manually;
 
@@ -1333,8 +1332,7 @@ static void CheckQuirks()
         }
 
         // If early creating of D3D12 device is not disabled and FSR Agility SDK Upgrade is enabled
-        if (!Config::Instance()->DontCreateD3D12DeviceForLuma.value_or_default() &&
-            Config::Instance()->FsrAgilitySDKUpgrade.value_or_default())
+        if (!Config::Instance()->DontCreateD3D12DeviceForLuma.value_or_default())
         {
             quirks |= GameQuirk::LoadD3D12Manually;
 
