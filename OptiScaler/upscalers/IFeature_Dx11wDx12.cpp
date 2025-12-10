@@ -874,6 +874,10 @@ bool IFeature_Dx11wDx12::BaseInit(ID3D11Device* InDevice, ID3D11DeviceContext* I
         LOG_ERROR("QueryInterface ID3D11DeviceContext4 result: {0:x}", contextResult);
         return false;
     }
+    else
+    {
+        Dx11DeviceContext->Release();
+    }
 
     if (!InDevice)
         Dx11DeviceContext->GetDevice(&InDevice);
@@ -884,6 +888,10 @@ bool IFeature_Dx11wDx12::BaseInit(ID3D11Device* InDevice, ID3D11DeviceContext* I
     {
         LOG_ERROR("QueryInterface ID3D11Device5 result: {0:x}", dx11DeviceResult);
         return false;
+    }
+    else
+    {
+        Dx11Device->Release();
     }
 
     auto fl = Dx11Device->GetFeatureLevel();
