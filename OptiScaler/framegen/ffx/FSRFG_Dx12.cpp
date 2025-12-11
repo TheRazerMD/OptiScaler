@@ -388,7 +388,7 @@ bool FSRFG_Dx12::Dispatch()
     fgLogging.header.type = FFX_API_CONFIGURE_DESC_TYPE_GLOBALDEBUG1;
     fgLogging.fpMessage = &fgLogCallback;
     fgLogging.debugLevel = FFX_API_CONFIGURE_GLOBALDEBUG_LEVEL_VERBOSE;
-    retCode = FfxApiProxy::D3D12_Configure(&_fgContext, &fgLogging.header);
+    ffxReturnCode_t loggingRetCode = FfxApiProxy::D3D12_Configure(&_fgContext, &fgLogging.header);
 
     bool dispatchResult = false;
     if (retCode == FFX_API_RETURN_OK && _isActive)
