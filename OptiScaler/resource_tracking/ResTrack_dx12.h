@@ -7,7 +7,10 @@
 
 #include <ankerl/unordered_dense.h>
 
-#include <map>
+#include <new>
+#include <mutex>
+#include <atomic>
+#include <shared_mutex>
 
 // #define DEBUG_TRACKING
 
@@ -29,12 +32,47 @@ static void TestResource(ResourceInfo* info)
 }
 #endif
 
+#ifdef __cpp_lib_hardware_interference_size
+constexpr size_t CACHE_LINE_SIZE = std::hardware_destructive_interference_size;
+#else
+constexpr size_t CACHE_LINE_SIZE = 64;
+#endif
+
+struct SpinLock
+{
+    std::atomic<bool> _lock = { false };
+
+    __forceinline void lock()
+    {
+        // Fast path: try to grab immediately
+        if (!_lock.exchange(true, std::memory_order_acquire))
+            return;
+
+        // Slow path: spin
+        while (true)
+        {
+            // Spin read (avoids cache coherency traffic while waiting)
+            while (_lock.load(std::memory_order_relaxed))
+            {
+                _mm_pause(); // CPU hint: "I am spinning"
+            }
+
+            // Try to grab again
+            if (!_lock.exchange(true, std::memory_order_acquire))
+                return;
+        }
+    }
+
+    __forceinline void unlock() { _lock.store(false, std::memory_order_release); }
+};
+
 static ankerl::unordered_dense::map<ID3D12Resource*, std::vector<ResourceInfo*>> _trackedResources;
-static std::mutex _trMutex;
-static std::shared_mutex _heapMutex[1000];
+static SpinLock _trackedResourcesMutex;
 
 struct HeapInfo
 {
+    // mutable std::shared_mutex mutex;
+
     ID3D12DescriptorHeap* heap = nullptr;
     SIZE_T cpuStart = NULL;
     SIZE_T cpuEnd = NULL;
@@ -45,13 +83,12 @@ struct HeapInfo
     UINT type = 0;
     std::shared_ptr<ResourceInfo[]> info;
     UINT lastOffset = 0;
-    UINT mutexIndex = 0;
     bool active = true;
 
     HeapInfo(ID3D12DescriptorHeap* heap, SIZE_T cpuStart, SIZE_T cpuEnd, SIZE_T gpuStart, SIZE_T gpuEnd,
              UINT numResources, UINT increment, UINT type, UINT mutexIndex)
         : cpuStart(cpuStart), cpuEnd(cpuEnd), gpuStart(gpuStart), gpuEnd(gpuEnd), numDescriptors(numResources),
-          increment(increment), info(new ResourceInfo[numResources]), type(type), heap(heap), mutexIndex(mutexIndex)
+          increment(increment), info(new ResourceInfo[numResources]), type(type), heap(heap)
     {
         for (size_t i = 0; i < numDescriptors; i++)
         {
@@ -64,7 +101,7 @@ struct HeapInfo
         if (info[index].buffer == nullptr)
             return;
 
-        std::scoped_lock lock(_trMutex);
+        std::scoped_lock lock(_trackedResourcesMutex);
         LOG_TRACK("Heap: {:X}, Index: {}, Resource: {:X}, Res: {}x{}, Format: {}", (size_t) this, index,
                   (size_t) info[index].buffer, info[index].width, info[index].height, (UINT) info[index].format);
         auto it = _trackedResources.find(info[index].buffer);
@@ -79,7 +116,7 @@ struct HeapInfo
 
     void AttachToNewResource(SIZE_T index) const
     {
-        std::scoped_lock lock(_trMutex);
+        std::scoped_lock lock(_trackedResourcesMutex);
         LOG_TRACK("Heap: {:X}, Index: {}, Resource: {:X}, Res: {}x{}, Format: {}", (size_t) this, index,
                   (size_t) info[index].buffer, info[index].width, info[index].height, (UINT) info[index].format);
         auto& vec = _trackedResources[info[index].buffer];
@@ -94,10 +131,10 @@ struct HeapInfo
         if (index >= numDescriptors)
             return nullptr;
 
-        {
-            if (info[index].buffer == nullptr)
-                return nullptr;
-        }
+        // std::shared_lock<std::shared_mutex> lock(mutex);
+
+        if (info[index].buffer == nullptr)
+            return nullptr;
 
 #ifdef DEBUG_TRACKING
         TestResource(&info[index]);
@@ -113,10 +150,10 @@ struct HeapInfo
         if (index >= numDescriptors)
             return nullptr;
 
-        {
-            if (info[index].buffer == nullptr)
-                return nullptr;
-        }
+        // std::shared_lock<std::shared_mutex> lock(mutex);
+
+        if (info[index].buffer == nullptr)
+            return nullptr;
 
 #ifdef DEBUG_TRACKING
         TestResource(&info[index]);
@@ -131,6 +168,8 @@ struct HeapInfo
 
         if (index >= numDescriptors)
             return;
+
+        // std::unique_lock<std::shared_mutex> lock(mutex);
 
 #ifdef DEBUG_TRACKING
         TestResource(&setInfo);
@@ -149,6 +188,8 @@ struct HeapInfo
 
         if (index >= numDescriptors)
             return;
+
+        // std::unique_lock<std::shared_mutex> lock(mutex);
 
 #ifdef DEBUG_TRACKING
         TestResource(&setInfo);
@@ -169,6 +210,8 @@ struct HeapInfo
         if (index >= numDescriptors)
             return;
 
+        // std::unique_lock<std::shared_mutex> lock(mutex);
+
         if (info[index].buffer != nullptr)
         {
             LOG_TRACK("Resource: {:X}, Res: {}x{}, Format: {}", (size_t) info[index].buffer, info[index].width,
@@ -188,6 +231,8 @@ struct HeapInfo
         if (index >= numDescriptors)
             return;
 
+        // std::unique_lock<std::shared_mutex> lock(mutex);
+
         if (info[index].buffer != nullptr)
         {
             LOG_TRACK("Resource: {:X}, Res: {}x{}, Format: {}", (size_t) info[index].buffer, info[index].width,
@@ -205,6 +250,17 @@ struct ResourceHeapInfo
 {
     SIZE_T cpuStart = NULL;
     SIZE_T gpuStart = NULL;
+};
+
+// Force each struct to start on a new cache line
+struct alignas(CACHE_LINE_SIZE) CommandListShard
+{
+    SpinLock mutex;
+    ankerl::unordered_dense::map<ID3D12GraphicsCommandList*,
+                                 ankerl::unordered_dense::map<ID3D12Resource*, ResourceInfo>>
+        map;
+
+    char padding[CACHE_LINE_SIZE - (sizeof(SpinLock) + sizeof(void*) % CACHE_LINE_SIZE)] = {};
 };
 
 class ResTrack_Dx12
@@ -298,6 +354,19 @@ class ResTrack_Dx12
     static HeapInfo* GetHeapByGpuHandleCR(SIZE_T gpuHandle);
 
     static void FillResourceInfo(ID3D12Resource* resource, ResourceInfo* info);
+
+    // Sharding
+    inline static constexpr size_t SHARD_COUNT = 16;
+
+    inline static CommandListShard _hudlessShards[BUFFER_COUNT][SHARD_COUNT];
+
+    // Shifts bits to ignore alignment (pointers are usually 8-byte aligned)
+    // and maps the pointer address to 0..63
+    static inline size_t GetShardIndex(ID3D12GraphicsCommandList* ptr)
+    {
+        uintptr_t addr = reinterpret_cast<uintptr_t>(ptr);
+        return (addr >> 4) % SHARD_COUNT;
+    }
 
   public:
     static void HookDevice(ID3D12Device* device);
