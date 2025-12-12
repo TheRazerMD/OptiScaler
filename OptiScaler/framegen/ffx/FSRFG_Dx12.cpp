@@ -210,6 +210,16 @@ HWND FSRFG_Dx12::Hwnd() { return _hwnd; }
 
 const char* FSRFG_Dx12::Name() { return "FSR-FG"; }
 
+static void fgLogCallback(uint32_t type, const wchar_t* message)
+{
+    auto message_str = wstring_to_string(std::wstring(message));
+
+    if (type == FFX_API_MESSAGE_TYPE_ERROR)
+        spdlog::error("FFX FG Callback: {}", message_str);
+    else if (type == FFX_API_MESSAGE_TYPE_WARNING)
+        spdlog::warn("FFX FG Callback: {}", message_str);
+}
+
 bool FSRFG_Dx12::Dispatch()
 {
     LOG_DEBUG();
@@ -373,6 +383,12 @@ bool FSRFG_Dx12::Dispatch()
 
     ffxReturnCode_t retCode = FfxApiProxy::D3D12_Configure(&_fgContext, &fgConfig.header);
     LOG_DEBUG("D3D12_Configure result: {0:X}, frame: {1}, fIndex: {2}", retCode, willDispatchFrame, fIndex);
+
+    ffxConfigureDescGlobalDebug1 fgLogging = {};
+    fgLogging.header.type = FFX_API_CONFIGURE_DESC_TYPE_GLOBALDEBUG1;
+    fgLogging.fpMessage = &fgLogCallback;
+    fgLogging.debugLevel = FFX_API_CONFIGURE_GLOBALDEBUG_LEVEL_VERBOSE;
+    ffxReturnCode_t loggingRetCode = FfxApiProxy::D3D12_Configure(&_fgContext, &fgLogging.header);
 
     bool dispatchResult = false;
     if (retCode == FFX_API_RETURN_OK && _isActive)
@@ -799,6 +815,9 @@ void FSRFG_Dx12::CreateContext(ID3D12Device* device, FG_Constants& fgConstants)
 
     if (fgConstants.flags & FG_Flags::InfiniteDepth)
         createFg.flags |= FFX_FRAMEGENERATION_ENABLE_DEPTH_INFINITE;
+
+    if (spdlog::default_logger()->level() == SPDLOG_LEVEL_TRACE)
+        createFg.flags |= FFX_FRAMEGENERATION_ENABLE_DEBUG_CHECKING;
 
     createFg.backBufferFormat = ffxApiGetSurfaceFormatDX12(desc.BufferDesc.Format);
 
