@@ -447,9 +447,14 @@ ffxReturnCode_t ffxDestroyContext_Dx12(ffxContext* context, const ffxAllocationC
             return result;
     }
 
-    auto cdResult = FfxApiProxy::D3D12_DestroyContext(context, memCb);
-    LOG_INFO("result: {:X}", (UINT) cdResult);
-    return cdResult;
+    if (Config::Instance()->EnableHotSwapping.value_or_default())
+    {
+        auto cdResult = FfxApiProxy::D3D12_DestroyContext(context, memCb);
+        LOG_INFO("result: {:X}", (UINT) cdResult);
+        return cdResult;
+    }
+
+    return FFX_API_RETURN_OK;
 }
 
 ffxReturnCode_t ffxConfigure_Dx12(ffxContext* context, ffxConfigureDescHeader* desc)
@@ -481,7 +486,10 @@ ffxReturnCode_t ffxConfigure_Dx12(ffxContext* context, ffxConfigureDescHeader* d
             return FFX_API_RETURN_OK;
     }
 
-    return FfxApiProxy::D3D12_Configure(context, desc);
+    if (Config::Instance()->EnableHotSwapping.value_or_default())
+        return FfxApiProxy::D3D12_Configure(context, desc);
+
+    return FFX_API_RETURN_OK;
 }
 
 ffxReturnCode_t ffxQuery_Dx12(ffxContext* context, ffxQueryDescHeader* desc)
@@ -547,7 +555,10 @@ ffxReturnCode_t ffxQuery_Dx12(ffxContext* context, ffxQueryDescHeader* desc)
         return FFX_API_RETURN_OK;
     }
 
-    return FfxApiProxy::D3D12_Query(context, desc);
+    if (Config::Instance()->EnableHotSwapping.value_or_default())
+        return FfxApiProxy::D3D12_Query(context, desc);
+
+    return FFX_API_RETURN_OK;
 }
 
 ffxReturnCode_t ffxDispatch_Dx12(ffxContext* context, ffxDispatchDescHeader* desc)

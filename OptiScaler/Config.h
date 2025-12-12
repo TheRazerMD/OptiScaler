@@ -102,12 +102,13 @@ template <class T, HasDefaultValue defaultState = WithDefault> class CustomOptio
     }
 
     constexpr T value_or_default() &&
-        requires(defaultState != NoDefault) {
-            return this->has_value() ? std::move(this->value()) : std::move(_defaultValue);
-        }
+        requires(defaultState != NoDefault)
+    {
+        return this->has_value() ? std::move(this->value()) : std::move(_defaultValue);
+    }
 
-        constexpr std::optional<T> value_for_config(bool forceSave = false)
-            requires(defaultState == WithDefault)
+    constexpr std::optional<T> value_for_config(bool forceSave = false)
+        requires(defaultState == WithDefault)
     {
         if (_volatile)
         {
@@ -483,7 +484,7 @@ class Config
     CustomOptional<bool> UseFsr3Inputs { true };
     CustomOptional<bool> Fsr3Pattern { false };
     CustomOptional<bool> UseFfxInputs { true };
-    CustomOptional<bool> EnableHotSwapping { true };
+    CustomOptional<bool> EnableHotSwapping { false };
     CustomOptional<bool> EnableFsr2Inputs { true };
     CustomOptional<bool> EnableFsr3Inputs { true };
     CustomOptional<bool> EnableFfxInputs { true };
