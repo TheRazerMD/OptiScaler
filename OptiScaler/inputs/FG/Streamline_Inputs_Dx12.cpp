@@ -35,6 +35,7 @@ void Sl_Inputs_Dx12::CheckForFrame(IFGFeature_Dx12* fg, uint32_t frameId)
         fg->StartNewFrame();
         _currentIndex = fg->GetIndex();
         _currentFrameId = frameId;
+        _lastFrameId = frameId - 1;
         _frameIdIndex[_currentIndex] = _currentFrameId;
     }
 }

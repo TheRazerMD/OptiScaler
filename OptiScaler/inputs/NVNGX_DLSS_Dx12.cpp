@@ -84,6 +84,8 @@ static void HookToCommandList(ID3D12GraphicsCommandList* InCmdList)
         if (orgSetGraphicRootSignature != nullptr)
             DetourAttach(&(PVOID&) orgSetGraphicRootSignature, hkSetGraphicRootSignature);
 
+        LOG_DEBUG("Hooked SetRootSignature functions");
+
         DetourTransactionCommit();
     }
 }
@@ -190,25 +192,25 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D12_Init_Ext(unsigned long long InApp
     }
 
     // early hooking for signatures
-    if (orgSetComputeRootSignature == nullptr)
-    {
-        ID3D12CommandAllocator* alloc = nullptr;
-        ID3D12GraphicsCommandList* gcl = nullptr;
+    // if (orgSetComputeRootSignature == nullptr)
+    //{
+    //    ID3D12CommandAllocator* alloc = nullptr;
+    //    ID3D12GraphicsCommandList* gcl = nullptr;
 
-        auto result = InDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&alloc));
-        if (result == S_OK)
-        {
+    //    auto result = InDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&alloc));
+    //    if (result == S_OK)
+    //    {
 
-            result = InDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, alloc, NULL, IID_PPV_ARGS(&gcl));
-            if (result == S_OK)
-            {
-                HookToCommandList(gcl);
-                gcl->Release();
-            }
+    //        result = InDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, alloc, NULL, IID_PPV_ARGS(&gcl));
+    //        if (result == S_OK)
+    //        {
+    //            HookToCommandList(gcl);
+    //            gcl->Release();
+    //        }
 
-            alloc->Release();
-        }
-    }
+    //        alloc->Release();
+    //    }
+    //}
 
     State::Instance().NvngxDx12Inited = true;
 
@@ -940,7 +942,7 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D12_EvaluateFeature(ID3D12GraphicsCom
     if (deviceContext->feature->Name() != "DLSSD" && (Config::Instance()->RestoreComputeSignature.value_or_default() ||
                                                       Config::Instance()->RestoreGraphicSignature.value_or_default()))
     {
-        if (Config::Instance()->RestoreComputeSignature.value_or_default() && computeSignatures[InCmdList])
+        if (Config::Instance()->RestoreComputeSignature.value_or_default() && computeSignatures.contains(InCmdList))
         {
             auto signature = computeSignatures[InCmdList];
             LOG_TRACE("restore orgComputeRootSig: {0:X}", (UINT64) signature);
@@ -951,7 +953,7 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D12_EvaluateFeature(ID3D12GraphicsCom
             LOG_WARN("Can't restore ComputeRootSig!");
         }
 
-        if (Config::Instance()->RestoreGraphicSignature.value_or_default() && graphicSignatures[InCmdList])
+        if (Config::Instance()->RestoreGraphicSignature.value_or_default() && graphicSignatures.contains(InCmdList))
         {
             auto signature = graphicSignatures[InCmdList];
             LOG_TRACE("restore orgGraphicRootSig: {0:X}", (UINT64) signature);
