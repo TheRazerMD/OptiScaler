@@ -2639,38 +2639,52 @@ bool MenuCommon::RenderMenu()
 
                                 const char* selectedModel = models[configModes];
 
-                                if (ImGui::BeginCombo("Models", selectedModel))
+                                // ImGui::PushItemWidth(135.0f * config->MenuScale.value_or_default());
+
+                                if (ImGui::BeginTable("nonLinear", 2, ImGuiTableFlags_SizingStretchProp))
                                 {
-                                    for (int n = 0; n < models.size(); n++)
+
+                                    ImGui::TableNextColumn();
+
+                                    if (ImGui::BeginCombo("Models", selectedModel))
                                     {
-                                        uint32_t selection = 0;
-
-                                        if (config->Fsr4Model.has_value())
-                                            selection = config->Fsr4Model.value_or(0) + 1;
-
-                                        if (ImGui::Selectable(models[n], selection == n))
+                                        for (int n = 0; n < models.size(); n++)
                                         {
-                                            if (n < 1)
-                                                config->Fsr4Model.reset();
-                                            else
-                                                config->Fsr4Model = n - 1;
+                                            uint32_t selection = 0;
 
-                                            state.newBackend = currentBackend;
-                                            MARK_ALL_BACKENDS_CHANGED();
+                                            if (config->Fsr4Model.has_value())
+                                                selection = config->Fsr4Model.value_or(0) + 1;
+
+                                            if (ImGui::Selectable(models[n], selection == n))
+                                            {
+                                                if (n < 1)
+                                                    config->Fsr4Model.reset();
+                                                else
+                                                    config->Fsr4Model = n - 1;
+
+                                                state.newBackend = currentBackend;
+                                                MARK_ALL_BACKENDS_CHANGED();
+                                            }
                                         }
+
+                                        ImGui::EndCombo();
                                     }
+                                    ShowHelpMarker("Model 0 is meant for FSR Native AA\n"
+                                                   "Model 1 is meant for Quality/Ultra Quality\n"
+                                                   "Model 2 is meant for Balanced\n"
+                                                   "Model 3 is meant for Performance\n"
+                                                   "Model 5 is meant for Ultra Performance");
 
-                                    ImGui::EndCombo();
+                                    // ImGui::PopItemWidth();
+
+                                    // ImGui::SameLine(0.0f, 6.0f);
+
+                                    ImGui::TableNextColumn();
+
+                                    ImGui::Text("Current model: %d", state.currentFsr4Model);
+
+                                    ImGui::EndTable();
                                 }
-                                ShowHelpMarker("Model 0 is meant for FSR Native AA\n"
-                                               "Model 1 is meant for Quality/Ultra Quality\n"
-                                               "Model 2 is meant for Balanced\n"
-                                               "Model 3 is meant for Performance\n"
-                                               "Model 5 is meant for Ultra Performance");
-
-                                ImGui::Spacing();
-                                ImGui::Text("Current model: %d", state.currentFsr4Model);
-                                ImGui::Spacing();
                             }
 
                             if (majorFsrVersion >= 3)
@@ -2719,13 +2733,12 @@ bool MenuCommon::RenderMenu()
                                 }
                             }
 
-                            ImGui::Spacing();
-
                             if (currentFeature->Version() >= feature_version { 3, 1, 1 } &&
                                 currentFeature->Version() < feature_version { 4, 0, 0 } &&
                                 ImGui::CollapsingHeader("FSR 3 Upscaler Fine Tuning"))
                             {
                                 ScopedIndent indent {};
+                                ImGui::Spacing();
                                 ImGui::Spacing();
 
                                 ImGui::PushItemWidth(220.0f * config->MenuScale.value_or_default());
