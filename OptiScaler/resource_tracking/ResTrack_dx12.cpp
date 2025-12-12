@@ -1785,6 +1785,8 @@ void ResTrack_Dx12::HookDevice(ID3D12Device* device)
     if (device == nullptr)
         return;
 
+    _trackedResources.reserve(1024);
+
     LOG_FUNC();
 
     ID3D12Device* realDevice = nullptr;
