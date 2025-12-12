@@ -16,6 +16,23 @@
 #include <ffx_framegeneration.h>
 #include <ffx_upscale.h>
 
+// A mess to be able to import both
+#define FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_WAITCALLBACK FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_WAITCALLBACK_DX12
+#define FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_FRAMEPACINGTUNING FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_FRAMEPACINGTUNING_DX12
+
+#include <dx12/ffx_api_dx12.h>
+
+#undef FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_WAITCALLBACK
+#undef FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_FRAMEPACINGTUNING
+
+#define FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_WAITCALLBACK FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_WAITCALLBACK_VK
+#define FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_FRAMEPACINGTUNING FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_FRAMEPACINGTUNING_VK
+
+#include <vk/ffx_api_vk.h>
+
+#undef FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_WAITCALLBACK
+#undef FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_FRAMEPACINGTUNING
+
 struct FfxModule
 {
     HMODULE dll = nullptr;
@@ -48,9 +65,9 @@ class FfxApiProxy
     {
         General,
         Upscaling,
-        Swapchain,
         FG,
-        VulkanSwapchain,
+        SwapchainDX12,
+        SwapchainVulkan,
         Unknown
     };
 
@@ -89,11 +106,11 @@ class FfxApiProxy
         case FFX_API_EFFECT_ID_FRAMEGENERATION:
             return FFXStructType::FG;
 
-        case 0x00030000u: // don't want to include ffx_api_dx12.h because of enum name pollution
-            return FFXStructType::Swapchain;
+        case FFX_API_EFFECT_ID_FRAMEGENERATIONSWAPCHAIN_DX12:
+            return FFXStructType::SwapchainDX12;
 
-        case 0x00040000u: // don't want to include ffx_api_vk.h because of enum name pollution
-            return FFXStructType::VulkanSwapchain;
+        case FFX_API_EFFECT_ID_FGSC_VK:
+            return FFXStructType::SwapchainVulkan;
 
         default:
             return FFXStructType::Unknown;
@@ -602,7 +619,7 @@ class FfxApiProxy
                                                const ffxAllocationCallbacks* memCb)
     {
         auto type = GetType(desc->type);
-        auto isFg = type == FFXStructType::FG || type == FFXStructType::Swapchain;
+        auto isFg = type == FFXStructType::FG || type == FFXStructType::SwapchainDX12;
 
         contextToType[context] = type;
 
@@ -656,7 +673,7 @@ class FfxApiProxy
             break;
 
         case FFXStructType::FG:
-        case FFXStructType::Swapchain:
+        case FFXStructType::SwapchainDX12:
             if (fg_dx12.dll != nullptr)
                 return fg_dx12.DestroyContext(context, memCb);
             break;
@@ -693,7 +710,7 @@ class FfxApiProxy
     static ffxReturnCode_t D3D12_Configure(ffxContext* context, const ffxConfigureDescHeader* desc)
     {
         auto type = GetType(desc->type);
-        auto isFg = type == FFXStructType::FG || type == FFXStructType::Swapchain;
+        auto isFg = type == FFXStructType::FG || type == FFXStructType::SwapchainDX12;
 
         if (isFg && fg_dx12.dll != nullptr)
             return fg_dx12.Configure(context, desc);
@@ -724,7 +741,7 @@ class FfxApiProxy
     static ffxReturnCode_t D3D12_Query(ffxContext* context, ffxQueryDescHeader* desc)
     {
         auto type = GetType(desc);
-        auto isFg = type == FFXStructType::FG || type == FFXStructType::Swapchain;
+        auto isFg = type == FFXStructType::FG || type == FFXStructType::SwapchainDX12;
 
         if (isFg && fg_dx12.dll != nullptr)
             return fg_dx12.Query(context, desc);
@@ -754,7 +771,7 @@ class FfxApiProxy
     static ffxReturnCode_t D3D12_Dispatch(ffxContext* context, const ffxDispatchDescHeader* desc)
     {
         auto type = GetType(desc->type);
-        auto isFg = type == FFXStructType::FG || type == FFXStructType::Swapchain;
+        auto isFg = type == FFXStructType::FG || type == FFXStructType::SwapchainDX12;
 
         if (isFg && fg_dx12.dll != nullptr)
             return fg_dx12.Dispatch(context, desc);
