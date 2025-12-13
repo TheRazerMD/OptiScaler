@@ -4,7 +4,26 @@
 #include <proxies/Dxgi_Proxy.h>
 #include <detours/detours.h>
 #include <scanner/scanner.h>
+#include <ffx_framegeneration.h>
+#include <ffx_upscale.h>
 #include "FSR4ModelSelection.h"
+
+// A mess to be able to import both
+#define FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_WAITCALLBACK FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_WAITCALLBACK_DX12
+#define FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_FRAMEPACINGTUNING FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_FRAMEPACINGTUNING_DX12
+
+#include <dx12/ffx_api_dx12.h>
+
+#undef FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_WAITCALLBACK
+#undef FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_FRAMEPACINGTUNING
+
+#define FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_WAITCALLBACK FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_WAITCALLBACK_VK
+#define FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_FRAMEPACINGTUNING FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_FRAMEPACINGTUNING_VK
+
+#include <vk/ffx_api_vk.h>
+
+#undef FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_WAITCALLBACK
+#undef FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_FRAMEPACINGTUNING
 
 static HMODULE moduleAmdxc64 = nullptr;
 static HMODULE fsr4Module = nullptr;
@@ -199,15 +218,30 @@ struct AmdExtFfxApi : public IAmdExtFfxApi
 
     HRESULT STDMETHODCALLTYPE UpdateFfxApiProvider(void* pData, uint32_t dataSizeInBytes) override
     {
-        LOG_INFO("UpdateFfxApiProvider called");
-
         // To prevent crashes with amd_fidelityfx_dx12.dll & amd_fidelityfx_framegeneration_dx12.dll combo added this
         // check after ML FG update this should be disabled!
-        auto providerData = reinterpret_cast<ExternalProviderData*>(pData);
-        if (providerData->descType >= 0x00020001u && providerData->descType <= 0x00030009u)
+        auto effectType = reinterpret_cast<ExternalProviderData*>(pData)->descType & FFX_API_EFFECT_MASK;
+
+        switch (effectType)
         {
-            LOG_ERROR("Skip update for FG");
+        case FFX_API_EFFECT_ID_UPSCALE:
+            LOG_INFO("Trying to update upscaling");
+            break;
+
+        case FFX_API_EFFECT_ID_FRAMEGENERATION:
+            LOG_ERROR("Skipping update for FG");
             return E_INVALIDARG;
+
+        case FFX_API_EFFECT_ID_FRAMEGENERATIONSWAPCHAIN_DX12:
+            LOG_ERROR("Skipping update for DX12 Swapchain");
+            return E_INVALIDARG;
+
+        case FFX_API_EFFECT_ID_FGSC_VK:
+            LOG_ERROR("Skipping update for VK Swapchain");
+            return E_INVALIDARG;
+
+        default:
+            LOG_INFO("Trying to update something???");
         }
 
         if (o_UpdateFfxApiProvider == nullptr)
