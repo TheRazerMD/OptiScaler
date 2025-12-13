@@ -218,28 +218,30 @@ struct AmdExtFfxApi : public IAmdExtFfxApi
 
     HRESULT STDMETHODCALLTYPE UpdateFfxApiProvider(void* pData, uint32_t dataSizeInBytes) override
     {
-        LOG_INFO("UpdateFfxApiProvider called");
-
         // To prevent crashes with amd_fidelityfx_dx12.dll & amd_fidelityfx_framegeneration_dx12.dll combo added this
         // check after ML FG update this should be disabled!
         auto effectType = reinterpret_cast<ExternalProviderData*>(pData)->descType & FFX_API_EFFECT_MASK;
 
-        if (effectType == FFX_API_EFFECT_ID_FRAMEGENERATION)
+        switch (effectType)
         {
-            LOG_ERROR("Skip update for FG");
-            return E_INVALIDARG;
-        }
+        case FFX_API_EFFECT_ID_UPSCALE:
+            LOG_INFO("Trying to update upscaling");
+            break;
 
-        if (effectType == FFX_API_EFFECT_ID_FRAMEGENERATIONSWAPCHAIN_DX12)
-        {
-            LOG_ERROR("Skip update for DX12 Swapchain");
+        case FFX_API_EFFECT_ID_FRAMEGENERATION:
+            LOG_ERROR("Skipping update for FG");
             return E_INVALIDARG;
-        }
 
-        if (effectType == FFX_API_EFFECT_ID_FGSC_VK)
-        {
-            LOG_ERROR("Skip update for VK Swapchain");
+        case FFX_API_EFFECT_ID_FRAMEGENERATIONSWAPCHAIN_DX12:
+            LOG_ERROR("Skipping update for DX12 Swapchain");
             return E_INVALIDARG;
+
+        case FFX_API_EFFECT_ID_FGSC_VK:
+            LOG_ERROR("Skipping update for VK Swapchain");
+            return E_INVALIDARG;
+
+        default:
+            LOG_INFO("Trying to update something???");
         }
 
         if (o_UpdateFfxApiProvider == nullptr)
