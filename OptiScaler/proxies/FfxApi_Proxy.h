@@ -33,6 +33,16 @@
 #undef FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_WAITCALLBACK
 #undef FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_FRAMEPACINGTUNING
 
+enum class FFXStructType
+{
+    General,
+    Upscaling,
+    FG,
+    SwapchainDX12,
+    SwapchainVulkan,
+    Unknown
+};
+
 struct FfxModule
 {
     HMODULE dll = nullptr;
@@ -61,16 +71,6 @@ class FfxApiProxy
 
     inline static FfxModule main_vk;
 
-    enum class FFXStructType
-    {
-        General,
-        Upscaling,
-        FG,
-        SwapchainDX12,
-        SwapchainVulkan,
-        Unknown
-    };
-
     inline static ankerl::unordered_dense::map<ffxContext*, FFXStructType> contextToType;
 
     inline static bool _skipDestroyCalls = false;
@@ -92,6 +92,22 @@ class FfxApiProxy
 
         LOG_WARN("can't parse {0}", version_str);
     }
+
+    static bool IsLoader(const std::wstring& filePath)
+    {
+        auto size = std::filesystem::file_size(filePath);
+
+        // < 1 MB
+        return size < 1048576;
+    }
+
+  public:
+    static HMODULE Dx12Module() { return main_dx12.dll; }
+    static HMODULE Dx12Module_SR() { return upscaling_dx12.dll; }
+    static HMODULE Dx12Module_FG() { return fg_dx12.dll; }
+
+    static bool IsFGReady() { return (main_dx12.dll && !main_dx12.isLoader) || fg_dx12.dll != nullptr; }
+    static bool IsSRReady() { return (main_dx12.dll && !main_dx12.isLoader) || upscaling_dx12.dll != nullptr; }
 
     static FFXStructType GetType(ffxStructType_t type)
     {
@@ -131,22 +147,6 @@ class FfxApiProxy
 
         return GetType(type);
     }
-
-    static bool IsLoader(const std::wstring& filePath)
-    {
-        auto size = std::filesystem::file_size(filePath);
-
-        // < 1 MB
-        return size < 1048576;
-    }
-
-  public:
-    static HMODULE Dx12Module() { return main_dx12.dll; }
-    static HMODULE Dx12Module_SR() { return upscaling_dx12.dll; }
-    static HMODULE Dx12Module_FG() { return fg_dx12.dll; }
-
-    static bool IsFGReady() { return (main_dx12.dll && !main_dx12.isLoader) || fg_dx12.dll != nullptr; }
-    static bool IsSRReady() { return (main_dx12.dll && !main_dx12.isLoader) || upscaling_dx12.dll != nullptr; }
 
     static bool InitFfxDx12(HMODULE module = nullptr)
     {
