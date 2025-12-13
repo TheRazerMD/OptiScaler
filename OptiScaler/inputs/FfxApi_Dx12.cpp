@@ -547,6 +547,17 @@ ffxReturnCode_t ffxQuery_Dx12(ffxContext* context, ffxQueryDescHeader* desc)
 
         if (jitterPhaseDesc && State::Instance().currentFeature)
             jitterPhaseDesc->displayWidth = State::Instance().currentFeature->TargetWidth();
+
+        if (!Config::Instance()->EnableHotSwapping.value_or_default())
+        {
+            float ratio = (float) jitterPhaseDesc->displayWidth / jitterPhaseDesc->renderWidth;
+            *jitterPhaseDesc->pOutPhaseCount = ceil(ratio * ratio * 8); // ceil(8*n^2)
+            LOG_DEBUG("Render resolution: {}, Display resolution: {}, Ratio: {}, Jitter phase count: {}",
+                      jitterPhaseDesc->renderWidth, jitterPhaseDesc->displayWidth, ratio,
+                      *jitterPhaseDesc->pOutPhaseCount);
+
+            return FFX_API_RETURN_OK;
+        }
     }
 
     if (context != nullptr && _contexts.contains(*context) && !Config::Instance()->EnableHotSwapping.value_or_default())
