@@ -550,8 +550,8 @@ ffxReturnCode_t ffxQuery_Dx12(ffxContext* context, ffxQueryDescHeader* desc)
 
         if (!Config::Instance()->EnableHotSwapping.value_or_default())
         {
-            float ratio = (float) jitterPhaseDesc->displayWidth / jitterPhaseDesc->renderWidth;
-            *jitterPhaseDesc->pOutPhaseCount = ceil(ratio * ratio * 8); // ceil(8*n^2)
+            float ratio = (float) jitterPhaseDesc->displayWidth / (float) jitterPhaseDesc->renderWidth;
+            *jitterPhaseDesc->pOutPhaseCount = static_cast<uint32_t>(ceil(ratio * ratio * 8.0f)); // ceil(8*n^2)
             LOG_DEBUG("Render resolution: {}, Display resolution: {}, Ratio: {}, Jitter phase count: {}",
                       jitterPhaseDesc->renderWidth, jitterPhaseDesc->displayWidth, ratio,
                       *jitterPhaseDesc->pOutPhaseCount);
