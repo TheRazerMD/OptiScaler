@@ -308,7 +308,7 @@ struct AmdExtFfxApi : public IAmdExtFfxApi
             State::DisableChecks(1);
 
             magicData data = { { 0, 1, 1, 0 }, nullptr };
-            auto result = o_UpdateFfxApiProviderEx(pData, dataSizeInBytes, data);
+            auto result = o_UpdateFfxApiProviderEx(pData, dataSizeInBytes, &data);
 
             LOG_INFO("UpdateFfxApiProviderEx called, result: {} ({:X})", result == S_OK ? "Ok" : "Error",
                      (UINT) result);
