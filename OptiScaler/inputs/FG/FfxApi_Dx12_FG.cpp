@@ -189,7 +189,7 @@ ffxReturnCode_t ffxCreateContext_Dx12FG(ffxContext* context, ffxCreateContextDes
                                         const ffxAllocationCallbacks* memCb)
 {
 #ifdef PASSTHRU
-    return (ffxReturnCode_t) 0xFFFFFFFF;
+    return PASSTHRU_RETURN_CODE;
 #endif
 
     LOG_DEBUG("");
@@ -350,7 +350,7 @@ ffxReturnCode_t ffxCreateContext_Dx12FG(ffxContext* context, ffxCreateContextDes
 ffxReturnCode_t ffxDestroyContext_Dx12FG(ffxContext* context, const ffxAllocationCallbacks* memCb)
 {
 #ifdef PASSTHRU
-    return (ffxReturnCode_t) 0xFFFFFFFF;
+    return PASSTHRU_RETURN_CODE;
 #endif
 
     LOG_DEBUG("");
@@ -401,7 +401,7 @@ ffxReturnCode_t ffxConfigure_Dx12FG(ffxContext* context, ffxConfigureDescHeader*
         }
     }
 
-    return (ffxReturnCode_t) 0xFFFFFFFF;
+    return PASSTHRU_RETURN_CODE;
 #endif
 
     auto& s = State::Instance();
@@ -755,7 +755,7 @@ ffxReturnCode_t ffxConfigure_Dx12FG(ffxContext* context, ffxConfigureDescHeader*
 ffxReturnCode_t ffxQuery_Dx12FG(ffxContext* context, ffxQueryDescHeader* desc)
 {
 #ifdef PASSTHRU
-    return (ffxReturnCode_t) 0xFFFFFFFF;
+    return PASSTHRU_RETURN_CODE;
 #endif
 
     LOG_DEBUG();
@@ -833,7 +833,7 @@ ffxReturnCode_t ffxQuery_Dx12FG(ffxContext* context, ffxQueryDescHeader* desc)
 ffxReturnCode_t ffxDispatch_Dx12FG(ffxContext* context, ffxDispatchDescHeader* desc)
 {
 #ifdef PASSTHRU
-    return (ffxReturnCode_t) 0xFFFFFFFF;
+    return PASSTHRU_RETURN_CODE;
 #endif
 
     auto& s = State::Instance();

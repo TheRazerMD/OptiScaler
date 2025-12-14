@@ -129,8 +129,6 @@ static std::string FfxGetGetDescTypeName(ffxStructType_t type)
     return std::format("??? ({:X})", type);
 }
 
-static bool IsFGType(ffxStructType_t type) { return type >= 0x00020001u && type <= 0x00030009u; }
-
 static bool CreateDLSSContext(ffxContext handle, const ffxDispatchDescUpscale* pExecParams)
 {
     LOG_DEBUG("context: {:X}", (size_t) handle);
@@ -275,18 +273,22 @@ ffxReturnCode_t ffxCreateContext_Dx12(ffxContext* context, ffxCreateContextDescH
 
     auto& state = State::Instance();
 
+    auto type = FfxApiProxy::GetType(desc->type);
+
     // Extra checks added for Silent Hill f
     // Game is creating FSR-FG swapchain and calling present twice per frame
     // So when using OptiFG I am hijacking FSR-FG swapchain
     // It would crash the games which uses swapchain for FG
-    if (IsFGType(desc->type) && (state.activeFgInput == FGInput::FSRFG ||
-                                 (Config::Instance()->FGAlwaysCaptureFSRFGSwapchain.value_or_default() &&
-                                  state.activeFgOutput != FGOutput::NoFG && state.activeFgOutput != FGOutput::Nukems &&
-                                  (desc->type == 0x30005 || desc->type == 0x30006))))
+    if (type == FFXStructType::SwapchainDX12 &&
+        (state.activeFgInput == FGInput::FSRFG ||
+         (Config::Instance()->FGAlwaysCaptureFSRFGSwapchain.value_or_default() &&
+          state.activeFgOutput != FGOutput::NoFG && state.activeFgOutput != FGOutput::Nukems &&
+          (desc->type == FFX_API_CREATE_CONTEXT_DESC_TYPE_FRAMEGENERATIONSWAPCHAIN_NEW_DX12 ||
+           desc->type == FFX_API_CREATE_CONTEXT_DESC_TYPE_FRAMEGENERATIONSWAPCHAIN_FOR_HWND_DX12))))
     {
         auto result = ffxCreateContext_Dx12FG(context, desc, memCb);
 
-        if (result == (ffxReturnCode_t) 0xffffffff)
+        if (result == PASSTHRU_RETURN_CODE)
             return FfxApiProxy::D3D12_CreateContext(context, desc, memCb);
 
         return result;
@@ -408,7 +410,7 @@ ffxReturnCode_t ffxDestroyContext_Dx12(ffxContext* context, const ffxAllocationC
     {
         auto result = ffxDestroyContext_Dx12FG(context, memCb);
 
-        if (result == (ffxReturnCode_t) 0xffffffff)
+        if (result == PASSTHRU_RETURN_CODE)
             return FfxApiProxy::D3D12_DestroyContext(context, memCb);
 
         return result;
@@ -464,11 +466,13 @@ ffxReturnCode_t ffxConfigure_Dx12(ffxContext* context, ffxConfigureDescHeader* d
 
     LOG_DEBUG("type: {}", FfxGetGetDescTypeName(desc->type));
 
-    if (State::Instance().activeFgInput == FGInput::FSRFG && IsFGType(desc->type))
+    auto type = FfxApiProxy::GetType(desc->type);
+    if (State::Instance().activeFgInput == FGInput::FSRFG &&
+        (type == FFXStructType::SwapchainDX12 || type == FFXStructType::FG))
     {
         auto result = ffxConfigure_Dx12FG(context, desc);
 
-        if (result == (ffxReturnCode_t) 0xffffffff)
+        if (result == PASSTHRU_RETURN_CODE)
             return FfxApiProxy::D3D12_Configure(context, desc);
 
         return result;
@@ -501,11 +505,13 @@ ffxReturnCode_t ffxQuery_Dx12(ffxContext* context, ffxQueryDescHeader* desc)
 
     LOG_DEBUG("type: {}", FfxGetGetDescTypeName(desc->type));
 
-    if (State::Instance().activeFgInput == FGInput::FSRFG && IsFGType(desc->type))
+    auto type = FfxApiProxy::GetType(desc);
+    if (State::Instance().activeFgInput == FGInput::FSRFG &&
+        (type == FFXStructType::SwapchainDX12 || type == FFXStructType::FG))
     {
         auto result = ffxQuery_Dx12FG(context, desc);
 
-        if (result == (ffxReturnCode_t) 0xffffffff)
+        if (result == PASSTHRU_RETURN_CODE)
             return FfxApiProxy::D3D12_Query(context, desc);
 
         return result;
@@ -583,11 +589,13 @@ ffxReturnCode_t ffxDispatch_Dx12(ffxContext* context, ffxDispatchDescHeader* des
 
     LOG_DEBUG("context: {:X}, type: {}", (size_t) *context, FfxGetGetDescTypeName(desc->type));
 
-    if (State::Instance().activeFgInput == FGInput::FSRFG && IsFGType(desc->type))
+    auto type = FfxApiProxy::GetType(desc->type);
+    if (State::Instance().activeFgInput == FGInput::FSRFG &&
+        (type == FFXStructType::SwapchainDX12 || type == FFXStructType::FG))
     {
         auto result = ffxDispatch_Dx12FG(context, desc);
 
-        if (result == (ffxReturnCode_t) 0xffffffff)
+        if (result == PASSTHRU_RETURN_CODE)
             return FfxApiProxy::D3D12_Dispatch(context, desc);
 
         return result;

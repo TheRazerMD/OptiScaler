@@ -10,8 +10,16 @@ struct AmdExtFfxQuery;
 struct AmdExtFfxCapability2;
 struct AmdExtFfxCapability;
 
+struct magicData
+{
+    uint32_t values[4];
+    magicData* nextMagicData;
+};
+
 typedef HRESULT(__cdecl* PFN_AmdExtD3DCreateInterface)(IUnknown* pOuter, REFIID riid, void** ppvObject);
 typedef HRESULT(STDMETHODCALLTYPE* PFN_UpdateFfxApiProvider)(void* pData, uint32_t dataSizeInBytes);
+typedef HRESULT(STDMETHODCALLTYPE* PFN_UpdateFfxApiProviderEx)(void* pData, uint32_t dataSizeInBytes,
+                                                               magicData magicData);
 
 void InitFSR4Update();
 HRESULT STDMETHODCALLTYPE hkAmdExtD3DCreateInterface(IUnknown* pOuter, REFIID riid, void** ppvObject);

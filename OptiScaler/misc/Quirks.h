@@ -84,10 +84,10 @@ static const QuirkEntry quirkTable[] = {
     QUIRK_ENTRY_UE(shf, GameQuirk::AlwaysCaptureFSRFGSwapchain),
 
     // Path of Exile 2
-    QUIRK_ENTRY("pathofexile.exe", GameQuirk::LoadD3D12Manually),
-    QUIRK_ENTRY("pathofexile_x64.exe", GameQuirk::LoadD3D12Manually),
-    QUIRK_ENTRY("pathofexilesteam.exe", GameQuirk::LoadD3D12Manually),
-    QUIRK_ENTRY("pathofexile_x64steam.exe", GameQuirk::LoadD3D12Manually),
+    QUIRK_ENTRY("pathofexile.exe", GameQuirk::LoadD3D12Manually, GameQuirk::DisableDxgiSpoofing),
+    QUIRK_ENTRY("pathofexile_x64.exe", GameQuirk::LoadD3D12Manually, GameQuirk::DisableDxgiSpoofing),
+    QUIRK_ENTRY("pathofexilesteam.exe", GameQuirk::LoadD3D12Manually, GameQuirk::DisableDxgiSpoofing),
+    QUIRK_ENTRY("pathofexile_x64steam.exe", GameQuirk::LoadD3D12Manually, GameQuirk::DisableDxgiSpoofing),
 
     // Where Winds Meet
     QUIRK_ENTRY("wwm.exe", GameQuirk::DisableXeFGChecks),

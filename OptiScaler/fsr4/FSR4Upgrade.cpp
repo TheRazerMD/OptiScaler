@@ -215,6 +215,7 @@ struct ExternalProviderData
 struct AmdExtFfxApi : public IAmdExtFfxApi
 {
     PFN_UpdateFfxApiProvider o_UpdateFfxApiProvider = nullptr;
+    PFN_UpdateFfxApiProviderEx o_UpdateFfxApiProviderEx = nullptr;
 
     HRESULT STDMETHODCALLTYPE UpdateFfxApiProvider(void* pData, uint32_t dataSizeInBytes) override
     {
@@ -229,8 +230,8 @@ struct AmdExtFfxApi : public IAmdExtFfxApi
             break;
 
         case FFX_API_EFFECT_ID_FRAMEGENERATION:
-            LOG_ERROR("Skipping update for FG");
-            return E_INVALIDARG;
+            LOG_INFO("Trying to update FG");
+            break;
 
         case FFX_API_EFFECT_ID_FRAMEGENERATIONSWAPCHAIN_DX12:
             LOG_ERROR("Skipping update for DX12 Swapchain");
@@ -289,6 +290,8 @@ struct AmdExtFfxApi : public IAmdExtFfxApi
 
             o_UpdateFfxApiProvider =
                 (PFN_UpdateFfxApiProvider) KernelBaseProxy::GetProcAddress_()(fsr4Module, "UpdateFfxApiProvider");
+            o_UpdateFfxApiProviderEx =
+                (PFN_UpdateFfxApiProviderEx) KernelBaseProxy::GetProcAddress_()(fsr4Module, "UpdateFfxApiProviderEx");
 
             if (o_UpdateFfxApiProvider == nullptr)
             {
@@ -297,7 +300,21 @@ struct AmdExtFfxApi : public IAmdExtFfxApi
             }
         }
 
-        if (o_UpdateFfxApiProvider != nullptr)
+        if ((effectType == FFX_API_EFFECT_ID_FRAMEGENERATION || effectType == FFX_API_EFFECT_ID_UPSCALE) &&
+            o_UpdateFfxApiProviderEx != nullptr)
+        {
+            State::DisableChecks(1);
+
+            magicData data = { { 0, 1, 1, 0 }, nullptr };
+            auto result = o_UpdateFfxApiProviderEx(pData, dataSizeInBytes, data);
+
+            LOG_INFO("UpdateFfxApiProviderEx called, result: {} ({:X})", result == S_OK ? "Ok" : "Error",
+                     (UINT) result);
+            State::EnableChecks(1);
+            return result;
+        }
+
+        else if (o_UpdateFfxApiProvider != nullptr)
         {
             State::DisableChecks(1);
 
