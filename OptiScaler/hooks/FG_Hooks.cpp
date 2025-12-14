@@ -24,6 +24,9 @@ bool CheckForFGStatus()
     // if (!Config::Instance()->OverlayMenu.value_or_default())
     //    return false;
 
+    if (State::Instance().activeFgInput == FGInput::NoFG || State::Instance().activeFgInput == FGInput::Nukems)
+        return false;
+
     // Disable FG if amd dll is not found
     if (State::Instance().activeFgOutput == FGOutput::FSRFG)
     {
