@@ -434,6 +434,7 @@ void XeFG_Dx12::CreateContext(ID3D12Device* device, FG_Constants& fgConstants)
     if (_fgContext == nullptr && _swapChainContext != nullptr)
     {
         _fgContext = _swapChainContext;
+        _lastDispatchedFrame = 0;
     }
 
     if (_isActive)
@@ -502,7 +503,7 @@ void XeFG_Dx12::Deactivate()
             _isActive = false;
         }
 
-        _lastDispatchedFrame = 0;
+        //_lastDispatchedFrame = 0;
         _waitingNewFrameData = false;
 
         LOG_INFO("SetEnabled: false, result: {} ({})", magic_enum::enum_name(result), (UINT) result);

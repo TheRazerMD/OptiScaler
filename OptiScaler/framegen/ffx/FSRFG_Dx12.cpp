@@ -567,7 +567,7 @@ void* FSRFG_Dx12::SwapchainContext()
 void FSRFG_Dx12::DestroyFGContext()
 {
     _frameCount = 1;
-    _lastDispatchedFrame = 0;
+    // _lastDispatchedFrame = 0;
     _version = {};
 
     LOG_DEBUG("");
@@ -855,6 +855,7 @@ void FSRFG_Dx12::CreateContext(ID3D12Device* device, FG_Constants& fgConstants)
     LOG_INFO("D3D12_CreateContext result: {0:X}", retCode);
 
     _isActive = (retCode == FFX_API_RETURN_OK);
+    _lastDispatchedFrame = 0;
 
     LOG_DEBUG("Create");
 }
@@ -922,7 +923,7 @@ void FSRFG_Dx12::Deactivate()
             _isActive = false;
         }
 
-        _lastDispatchedFrame = 0;
+        // _lastDispatchedFrame = 0;
 
         LOG_INFO("D3D12_Configure Enabled: false, result: {} ({})", magic_enum::enum_name((FfxApiReturnCodes) result),
                  (UINT) result);
