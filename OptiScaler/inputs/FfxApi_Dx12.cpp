@@ -575,8 +575,8 @@ ffxReturnCode_t ffxQuery_Dx12(ffxContext* context, ffxQueryDescHeader* desc)
     }
 
     // Need to redirect base queries to real FfxApi
-    if (Config::Instance()->EnableHotSwapping.value_or_default() || desc->type == 0x4 || desc->type == 0x5 ||
-        desc->type == 0x6)
+    if (Config::Instance()->EnableHotSwapping.value_or_default() ||
+        FfxApiProxy::GetType(desc->type) == FFXStructType::General)
     {
         return FfxApiProxy::D3D12_Query(context, desc);
     }

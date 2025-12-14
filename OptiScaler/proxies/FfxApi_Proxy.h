@@ -40,7 +40,9 @@ enum class FFXStructType
     FG,
     SwapchainDX12,
     SwapchainVulkan,
-    Unknown
+    Denoiser,
+    RadianceCache,
+    Unknown,
 };
 
 struct FfxModule
@@ -127,6 +129,12 @@ class FfxApiProxy
 
         case FFX_API_EFFECT_ID_FGSC_VK:
             return FFXStructType::SwapchainVulkan;
+
+        case 0x00050000u:
+            return FFXStructType::Denoiser;
+
+        case 0x00060000u:
+            return FFXStructType::RadianceCache;
 
         default:
             return FFXStructType::Unknown;

@@ -7,6 +7,7 @@
 #include <ffx_framegeneration.h>
 #include <ffx_upscale.h>
 #include "FSR4ModelSelection.h"
+#include "proxies/FfxApi_Proxy.h"
 
 // A mess to be able to import both
 #define FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_WAITCALLBACK FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_WAITCALLBACK_DX12
@@ -221,23 +222,23 @@ struct AmdExtFfxApi : public IAmdExtFfxApi
     {
         // To prevent crashes with amd_fidelityfx_dx12.dll & amd_fidelityfx_framegeneration_dx12.dll combo added this
         // check after ML FG update this should be disabled!
-        auto effectType = reinterpret_cast<ExternalProviderData*>(pData)->descType & FFX_API_EFFECT_MASK;
+        auto effectType = FfxApiProxy::GetType(reinterpret_cast<ExternalProviderData*>(pData)->descType);
 
         switch (effectType)
         {
-        case FFX_API_EFFECT_ID_UPSCALE:
+        case FFXStructType::Upscaling:
             LOG_INFO("Trying to update upscaling");
             break;
 
-        case FFX_API_EFFECT_ID_FRAMEGENERATION:
+        case FFXStructType::FG:
             LOG_INFO("Trying to update FG");
             break;
 
-        case FFX_API_EFFECT_ID_FRAMEGENERATIONSWAPCHAIN_DX12:
+        case FFXStructType::SwapchainDX12:
             LOG_ERROR("Skipping update for DX12 Swapchain");
             return E_INVALIDARG;
 
-        case FFX_API_EFFECT_ID_FGSC_VK:
+        case FFXStructType::SwapchainVulkan:
             LOG_ERROR("Skipping update for VK Swapchain");
             return E_INVALIDARG;
 
@@ -300,7 +301,7 @@ struct AmdExtFfxApi : public IAmdExtFfxApi
             }
         }
 
-        if ((effectType == FFX_API_EFFECT_ID_FRAMEGENERATION || effectType == FFX_API_EFFECT_ID_UPSCALE) &&
+        if ((effectType == FFXStructType::FG || effectType == FFXStructType::Upscaling) &&
             o_UpdateFfxApiProviderEx != nullptr)
         {
             State::DisableChecks(1);
