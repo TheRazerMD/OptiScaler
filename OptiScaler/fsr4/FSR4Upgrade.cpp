@@ -8,6 +8,7 @@
 #include <ffx_upscale.h>
 #include "FSR4ModelSelection.h"
 #include "proxies/FfxApi_Proxy.h"
+#include <magic_enum.hpp>
 
 // A mess to be able to import both
 #define FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_WAITCALLBACK FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_WAITCALLBACK_DX12
@@ -29,10 +30,10 @@
 static HMODULE moduleAmdxc64 = nullptr;
 static HMODULE fsr4Module = nullptr;
 
-static AmdExtFfxCapability* amdExtFfxThird = nullptr;
-static AmdExtFfxCapability2* amdExtFfxSecond = nullptr;
-static AmdExtFfxQuery* amdExtFfxQuery = nullptr;
-static AmdExtFfxQuery* o_amdExtFfxQuery = nullptr;
+static AmdExtD3DDevice8* amdExtD3DDevice8 = nullptr;
+static AmdExtD3DShaderIntrinsics* amdExtD3DShaderIntrinsics = nullptr;
+static AmdExtD3DFactory* amdExtD3DFactory = nullptr;
+static AmdExtD3DFactory* o_amdExtD3DFactory = nullptr;
 static AmdExtFfxApi* amdExtFfxApi = nullptr;
 
 static PFN_AmdExtD3DCreateInterface o_AmdExtD3DCreateInterface = nullptr;
@@ -343,22 +344,30 @@ struct AmdExtFfxApi : public IAmdExtFfxApi
         return S_OK;                                                                                                   \
     }
 
-struct AmdExtFfxCapability2 : public IAmdExtFfxCapability2
+struct AmdExtD3DShaderIntrinsics : public IAmdExtD3DShaderIntrinsics
 {
-    STUB(1)
-    HRESULT STDMETHODCALLTYPE IsSupported(uint64_t a)
+    HRESULT STDMETHODCALLTYPE GetInfo(void* ShaderIntrinsicsInfo)
     {
-        LOG_TRACE(": {}", a);
+        LOG_FUNC();
         return S_OK;
     }
-    STUB(3)
+    HRESULT STDMETHODCALLTYPE CheckSupport(AmdExtD3DShaderIntrinsicsSupport intrinsic)
+    {
+        LOG_TRACE(": {}", magic_enum::enum_name(intrinsic));
+        return S_OK;
+    }
+    HRESULT STDMETHODCALLTYPE Enable()
+    {
+        LOG_FUNC();
+        return S_OK;
+    }
 
     HRESULT __stdcall QueryInterface(REFIID riid, void** ppvObject) override { return E_NOTIMPL; }
     ULONG __stdcall AddRef(void) override { return 0; }
     ULONG __stdcall Release(void) override { return 0; }
 };
 
-struct AmdExtFfxCapability : public IAmdExtFfxCapability
+struct AmdExtD3DDevice8 : public IAmdExtD3DDevice8
 {
     STUB(1)
     STUB(2)
@@ -373,21 +382,21 @@ struct AmdExtFfxCapability : public IAmdExtFfxCapability
     STUB(11)
     STUB(12)
     STUB(13)
-    HRESULT STDMETHODCALLTYPE CheckWMMASupport(uint64_t* a, uint8_t* data)
+    HRESULT STDMETHODCALLTYPE GetWaveMatrixProperties(uint64_t* count, AmdExtWaveMatrixProperties* waveMatrixProperties)
     {
-        LOG_TRACE(": {}", *a);
+        LOG_TRACE(": {}", *count);
 
-        *reinterpret_cast<uint64_t*>(&data[0x00]) = 16;
-        *reinterpret_cast<uint64_t*>(&data[0x08]) = 16;
-        *reinterpret_cast<uint64_t*>(&data[0x10]) = 16;
+        waveMatrixProperties->mSize = 16;
+        waveMatrixProperties->nSize = 16;
+        waveMatrixProperties->kSize = 16;
 
-        *reinterpret_cast<uint32_t*>(&data[0x18]) = 11;
-        *reinterpret_cast<uint32_t*>(&data[0x1C]) = 11;
+        waveMatrixProperties->aType = fp8;
+        waveMatrixProperties->bType = fp8;
 
-        *reinterpret_cast<uint32_t*>(&data[0x20]) = 1;
-        *reinterpret_cast<uint32_t*>(&data[0x24]) = 1;
+        waveMatrixProperties->cType = float32;
+        waveMatrixProperties->resultType = float32;
 
-        data[0x28] = 0;
+        waveMatrixProperties->saturatingAccumulation = false;
 
         return S_OK;
     }
@@ -397,35 +406,35 @@ struct AmdExtFfxCapability : public IAmdExtFfxCapability
     ULONG __stdcall Release(void) override { return 0; }
 };
 
-struct AmdExtFfxQuery : public IAmdExtFfxQuery
+struct AmdExtD3DFactory : public IAmdExtD3DFactory
 {
-    HRESULT STDMETHODCALLTYPE queryInternal(IUnknown* pOuter, REFIID riid, void** ppvObject) override
+    HRESULT STDMETHODCALLTYPE CreateInterface(IUnknown* pOuter, REFIID riid, void** ppvObject) override
     {
-        if (riid == __uuidof(IAmdExtFfxCapability2))
+        if (riid == __uuidof(IAmdExtD3DShaderIntrinsics))
         {
-            if (amdExtFfxSecond == nullptr)
-                amdExtFfxSecond = new AmdExtFfxCapability2();
+            if (amdExtD3DShaderIntrinsics == nullptr)
+                amdExtD3DShaderIntrinsics = new AmdExtD3DShaderIntrinsics();
 
-            *ppvObject = amdExtFfxSecond;
+            *ppvObject = amdExtD3DShaderIntrinsics;
 
-            LOG_INFO("Custom IAmdExtFfxCapability2 queried, returning custom AmdExtFfxCapability2");
+            LOG_INFO("Custom IAmdExtD3DShaderIntrinsics queried, returning custom AmdExtD3DShaderIntrinsics");
 
             return S_OK;
         }
-        else if (riid == __uuidof(IAmdExtFfxCapability))
+        else if (riid == __uuidof(IAmdExtD3DDevice8))
         {
-            if (amdExtFfxThird == nullptr)
-                amdExtFfxThird = new AmdExtFfxCapability();
+            if (amdExtD3DDevice8 == nullptr)
+                amdExtD3DDevice8 = new AmdExtD3DDevice8();
 
-            *ppvObject = amdExtFfxThird;
+            *ppvObject = amdExtD3DDevice8;
 
-            LOG_INFO("Custom IAmdExtFfxCapability queried, returning custom AmdExtFfxCapability");
+            LOG_INFO("Custom IAmdExtD3DDevice8 queried, returning custom AmdExtD3DDevice8");
 
             return S_OK;
         }
-        else if (o_amdExtFfxQuery)
+        else if (o_amdExtD3DFactory)
         {
-            return o_amdExtFfxQuery->queryInternal(pOuter, riid, ppvObject);
+            return o_amdExtD3DFactory->CreateInterface(pOuter, riid, ppvObject);
         }
 
         return E_NOINTERFACE;
@@ -433,26 +442,26 @@ struct AmdExtFfxQuery : public IAmdExtFfxQuery
 
     HRESULT __stdcall QueryInterface(REFIID riid, void** ppvObject) override
     {
-        if (o_amdExtFfxQuery)
-            return o_amdExtFfxQuery->QueryInterface(riid, ppvObject);
+        if (o_amdExtD3DFactory)
+            return o_amdExtD3DFactory->QueryInterface(riid, ppvObject);
 
         return E_NOTIMPL;
     }
     ULONG __stdcall AddRef(void) override
     {
-        if (o_amdExtFfxQuery)
-            return o_amdExtFfxQuery->AddRef();
+        if (o_amdExtD3DFactory)
+            return o_amdExtD3DFactory->AddRef();
 
         return 0;
     }
     ULONG __stdcall Release(void) override
     {
-        if (o_amdExtFfxQuery)
+        if (o_amdExtD3DFactory)
         {
-            auto result = o_amdExtFfxQuery->Release();
+            auto result = o_amdExtD3DFactory->Release();
 
             if (result == 0)
-                o_amdExtFfxQuery = nullptr;
+                o_amdExtD3DFactory = nullptr;
 
             return result;
         }
@@ -507,18 +516,18 @@ HRESULT STDMETHODCALLTYPE hkAmdExtD3DCreateInterface(IUnknown* pOuter, REFIID ri
         return o_AmdExtD3DCreateInterface(pOuter, riid, ppvObject);
 
     // Proton bleeding edge ships amdxc64 that is missing some required functions
-    else if (riid == __uuidof(IAmdExtFfxQuery) && State::Instance().isRunningOnLinux)
+    else if (riid == __uuidof(IAmdExtD3DFactory) && State::Instance().isRunningOnLinux)
     {
         // Required for the custom AmdExtFfxApi, lack of it triggers visual glitches
-        if (amdExtFfxQuery == nullptr)
-            amdExtFfxQuery = new AmdExtFfxQuery();
+        if (amdExtD3DFactory == nullptr)
+            amdExtD3DFactory = new AmdExtD3DFactory();
 
-        *ppvObject = amdExtFfxQuery;
+        *ppvObject = amdExtD3DFactory;
 
-        LOG_INFO("IAmdExtFfxQuery queried, returning custom AmdExtFfxQuery");
+        LOG_INFO("IAmdExtD3DFactory queried, returning custom AmdExtD3DFactory");
 
-        if (o_AmdExtD3DCreateInterface != nullptr && o_amdExtFfxQuery == nullptr)
-            o_AmdExtD3DCreateInterface(pOuter, riid, (void**) &o_amdExtFfxQuery);
+        if (o_AmdExtD3DCreateInterface != nullptr && o_amdExtD3DFactory == nullptr)
+            o_AmdExtD3DCreateInterface(pOuter, riid, (void**) &o_amdExtD3DFactory);
 
         return S_OK;
     }
