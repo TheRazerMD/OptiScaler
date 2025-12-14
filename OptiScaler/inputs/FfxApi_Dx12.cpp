@@ -566,19 +566,18 @@ ffxReturnCode_t ffxQuery_Dx12(ffxContext* context, ffxQueryDescHeader* desc)
         return FFX_API_RETURN_OK;
     }
 
-    if (Config::Instance()->EnableHotSwapping.value_or_default())
+    // Need to redirect base queries to real FfxApi
+    if (Config::Instance()->EnableHotSwapping.value_or_default() || desc->type == 0x4 || desc->type == 0x5 ||
+        desc->type == 0x6)
+    {
         return FfxApiProxy::D3D12_Query(context, desc);
+    }
 
     return FFX_API_RETURN_OK;
 }
 
 ffxReturnCode_t ffxDispatch_Dx12(ffxContext* context, ffxDispatchDescHeader* desc)
 {
-    // Skip OptiScaler stuff
-    if (Config::Instance()->EnableHotSwapping.value_or_default() &&
-        !Config::Instance()->UseFfxInputs.value_or_default())
-        return FfxApiProxy::D3D12_Dispatch(context, desc);
-
     if (desc == nullptr || context == nullptr)
         return FFX_API_RETURN_ERROR_PARAMETER;
 
@@ -593,6 +592,11 @@ ffxReturnCode_t ffxDispatch_Dx12(ffxContext* context, ffxDispatchDescHeader* des
 
         return result;
     }
+
+    // Skip OptiScaler stuff
+    if (Config::Instance()->EnableHotSwapping.value_or_default() &&
+        !Config::Instance()->UseFfxInputs.value_or_default())
+        return FfxApiProxy::D3D12_Dispatch(context, desc);
 
     if (context == nullptr || !_initParams.contains(*context))
     {
