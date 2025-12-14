@@ -143,7 +143,7 @@ class FfxApiProxy
 
     // Can't directly check for type when query is used
     // might apply to FFX_API_DESC_TYPE_OVERRIDE_VERSION as well
-    static FFXStructType GetType(ffxQueryDescHeader* header)
+    static FFXStructType GetIndirectType(ffxQueryDescHeader* header)
     {
         ffxStructType_t type = header->type;
 
@@ -748,7 +748,7 @@ class FfxApiProxy
 
     static ffxReturnCode_t D3D12_Query(ffxContext* context, ffxQueryDescHeader* desc)
     {
-        auto type = GetType(desc);
+        auto type = GetIndirectType(desc);
         auto isFg = type == FFXStructType::FG || type == FFXStructType::SwapchainDX12;
 
         if (isFg && fg_dx12.dll != nullptr)

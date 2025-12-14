@@ -507,7 +507,7 @@ ffxReturnCode_t ffxQuery_Dx12(ffxContext* context, ffxQueryDescHeader* desc)
 
     LOG_DEBUG("type: {}", FfxGetGetDescTypeName(desc->type));
 
-    auto type = FfxApiProxy::GetType(desc);
+    auto type = FfxApiProxy::GetIndirectType(desc);
     if (State::Instance().activeFgInput == FGInput::FSRFG &&
         (type == FFXStructType::SwapchainDX12 || type == FFXStructType::FG))
     {
