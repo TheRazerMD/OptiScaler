@@ -416,16 +416,18 @@ ffxReturnCode_t ffxDestroyContext_Dx12(ffxContext* context, const ffxAllocationC
         return result;
     }
 
-    bool upscalerContext = false;
+    bool upscalerContext =
+        _contexts.contains(*context) || _initParams.contains(*context) || _nvParams.contains(*context);
+
     if (_contexts.contains(*context))
-    {
         NVSDK_NGX_D3D12_ReleaseFeature(_contexts[*context]);
-        upscalerContext = true;
-    }
 
     _contexts.erase(*context);
     _nvParams.erase(*context);
     _initParams.erase(*context);
+
+    if (upscalerContext && !Config::Instance()->EnableHotSwapping.value_or_default())
+        return FFX_API_RETURN_OK;
 
     if (State::Instance().currentFG != nullptr)
         LOG_DEBUG("context: {:X}, SwapchainContext: {:X}, FGContext: {:X}", (size_t) *context,
@@ -441,7 +443,7 @@ ffxReturnCode_t ffxDestroyContext_Dx12(ffxContext* context, const ffxAllocationC
         return FFX_API_RETURN_OK;
     }
 
-    if (State::Instance().activeFgInput == FGInput::FSRFG)
+    if (State::Instance().activeFgInput == FGInput::FSRFG && !upscalerContext)
     {
         auto result = ffxDestroyContext_Dx12FG(context, memCb);
 
@@ -449,14 +451,9 @@ ffxReturnCode_t ffxDestroyContext_Dx12(ffxContext* context, const ffxAllocationC
             return result;
     }
 
-    if (Config::Instance()->EnableHotSwapping.value_or_default())
-    {
-        auto cdResult = FfxApiProxy::D3D12_DestroyContext(context, memCb);
-        LOG_INFO("result: {:X}", (UINT) cdResult);
-        return cdResult;
-    }
-
-    return FFX_API_RETURN_OK;
+    auto cdResult = FfxApiProxy::D3D12_DestroyContext(context, memCb);
+    LOG_INFO("result: {:X}", (UINT) cdResult);
+    return cdResult;
 }
 
 ffxReturnCode_t ffxConfigure_Dx12(ffxContext* context, ffxConfigureDescHeader* desc)
@@ -508,10 +505,12 @@ ffxReturnCode_t ffxQuery_Dx12(ffxContext* context, ffxQueryDescHeader* desc)
     LOG_DEBUG("type: {}", FfxGetGetDescTypeName(desc->type));
 
     auto type = FfxApiProxy::GetIndirectType(desc);
-    if (State::Instance().activeFgInput == FGInput::FSRFG &&
-        (type == FFXStructType::SwapchainDX12 || type == FFXStructType::FG))
+    if (type == FFXStructType::SwapchainDX12 || type == FFXStructType::FG)
     {
-        auto result = ffxQuery_Dx12FG(context, desc);
+        ffxReturnCode_t result = PASSTHRU_RETURN_CODE;
+
+        if (State::Instance().activeFgInput == FGInput::FSRFG)
+            result = ffxQuery_Dx12FG(context, desc);
 
         if (result == PASSTHRU_RETURN_CODE)
             return FfxApiProxy::D3D12_Query(context, desc);
@@ -554,18 +553,25 @@ ffxReturnCode_t ffxQuery_Dx12(ffxContext* context, ffxQueryDescHeader* desc)
         auto jitterPhaseDesc = (ffxQueryDescUpscaleGetJitterPhaseCount*) desc;
 
         if (jitterPhaseDesc && State::Instance().currentFeature)
+        {
             jitterPhaseDesc->displayWidth = State::Instance().currentFeature->TargetWidth();
+            jitterPhaseDesc->renderWidth = State::Instance().currentFeature->RenderWidth();
+        }
 
         if (!Config::Instance()->EnableHotSwapping.value_or_default())
         {
             float ratio = (float) jitterPhaseDesc->displayWidth / (float) jitterPhaseDesc->renderWidth;
-            *jitterPhaseDesc->pOutPhaseCount = static_cast<uint32_t>(ceil(ratio * ratio * 8.0f)); // ceil(8*n^2)
+            *jitterPhaseDesc->pOutPhaseCount = static_cast<int32_t>(ceil(ratio * ratio * 8.0f)); // ceil(8*n^2)
             LOG_DEBUG("Render resolution: {}, Display resolution: {}, Ratio: {}, Jitter phase count: {}",
                       jitterPhaseDesc->renderWidth, jitterPhaseDesc->displayWidth, ratio,
                       *jitterPhaseDesc->pOutPhaseCount);
 
             return FFX_API_RETURN_OK;
         }
+    }
+    else if (desc->type == FFX_API_QUERY_DESC_TYPE_UPSCALE_GETJITTEROFFSET)
+    {
+        return FfxApiProxy::D3D12_Query(context, desc);
     }
 
     if (context != nullptr && _contexts.contains(*context) && !Config::Instance()->EnableHotSwapping.value_or_default())

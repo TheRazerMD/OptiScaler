@@ -344,7 +344,7 @@ ffxReturnCode_t ffxCreateContext_Dx12FG(ffxContext* context, ffxCreateContextDes
         return FFX_API_RETURN_ERROR_PARAMETER;
     }
 
-    return rcContinue;
+    return PASSTHRU_RETURN_CODE; // rcContinue;
 }
 
 ffxReturnCode_t ffxDestroyContext_Dx12FG(ffxContext* context, const ffxAllocationCallbacks* memCb)
@@ -368,7 +368,7 @@ ffxReturnCode_t ffxDestroyContext_Dx12FG(ffxContext* context, const ffxAllocatio
         return FFX_API_RETURN_OK;
     }
 
-    return rcContinue;
+    return PASSTHRU_RETURN_CODE; // rcContinue;
 }
 
 ffxReturnCode_t ffxConfigure_Dx12FG(ffxContext* context, ffxConfigureDescHeader* desc)
@@ -749,7 +749,7 @@ ffxReturnCode_t ffxConfigure_Dx12FG(ffxContext* context, ffxConfigureDescHeader*
         return FFX_API_RETURN_OK;
     }
 
-    return rcContinue;
+    return PASSTHRU_RETURN_CODE; // rcContinue;
 }
 
 ffxReturnCode_t ffxQuery_Dx12FG(ffxContext* context, ffxQueryDescHeader* desc)
@@ -827,7 +827,7 @@ ffxReturnCode_t ffxQuery_Dx12FG(ffxContext* context, ffxQueryDescHeader* desc)
         return FFX_API_RETURN_OK;
     }
 
-    return rcContinue;
+    return PASSTHRU_RETURN_CODE; // rcContinue;
 }
 
 ffxReturnCode_t ffxDispatch_Dx12FG(ffxContext* context, ffxDispatchDescHeader* desc)
@@ -1031,7 +1031,7 @@ void ffxPresentCallback()
 
     auto fg = State::Instance().currentFG;
 
-    if (fg == nullptr && fg->FrameGenerationContext() != nullptr)
+    if (fg == nullptr || fg->FrameGenerationContext() == nullptr)
         return;
 
     // if (_lastCallbackFrameId == 0 || _lastCallbackFrameId > _callbackFrameId ||
