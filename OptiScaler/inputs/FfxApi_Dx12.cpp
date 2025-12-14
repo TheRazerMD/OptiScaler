@@ -279,7 +279,7 @@ ffxReturnCode_t ffxCreateContext_Dx12(ffxContext* context, ffxCreateContextDescH
     // Game is creating FSR-FG swapchain and calling present twice per frame
     // So when using OptiFG I am hijacking FSR-FG swapchain
     // It would crash the games which uses swapchain for FG
-    if (type == FFXStructType::SwapchainDX12 &&
+    if ((type == FFXStructType::SwapchainDX12 || type == FFXStructType::FG) &&
         (state.activeFgInput == FGInput::FSRFG ||
          (Config::Instance()->FGAlwaysCaptureFSRFGSwapchain.value_or_default() &&
           state.activeFgOutput != FGOutput::NoFG && state.activeFgOutput != FGOutput::Nukems &&
@@ -467,10 +467,12 @@ ffxReturnCode_t ffxConfigure_Dx12(ffxContext* context, ffxConfigureDescHeader* d
     LOG_DEBUG("type: {}", FfxGetGetDescTypeName(desc->type));
 
     auto type = FfxApiProxy::GetType(desc->type);
-    if (State::Instance().activeFgInput == FGInput::FSRFG &&
-        (type == FFXStructType::SwapchainDX12 || type == FFXStructType::FG))
+    if (type == FFXStructType::SwapchainDX12 || type == FFXStructType::FG)
     {
-        auto result = ffxConfigure_Dx12FG(context, desc);
+        ffxReturnCode_t result = PASSTHRU_RETURN_CODE;
+
+        if (State::Instance().activeFgInput == FGInput::FSRFG)
+            result = ffxConfigure_Dx12FG(context, desc);
 
         if (result == PASSTHRU_RETURN_CODE)
             return FfxApiProxy::D3D12_Configure(context, desc);
@@ -590,10 +592,12 @@ ffxReturnCode_t ffxDispatch_Dx12(ffxContext* context, ffxDispatchDescHeader* des
     LOG_DEBUG("context: {:X}, type: {}", (size_t) *context, FfxGetGetDescTypeName(desc->type));
 
     auto type = FfxApiProxy::GetType(desc->type);
-    if (State::Instance().activeFgInput == FGInput::FSRFG &&
-        (type == FFXStructType::SwapchainDX12 || type == FFXStructType::FG))
+    if (type == FFXStructType::SwapchainDX12 || type == FFXStructType::FG)
     {
-        auto result = ffxDispatch_Dx12FG(context, desc);
+        ffxReturnCode_t result = PASSTHRU_RETURN_CODE;
+
+        if (State::Instance().activeFgInput == FGInput::FSRFG)
+            result = ffxDispatch_Dx12FG(context, desc);
 
         if (result == PASSTHRU_RETURN_CODE)
             return FfxApiProxy::D3D12_Dispatch(context, desc);
