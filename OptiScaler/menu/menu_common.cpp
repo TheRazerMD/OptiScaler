@@ -2671,7 +2671,9 @@ bool MenuCommon::RenderMenu()
 
                                         ImGui::EndCombo();
                                     }
-                                    ShowHelpMarker("Model 0 is meant for FSR Native AA\n"
+                                    ShowHelpMarker("Each FSR4 preset uses its own model.\n"
+                                                   "Selecting a model won't change the upscaler preset!\n\n"
+                                                   "Model 0 is meant for FSR Native AA\n"
                                                    "Model 1 is meant for Quality/Ultra Quality\n"
                                                    "Model 2 is meant for Balanced\n"
                                                    "Model 3 is meant for Performance\n"
@@ -3011,7 +3013,7 @@ bool MenuCommon::RenderMenu()
                 // clang-format off
                 const char* fgOutputOptions[] = {
                     "No Frame Generation",
-                    "FSR-FG via Nukem's",
+                    "FSR3-FG via Nukem's",
                     "FSR FG",
                     "DLSSG",
                     "XeFG"
@@ -3019,7 +3021,7 @@ bool MenuCommon::RenderMenu()
                 std::vector<std::string> fgOutputDesc = {
                     "",
                     "Select DLSS FG in-game", 
-                    "FSR FG", 
+                    "FSR3/4 FG", 
                     "Support not implemented", 
                     "XeFG",
                 };
@@ -3933,7 +3935,7 @@ bool MenuCommon::RenderMenu()
                 if (!state.isWorkingAsNvngx && state.activeFgInput == FGInput::Nukems &&
                     state.activeFgOutput == FGOutput::Nukems)
                 {
-                    SeparatorWithHelpMarker("Frame Generation (FSR-FG via Nukem's DLSSG)",
+                    SeparatorWithHelpMarker("Frame Generation (FSR3-FG via Nukem's DLSSG)",
                                             "Requires Nukem's dlssg_to_fsr3 dll\nSelect DLSS FG in-game");
 
                     if (!state.NukemsFilesAvailable)
