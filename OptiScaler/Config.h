@@ -484,7 +484,7 @@ class Config
     CustomOptional<bool> UseFsr3Inputs { true };
     CustomOptional<bool> Fsr3Pattern { false };
     CustomOptional<bool> UseFfxInputs { true };
-    CustomOptional<bool> EnableHotSwapping { true };
+    CustomOptional<bool> EnableHotSwapping { false };
     CustomOptional<bool> EnableFsr2Inputs { true };
     CustomOptional<bool> EnableFsr3Inputs { true };
     CustomOptional<bool> EnableFfxInputs { true };
