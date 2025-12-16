@@ -20,7 +20,7 @@ static std::unordered_map<ffxContext, NVSDK_NGX_Handle*> _contexts;
 static ID3D12Device* _d3d12Device = nullptr;
 static bool _nvnxgInited = false;
 static float qualityRatios[] = { 1.0f, 1.5f, 1.7f, 2.0f, 3.0f };
-static size_t _contextCounter = 0;
+static size_t _contextCounter = 0x00001ee7;
 
 static std::string FfxGetGetDescTypeName(ffxStructType_t type)
 {
@@ -569,6 +569,38 @@ ffxReturnCode_t ffxQuery_Dx12(ffxContext* context, ffxQueryDescHeader* desc)
             return FFX_API_RETURN_OK;
         }
     }
+    else if (desc->type == FFX_API_QUERY_DESC_TYPE_GET_PROVIDER_VERSION)
+    {
+        auto providerDesc = (ffxQueryGetProviderVersion*) desc;
+        feature_version ver = {};
+
+        if (type == FFXStructType::SwapchainDX12 || type == FFXStructType::FG)
+        {
+            ver = FfxApiProxy::VersionDx12_FG();
+
+            providerDesc->versionId =
+                0xF600'0000ui64 << 32u << 32 | (((ver.major << 22) | (ver.minor << 12) | ver.patch) & 0xFFFFFFFF);
+        }
+        else if (type == FFXStructType::Upscaling)
+        {
+            ver = FfxApiProxy::VersionDx12_SR();
+
+            providerDesc->versionId =
+                0xF5A5'CA1Eui64 << 32 | (((ver.major << 22) | (ver.minor << 12) | ver.patch) & 0xFFFFFFFF);
+        }
+        else
+        {
+            ver = FfxApiProxy::VersionDx12();
+
+            providerDesc->versionId = (((ver.major << 22) | (ver.minor << 12) | ver.patch) & 0xFFFFFFFF);
+        }
+
+        auto verName = std::format("{}.{}.{}", ver.major, ver.minor, ver.patch);
+        providerDesc->versionName = _strdup(verName.c_str());
+
+        return FFX_API_RETURN_OK;
+    }
+
     else if (desc->type == FFX_API_QUERY_DESC_TYPE_UPSCALE_GETJITTEROFFSET)
     {
         return FfxApiProxy::D3D12_Query(context, desc);
