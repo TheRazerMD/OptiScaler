@@ -538,8 +538,13 @@ ffxReturnCode_t FSRFG_Dx12::DispatchCallback(ffxDispatchDescFrameGeneration* par
         LOG_DEBUG("Hudless format doesn't match, hudless: {}, present: {}", (uint32_t) _lastHudlessFormat,
                   params->presentColor.description.format);
 
+        params->numGeneratedFrames = 0;
+        _lastFrameId = params->frameID;
+
         state.FGchanged = true;
         state.SCchanged = true;
+
+        return FFX_API_RETURN_OK;
     }
 
     auto dispatchResult = FfxApiProxy::D3D12_Dispatch(&_fgContext, &params->header);
