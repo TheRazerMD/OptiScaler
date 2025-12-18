@@ -22,7 +22,7 @@ class Sl_Inputs_Dx12
     uint32_t mvsHeight = 0;
 
     void CheckForFrame(IFGFeature_Dx12* fg, uint32_t frameId);
-    int IndexForFrameId(uint32_t frameId);
+    int IndexForFrameId(uint32_t frameId) const;
 
   public:
     bool setConstants(const sl::Constants& constants, uint32_t frameId);

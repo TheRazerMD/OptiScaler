@@ -40,7 +40,7 @@ void Sl_Inputs_Dx12::CheckForFrame(IFGFeature_Dx12* fg, uint32_t frameId)
     }
 }
 
-int Sl_Inputs_Dx12::IndexForFrameId(uint32_t frameId)
+int Sl_Inputs_Dx12::IndexForFrameId(uint32_t frameId) const
 {
     for (int i = 0; i < BUFFER_COUNT; i++)
     {
@@ -127,10 +127,22 @@ bool Sl_Inputs_Dx12::setConstants(const sl::Constants& values, uint32_t frameId)
 
         fgOutput->EvaluateState(State::Instance().currentD3D12Device, fgConstants);
 
-        if (!config->FGEnabled.value_or_default() || !fgOutput->IsActive() || fgOutput->IsPaused())
+        if (!config->FGEnabled.value_or_default())
         {
             LOG_TRACE("FG not active or paused");
             return true;
+        }
+        else
+        {
+            if (!fgOutput->IsActive() && !fgOutput->IsPaused())
+            {
+                fgOutput->Activate();
+            }
+            else if (!fgOutput->IsActive() || fgOutput->IsPaused())
+            {
+                LOG_TRACE("FG not active or paused");
+                return true;
+            }
         }
 
         // Frame data part
