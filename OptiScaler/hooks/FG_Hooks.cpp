@@ -81,13 +81,13 @@ HRESULT FGHooks::CreateSwapChain(IDXGIFactory* pFactory, IUnknown* pDevice, DXGI
         else if (State::Instance().activeFgOutput == FGOutput::XeFG)
             State::Instance().currentFG = new XeFG_Dx12();
     }
-    else
-    {
-        // Release swapchain if FG Feaeture is FSR-FG
-        // Because it can't recreate swapchain on exsiting one
-        if (State::Instance().activeFgOutput == FGOutput::FSRFG)
-            State::Instance().currentFG->ReleaseSwapchain(pDesc->OutputWindow);
-    }
+    // else
+    //{
+    //     // Release swapchain if FG Feaeture is FSR-FG
+    //     // Because it can't recreate swapchain on exsiting one
+    //     if (State::Instance().activeFgOutput == FGOutput::FSRFG)
+    //         State::Instance().currentFG->ReleaseSwapchain(pDesc->OutputWindow);
+    // }
 
     // Create FG swapchain
     auto fg = State::Instance().currentFG;
@@ -162,13 +162,13 @@ HRESULT FGHooks::CreateSwapChainForHwnd(IDXGIFactory* pFactory, IUnknown* pDevic
         else if (State::Instance().activeFgOutput == FGOutput::XeFG)
             State::Instance().currentFG = new XeFG_Dx12();
     }
-    else
-    {
-        // Release swapchain if FG Feaeture is FSR-FG
-        // Because it can't recreate swapchain on exsiting one
-        if (State::Instance().activeFgOutput == FGOutput::FSRFG)
-            State::Instance().currentFG->ReleaseSwapchain(hWnd);
-    }
+    // else
+    //{
+    //     // Release swapchain if FG Feaeture is FSR-FG
+    //     // Because it can't recreate swapchain on exsiting one
+    //     if (State::Instance().activeFgOutput == FGOutput::FSRFG)
+    //         State::Instance().currentFG->ReleaseSwapchain(hWnd);
+    // }
 
     // Create FG swapchain
     auto fg = State::Instance().currentFG;

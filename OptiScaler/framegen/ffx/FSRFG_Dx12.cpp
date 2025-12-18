@@ -611,6 +611,18 @@ bool FSRFG_Dx12::Shutdown()
 bool FSRFG_Dx12::CreateSwapchain(IDXGIFactory* factory, ID3D12CommandQueue* cmdQueue, DXGI_SWAP_CHAIN_DESC* desc,
                                  IDXGISwapChain** swapChain)
 {
+    if (State::Instance().currentFGSwapchain != nullptr && _hwnd == desc->OutputWindow)
+    {
+
+        LOG_WARN("XeFG swapchain already created for the same output window!");
+        auto result = State::Instance().currentFGSwapchain->ResizeBuffers(desc->BufferCount, desc->BufferDesc.Width,
+                                                                          desc->BufferDesc.Height,
+                                                                          desc->BufferDesc.Format, desc->Flags) == S_OK;
+
+        *swapChain = State::Instance().currentFGSwapchain;
+        return result;
+    }
+
     IDXGIFactory* realFactory = nullptr;
     ID3D12CommandQueue* realQueue = nullptr;
 
@@ -647,6 +659,17 @@ bool FSRFG_Dx12::CreateSwapchain1(IDXGIFactory* factory, ID3D12CommandQueue* cmd
                                   DXGI_SWAP_CHAIN_DESC1* desc, DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pFullscreenDesc,
                                   IDXGISwapChain1** swapChain)
 {
+    if (State::Instance().currentFGSwapchain != nullptr && _hwnd == hwnd)
+    {
+
+        LOG_WARN("XeFG swapchain already created for the same output window!");
+        auto result = State::Instance().currentFGSwapchain->ResizeBuffers(desc->BufferCount, desc->Width, desc->Height,
+                                                                          desc->Format, desc->Flags) == S_OK;
+
+        *swapChain = (IDXGISwapChain1*) State::Instance().currentFGSwapchain;
+        return result;
+    }
+
     IDXGIFactory* realFactory = nullptr;
     ID3D12CommandQueue* realQueue = nullptr;
 
