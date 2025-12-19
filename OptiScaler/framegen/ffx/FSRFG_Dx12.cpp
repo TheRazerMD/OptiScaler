@@ -4,7 +4,6 @@
 
 #include <hudfix/Hudfix_Dx12.h>
 #include <menu/menu_overlay_dx.h>
-#include <resource_tracking/ResTrack_dx12.h>
 
 #include <magic_enum.hpp>
 
@@ -308,17 +307,20 @@ bool FSRFG_Dx12::Dispatch()
 
     if (fgConfig.HUDLessColor.resource != nullptr)
     {
-        static auto localLastHudlessFormat = fgConfig.HUDLessColor.description.format;
+        static auto localLastHudlessFormatGroup =
+            GetFormatPrecisionGroup((FfxApiSurfaceFormat) fgConfig.HUDLessColor.description.format);
         _lastHudlessFormat = (FfxApiSurfaceFormat) fgConfig.HUDLessColor.description.format;
 
-        if (_lastHudlessFormat != localLastHudlessFormat)
+        auto lhFormatGroup = GetFormatPrecisionGroup(_lastHudlessFormat);
+
+        if (lhFormatGroup != localLastHudlessFormatGroup)
         {
             state.FGchanged = true;
             state.SCchanged = true;
             LOG_DEBUG("HUDLESS format changed, triggering FG reinit");
         }
 
-        localLastHudlessFormat = _lastHudlessFormat;
+        localLastHudlessFormatGroup = lhFormatGroup;
     }
 
     fgConfig.frameGenerationEnabled = _isActive;
@@ -531,9 +533,12 @@ ffxReturnCode_t FSRFG_Dx12::DispatchCallback(ffxDispatchDescFrameGeneration* par
         params->numGeneratedFrames = 0;
     }
 
-    if (_lastHudlessFormat != FFX_API_SURFACE_FORMAT_UNKNOWN &&
-        _lastHudlessFormat != params->presentColor.description.format &&
-        (_usingHudlessFormat == FFX_API_SURFACE_FORMAT_UNKNOWN || _usingHudlessFormat != _lastHudlessFormat))
+    auto scFormat = GetFormatPrecisionGroup((FfxApiSurfaceFormat) params->presentColor.description.format);
+    auto lhFormat = GetFormatPrecisionGroup(_lastHudlessFormat);
+    auto uhFormat = GetFormatPrecisionGroup(_usingHudlessFormat);
+
+    if (_lastHudlessFormat != FFX_API_SURFACE_FORMAT_UNKNOWN && lhFormat != scFormat &&
+        (_usingHudlessFormat == FFX_API_SURFACE_FORMAT_UNKNOWN || uhFormat != lhFormat))
     {
         LOG_DEBUG("Hudless format doesn't match, hudless: {}, present: {}", (uint32_t) _lastHudlessFormat,
                   params->presentColor.description.format);
@@ -749,8 +754,11 @@ void FSRFG_Dx12::CreateContext(ID3D12Device* device, FG_Constants& fgConstants)
 
     _constants = fgConstants;
 
+    auto lhFormat = GetFormatPrecisionGroup(_lastHudlessFormat);
+    auto uhFormat = GetFormatPrecisionGroup(_usingHudlessFormat);
+
     // Changing the format of the hudless resource requires a new context
-    if (_fgContext != nullptr && (_lastHudlessFormat != _usingHudlessFormat))
+    if (_fgContext != nullptr && (lhFormat != uhFormat))
     {
         auto result = FfxApiProxy::D3D12_DestroyContext(&_fgContext, nullptr);
         _fgContext = nullptr;
@@ -1175,6 +1183,7 @@ bool FSRFG_Dx12::SetResource(Dx12Resource* inputResource)
 
         auto hudlessFormatGroup = GetFormatPrecisionGroup(
             (FfxApiSurfaceFormat) ffxApiGetSurfaceFormatDX12(fResource->GetResource()->GetDesc().Format));
+
         auto scFormatGroup = GetFormatPrecisionGroup((FfxApiSurfaceFormat) ffxApiGetSurfaceFormatDX12(format));
 
         if (hudlessFormatGroup == -1 || scFormatGroup == -1 || hudlessFormatGroup != scFormatGroup)
@@ -1189,6 +1198,8 @@ bool FSRFG_Dx12::SetResource(Dx12Resource* inputResource)
             }
             else
             {
+                _lastHudlessFormat =
+                    (FfxApiSurfaceFormat) ffxApiGetSurfaceFormatDX12(fResource->GetResource()->GetDesc().Format);
                 fResource->validity = FG_ResourceValidity::UntilPresent;
             }
         }
