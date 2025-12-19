@@ -728,12 +728,16 @@ static void CheckWorkingMode()
 
             // Vulkan
             vulkanModule = GetDllNameWModule(&vkNamesW);
-            if ((State::Instance().isRunningOnDXVK || State::Instance().isRunningOnLinux) && vulkanModule == nullptr)
-                vulkanModule = NtdllProxy::LoadLibraryExW_Ldr(vkNamesW[0].c_str(), NULL, 0);
+            if (State::Instance().isRunningOnDXVK || State::Instance().isRunningOnLinux)
+            {
+                vulkanModule = NtdllProxy::LoadLibraryExW_Ldr(L"vulkan-1.dll", NULL, 0);
+                LOG_DEBUG("Loading vulkan-1.dll for Linux, result: {:X}", (size_t) vulkanModule);
+            }
 
             if (vulkanModule != nullptr)
             {
-                LOG_DEBUG("vulkan-1.dll already in memory");
+                if (!State::Instance().isRunningOnDXVK && !State::Instance().isRunningOnLinux)
+                    LOG_DEBUG("vulkan-1.dll already in memory");
 
                 VulkanSpoofing::HookForVulkanSpoofing(vulkanModule);
                 VulkanSpoofing::HookForVulkanExtensionSpoofing(vulkanModule);
@@ -1181,15 +1185,13 @@ static void CheckQuirks()
 
     // Apply config-level quirks
     if (quirks & GameQuirk::DisableHudfix && Config::Instance()->FGInput.value_or_default() == FGInput::Upscaler)
-    {
         Config::Instance()->FGHUDFix.set_volatile_value(false);
-    }
 
     if (quirks & GameQuirk::DisableFSR3Inputs && !Config::Instance()->EnableFsr3Inputs.has_value())
-        Config::Instance()->UseFsr3Inputs.set_volatile_value(false);
+        Config::Instance()->EnableFsr3Inputs.set_volatile_value(false);
 
     if (quirks & GameQuirk::DisableFSR2Inputs && !Config::Instance()->EnableFsr2Inputs.has_value())
-        Config::Instance()->UseFsr2Inputs.set_volatile_value(false);
+        Config::Instance()->EnableFsr2Inputs.set_volatile_value(false);
 
     if (quirks & GameQuirk::DisableFFXInputs && !Config::Instance()->EnableFfxInputs.has_value())
         Config::Instance()->EnableFfxInputs.set_volatile_value(false);
@@ -1221,11 +1223,15 @@ static void CheckQuirks()
 
     if (quirks & GameQuirk::EnableVulkanSpoofing && !State::Instance().isRunningOnNvidia &&
         !Config::Instance()->VulkanSpoofing.has_value())
+    {
         Config::Instance()->VulkanSpoofing.set_volatile_value(true);
+    }
 
     if (quirks & GameQuirk::EnableVulkanExtensionSpoofing && !State::Instance().isRunningOnNvidia &&
         !Config::Instance()->VulkanExtensionSpoofing.has_value())
+    {
         Config::Instance()->VulkanExtensionSpoofing.set_volatile_value(true);
+    }
 
     if (quirks & GameQuirk::DisableOptiXessPipelineCreation && !Config::Instance()->CreateHeaps.has_value() &&
         !Config::Instance()->BuildPipelines.has_value())
@@ -1257,7 +1263,9 @@ static void CheckQuirks()
 
     if (quirks & GameQuirk::AlwaysCaptureFSRFGSwapchain &&
         !Config::Instance()->FGAlwaysCaptureFSRFGSwapchain.has_value())
+    {
         Config::Instance()->FGAlwaysCaptureFSRFGSwapchain.set_volatile_value(true);
+    }
 
     if (quirks & GameQuirk::AllowedFrameAhead2 && !Config::Instance()->FGAllowedFrameAhead.has_value())
         Config::Instance()->FGAllowedFrameAhead.set_volatile_value(2);
@@ -1388,7 +1396,7 @@ bool isNvidia()
              std::string_view(desc) == std::string_view("DXVK_NVAPI")))
         {
             LOG_DEBUG("Using dxvk-nvapi");
-            DISPLAY_DEVICEA dd;
+            DISPLAY_DEVICEA dd = {};
             dd.cb = sizeof(dd);
             int deviceIndex = 0;
 
