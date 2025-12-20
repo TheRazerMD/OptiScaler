@@ -265,6 +265,19 @@ bool DLSSFeatureDx12::Evaluate(ID3D12GraphicsCommandList* InCommandList, NVSDK_N
     return true;
 }
 
+void DLSSFeatureDx12::Shutdown(ID3D12Device* InDevice)
+{
+    if (_dlssInited)
+    {
+        if (NVNGXProxy::D3D12_Shutdown() != nullptr)
+            NVNGXProxy::D3D12_Shutdown()();
+        else if (NVNGXProxy::D3D12_Shutdown1() != nullptr)
+            NVNGXProxy::D3D12_Shutdown1()(InDevice);
+    }
+
+    DLSSFeature::Shutdown();
+}
+
 DLSSFeatureDx12::DLSSFeatureDx12(unsigned int InHandleId, NVSDK_NGX_Parameter* InParameters)
     : IFeature(InHandleId, InParameters), IFeature_Dx12(InHandleId, InParameters), DLSSFeature(InHandleId, InParameters)
 {
