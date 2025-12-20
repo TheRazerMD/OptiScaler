@@ -6,6 +6,7 @@
 #include "proxies/NVNGX_Proxy.h"
 
 #include <upscalers/FeatureProvider_Dx12.h>
+#include "upscalers/dlss/DLSSFeature_Dx12.h"
 
 #include "FG/DLSSG_Mod.h"
 #include "FG/FSR3_Dx12_FG.h"
@@ -360,6 +361,7 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D12_Shutdown(void)
     // Unhooking and cleaning stuff causing issues during shutdown.
     // Disabled for now to check if it cause any issues
     // UnhookAll();
+    DLSSFeatureDx12::Shutdown(D3D12Device);
 
     // Added `&& !State::Instance().isShuttingDown` hack for crash on exit
     if (Config::Instance()->DLSSEnabled.value_or_default() && NVNGXProxy::IsDx12Inited() &&

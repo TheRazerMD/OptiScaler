@@ -215,6 +215,16 @@ DLSSFeature::DLSSFeature(unsigned int handleId, NVSDK_NGX_Parameter* InParameter
 
 DLSSFeature::~DLSSFeature() {}
 
+void DLSSFeature::Shutdown()
+{
+    LOG_FUNC();
+
+    if (NVNGXProxy::NVNGXModule() != nullptr)
+        UnhookApis();
+
+    LOG_FUNC_RESULT(0);
+}
+
 float DLSSFeature::GetSharpness(const NVSDK_NGX_Parameter* InParameters)
 {
     if (Config::Instance()->OverrideSharpness.value_or_default())

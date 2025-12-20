@@ -18,6 +18,7 @@ class DLSSFeature : public virtual IFeature
     void ProcessInitParams(NVSDK_NGX_Parameter* InParameters);
     void ReadVersion();
 
+    static void Shutdown();
     float GetSharpness(const NVSDK_NGX_Parameter* InParameters);
 
   public:
