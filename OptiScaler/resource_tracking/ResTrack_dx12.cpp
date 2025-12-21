@@ -110,9 +110,24 @@ static PFN_SetGraphicsRootDescriptorTable o_SetGraphicsRootDescriptorTable = nul
 static PFN_SetComputeRootDescriptorTable o_SetComputeRootDescriptorTable = nullptr;
 
 // heaps
+
+// #define USE_SPINLOCK_MUTEX_FOR_HEAP_CREATION
+
+#ifdef USE_SPINLOCK_MUTEX_FOR_HEAP_CREATION
 static SpinLock _heapCreationMutex;
+#else
+static std::mutex _heapCreationMutex;
+#endif
+
+#define USE_ATOMIC_INDEX
+
+#ifdef USE_ATOMIC_INDEX
 static std::atomic<UINT> fgHeapIndex { 0 };
-static std::unique_ptr<HeapInfo> fgHeaps[1000];
+#else
+static UINT fgHeapIndex = 0;
+#endif
+
+static std::unique_ptr<HeapInfo> fgHeaps[1000] = {};
 
 static std::set<void*> _notFoundCmdLists;
 static std::unordered_map<FG_ResourceType, void*> _resCmdList[BUFFER_COUNT];
@@ -253,12 +268,16 @@ void ResTrack_Dx12::ResourceBarrier(ID3D12GraphicsCommandList* InCommandList, ID
 
 SIZE_T ResTrack_Dx12::GetGPUHandle(ID3D12Device* This, SIZE_T cpuHandle, D3D12_DESCRIPTOR_HEAP_TYPE type)
 {
-    UINT count = fgHeapIndex.load(std::memory_order_acquire);
+#ifdef USE_ATOMIC_INDEX
+    UINT count = fgHeapIndex.load(std::memory_order_relaxed);
+#else
+    UINT count = fgHeapIndex;
+#endif
 
     for (UINT i = 0; i < count; i++)
     {
         auto val = fgHeaps[i].get();
-        if (val->active && val->cpuStart < cpuHandle && val->cpuEnd >= cpuHandle && val->gpuStart != 0)
+        if (val->active && val->cpuStart <= cpuHandle && val->cpuEnd > cpuHandle && val->gpuStart != 0)
         {
             auto incSize = This->GetDescriptorHandleIncrementSize(type);
             auto addr = cpuHandle - val->cpuStart;
@@ -274,12 +293,16 @@ SIZE_T ResTrack_Dx12::GetGPUHandle(ID3D12Device* This, SIZE_T cpuHandle, D3D12_D
 
 SIZE_T ResTrack_Dx12::GetCPUHandle(ID3D12Device* This, SIZE_T gpuHandle, D3D12_DESCRIPTOR_HEAP_TYPE type)
 {
-    UINT count = fgHeapIndex.load(std::memory_order_acquire);
+#ifdef USE_ATOMIC_INDEX
+    UINT count = fgHeapIndex.load(std::memory_order_relaxed);
+#else
+    UINT count = fgHeapIndex;
+#endif
 
     for (UINT i = 0; i < count; i++)
     {
         auto val = fgHeaps[i].get();
-        if (val->active && val->gpuStart < gpuHandle && val->gpuEnd >= gpuHandle && val->cpuStart != 0)
+        if (val->active && val->gpuStart <= gpuHandle && val->gpuEnd > gpuHandle && val->cpuStart != 0)
         {
             auto incSize = This->GetDescriptorHandleIncrementSize(type);
             auto addr = gpuHandle - val->gpuStart;
@@ -305,7 +328,11 @@ HeapInfo* ResTrack_Dx12::GetHeapByCpuHandleCBV(SIZE_T cpuHandle)
             return heapInfo;
     }
 
-    UINT count = fgHeapIndex.load(std::memory_order_acquire);
+#ifdef USE_ATOMIC_INDEX
+    UINT count = fgHeapIndex.load(std::memory_order_relaxed);
+#else
+    UINT count = fgHeapIndex;
+#endif
 
     for (UINT i = 0; i < count; i++)
     {
@@ -333,7 +360,11 @@ HeapInfo* ResTrack_Dx12::GetHeapByCpuHandleRTV(SIZE_T cpuHandle)
             return heapInfo;
     }
 
-    UINT count = fgHeapIndex.load(std::memory_order_acquire);
+#ifdef USE_ATOMIC_INDEX
+    UINT count = fgHeapIndex.load(std::memory_order_relaxed);
+#else
+    UINT count = fgHeapIndex;
+#endif
 
     for (UINT i = 0; i < count; i++)
     {
@@ -361,7 +392,11 @@ HeapInfo* ResTrack_Dx12::GetHeapByCpuHandleSRV(SIZE_T cpuHandle)
             return heapInfo;
     }
 
-    UINT count = fgHeapIndex.load(std::memory_order_acquire);
+#ifdef USE_ATOMIC_INDEX
+    UINT count = fgHeapIndex.load(std::memory_order_relaxed);
+#else
+    UINT count = fgHeapIndex;
+#endif
 
     for (UINT i = 0; i < count; i++)
     {
@@ -389,7 +424,11 @@ HeapInfo* ResTrack_Dx12::GetHeapByCpuHandleUAV(SIZE_T cpuHandle)
             return heapInfo;
     }
 
-    UINT count = fgHeapIndex.load(std::memory_order_acquire);
+#ifdef USE_ATOMIC_INDEX
+    UINT count = fgHeapIndex.load(std::memory_order_relaxed);
+#else
+    UINT count = fgHeapIndex;
+#endif
 
     for (UINT i = 0; i < count; i++)
     {
@@ -419,7 +458,11 @@ HeapInfo* ResTrack_Dx12::GetHeapByCpuHandle(SIZE_T cpuHandle)
         }
     }
 
-    UINT count = fgHeapIndex.load(std::memory_order_acquire);
+#ifdef USE_ATOMIC_INDEX
+    UINT count = fgHeapIndex.load(std::memory_order_relaxed);
+#else
+    UINT count = fgHeapIndex;
+#endif
 
     for (UINT i = 0; i < count; i++)
     {
@@ -449,7 +492,11 @@ HeapInfo* ResTrack_Dx12::GetHeapByGpuHandleGR(SIZE_T gpuHandle)
         }
     }
 
-    UINT count = fgHeapIndex.load(std::memory_order_acquire);
+#ifdef USE_ATOMIC_INDEX
+    UINT count = fgHeapIndex.load(std::memory_order_relaxed);
+#else
+    UINT count = fgHeapIndex;
+#endif
 
     for (UINT i = 0; i < count; i++)
     {
@@ -482,7 +529,11 @@ HeapInfo* ResTrack_Dx12::GetHeapByGpuHandleCR(SIZE_T gpuHandle)
         }
     }
 
-    UINT count = fgHeapIndex.load(std::memory_order_acquire);
+#ifdef USE_ATOMIC_INDEX
+    UINT count = fgHeapIndex.load(std::memory_order_relaxed);
+#else
+    UINT count = fgHeapIndex;
+#endif
 
     for (UINT i = 0; i < count; i++)
     {
@@ -810,7 +861,11 @@ static ULONG STDMETHODCALLTYPE hkHeapRelease(ID3D12DescriptorHeap* This)
     This->AddRef();
     if (o_HeapRelease(This) <= 1)
     {
-        UINT count = fgHeapIndex.load(std::memory_order_acquire);
+#ifdef USE_ATOMIC_INDEX
+        UINT count = fgHeapIndex.load(std::memory_order_relaxed);
+#else
+        UINT count = fgHeapIndex;
+#endif
 
         for (UINT i = 0; i < count; ++i)
         {
@@ -891,7 +946,11 @@ HRESULT ResTrack_Dx12::hkCreateDescriptorHeap(ID3D12Device* This, D3D12_DESCRIPT
         LOG_TRACE("Heap: {:X}, Heap type: {}, Cpu: {}-{}, Gpu: {}-{}, Desc count: {}", (size_t) *ppvHeap, type,
                   cpuStart, cpuEnd, gpuStart, gpuEnd, numDescriptors);
         {
+#ifdef USE_SPINLOCK_MUTEX_FOR_HEAP_CREATION
             std::lock_guard<SpinLock> lock(_heapCreationMutex);
+#else
+            std::lock_guard<std::mutex> lock(_heapCreationMutex);
+#endif
 
             fgHeaps[fgHeapIndex] = std::make_unique<HeapInfo>(heap, cpuStart, cpuEnd, gpuStart, gpuEnd, numDescriptors,
                                                               increment, type, fgHeapIndex);
@@ -1159,7 +1218,11 @@ void ResTrack_Dx12::hkSetGraphicsRootDescriptorTable(ID3D12GraphicsCommandList* 
         auto& shard = _hudlessShards[fIndex][shardIdx];
 
         {
+#ifdef USE_SPINLOCK_MUTEX
             std::lock_guard<SpinLock> lock(shard.mutex);
+#else
+            std::lock_guard<std::mutex> lock(shard.mutex);
+#endif
 
             if (!shard.map.contains(This))
             {
@@ -1258,7 +1321,11 @@ void ResTrack_Dx12::hkOMSetRenderTargets(ID3D12GraphicsCommandList* This, UINT N
             auto& shard = _hudlessShards[fIndex][shardIdx];
 
             {
+#ifdef USE_SPINLOCK_MUTEX
                 std::lock_guard<SpinLock> lock(shard.mutex);
+#else
+                std::lock_guard<std::mutex> lock(shard.mutex);
+#endif
 
                 if (!shard.map.contains(This))
                 {
@@ -1343,7 +1410,11 @@ void ResTrack_Dx12::hkSetComputeRootDescriptorTable(ID3D12GraphicsCommandList* T
         auto& shard = _hudlessShards[fIndex][shardIdx];
 
         {
+#ifdef USE_SPINLOCK_MUTEX
             std::lock_guard<SpinLock> lock(shard.mutex);
+#else
+            std::lock_guard<std::mutex> lock(shard.mutex);
+#endif
 
             if (!shard.map.contains(This))
             {
@@ -1386,7 +1457,11 @@ void ResTrack_Dx12::hkDrawInstanced(ID3D12GraphicsCommandList* This, UINT Vertex
     auto& shard = _hudlessShards[fIndex][shardIdx];
 
     {
+#ifdef USE_SPINLOCK_MUTEX
         std::lock_guard<SpinLock> lock(shard.mutex);
+#else
+        std::lock_guard<std::mutex> lock(shard.mutex);
+#endif
 
         if (This == MenuOverlayDx::MenuCommandList() && shard.map.contains(This))
         {
@@ -1448,7 +1523,11 @@ void ResTrack_Dx12::hkDrawIndexedInstanced(ID3D12GraphicsCommandList* This, UINT
     auto& shard = _hudlessShards[fIndex][shardIdx];
 
     {
+#ifdef USE_SPINLOCK_MUTEX
         std::lock_guard<SpinLock> lock(shard.mutex);
+#else
+        std::lock_guard<std::mutex> lock(shard.mutex);
+#endif
 
         if (This == MenuOverlayDx::MenuCommandList() && shard.map.contains(This))
         {
@@ -1582,7 +1661,11 @@ void ResTrack_Dx12::hkDispatch(ID3D12GraphicsCommandList* This, UINT ThreadGroup
     auto& shard = _hudlessShards[fIndex][shardIdx];
 
     {
+#ifdef USE_SPINLOCK_MUTEX
         std::lock_guard<SpinLock> lock(shard.mutex);
+#else
+        std::lock_guard<std::mutex> lock(shard.mutex);
+#endif
 
         if (This == MenuOverlayDx::MenuCommandList() && shard.map.contains(This))
         {
@@ -1938,7 +2021,13 @@ void ResTrack_Dx12::ClearPossibleHudless()
     for (size_t i = 0; i < SHARD_COUNT; i++)
     {
         auto& shard = _hudlessShards[hfIndex][i];
+
+#ifdef USE_SPINLOCK_MUTEX
         std::lock_guard<SpinLock> lock(shard.mutex);
+#else
+        std::lock_guard<std::mutex> lock(shard.mutex);
+#endif
+
         shard.map.clear();
     }
 

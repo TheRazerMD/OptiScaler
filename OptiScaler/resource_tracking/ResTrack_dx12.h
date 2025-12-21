@@ -32,12 +32,23 @@ static void TestResource(ResourceInfo* info)
 }
 #endif
 
+#define USE_SPINLOCK_MUTEX
+
+#ifdef USE_SPINLOCK_MUTEX
 #ifdef __cpp_lib_hardware_interference_size
 constexpr size_t CACHE_LINE_SIZE = std::hardware_destructive_interference_size;
 #else
 constexpr size_t CACHE_LINE_SIZE = 64;
 #endif
+#else
+#ifdef __cpp_lib_hardware_interference_size
+constexpr size_t CACHE_LINE_SIZE = std::hardware_destructive_interference_size * 2;
+#else
+constexpr size_t CACHE_LINE_SIZE = 128;
+#endif
+#endif
 
+#ifdef USE_SPINLOCK_MUTEX
 struct SpinLock
 {
     std::atomic<bool> _lock = { false };
@@ -65,9 +76,14 @@ struct SpinLock
 
     __forceinline void unlock() { _lock.store(false, std::memory_order_release); }
 };
+#endif
 
 static ankerl::unordered_dense::map<ID3D12Resource*, std::vector<ResourceInfo*>> _trackedResources;
+#ifdef USE_SPINLOCK_MUTEX
 static SpinLock _trackedResourcesMutex;
+#else
+static std::mutex _trackedResourcesMutex;
+#endif
 
 struct HeapInfo
 {
@@ -252,6 +268,7 @@ struct ResourceHeapInfo
     SIZE_T gpuStart = NULL;
 };
 
+#ifdef USE_SPINLOCK_MUTEX
 // Force each struct to start on a new cache line
 struct alignas(CACHE_LINE_SIZE) CommandListShard
 {
@@ -262,6 +279,17 @@ struct alignas(CACHE_LINE_SIZE) CommandListShard
 
     char padding[CACHE_LINE_SIZE - (sizeof(SpinLock) + sizeof(void*) % CACHE_LINE_SIZE)] = {};
 };
+#else
+struct alignas(CACHE_LINE_SIZE) CommandListShard
+{
+    std::mutex mutex;
+    ankerl::unordered_dense::map<ID3D12GraphicsCommandList*,
+                                 ankerl::unordered_dense::map<ID3D12Resource*, ResourceInfo>>
+        map;
+
+    char padding[CACHE_LINE_SIZE - (sizeof(std::mutex) + sizeof(void*) % CACHE_LINE_SIZE)] = {};
+};
+#endif
 
 class ResTrack_Dx12
 {
@@ -355,16 +383,18 @@ class ResTrack_Dx12
 
     static void FillResourceInfo(ID3D12Resource* resource, ResourceInfo* info);
 
-    // Sharding
+// Sharding
+#ifdef USE_SPINLOCK_MUTEX
     inline static constexpr size_t SHARD_COUNT = 16;
+#else
+    inline static constexpr size_t SHARD_COUNT = 16;
+#endif
 
     inline static CommandListShard _hudlessShards[BUFFER_COUNT][SHARD_COUNT];
 
-    // Shifts bits to ignore alignment (pointers are usually 8-byte aligned)
-    // and maps the pointer address to 0..63
-    static inline size_t GetShardIndex(ID3D12GraphicsCommandList* ptr)
+    inline static size_t GetShardIndex(ID3D12GraphicsCommandList* ptr)
     {
-        uintptr_t addr = reinterpret_cast<uintptr_t>(ptr);
+        auto addr = (UINT64) ptr;
         return (addr >> 4) % SHARD_COUNT;
     }
 
