@@ -113,6 +113,9 @@ Dx12Resource* IFGFeature_Dx12::GetResource(FG_ResourceType type, int index)
     if (index < 0)
         index = GetIndex();
 
+    if (!_frameResources[index].contains(type))
+        return nullptr;
+
     auto& currentIndex = _frameResources[index];
     if (auto it = currentIndex.find(type); it != currentIndex.end())
         return &it->second;
