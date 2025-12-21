@@ -594,8 +594,7 @@ void FSRFG_Dx12::DestroyFGContext()
         _fgContext = nullptr;
     }
 
-    if (State::Instance().isShuttingDown)
-        ReleaseObjects();
+    ReleaseObjects();
 }
 
 bool FSRFG_Dx12::Shutdown()

@@ -540,8 +540,7 @@ void XeFG_Dx12::DestroyFGContext()
     if (_fgContext != nullptr)
         _fgContext = nullptr;
 
-    if (State::Instance().isShuttingDown)
-        ReleaseObjects();
+    ReleaseObjects();
 }
 
 bool XeFG_Dx12::Shutdown()
