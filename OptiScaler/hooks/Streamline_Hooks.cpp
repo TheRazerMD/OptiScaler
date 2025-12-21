@@ -7,7 +7,7 @@
 #include <Config.h>
 #include <proxies/KernelBase_Proxy.h>
 #include <menu/menu_overlay_base.h>
-#include <nvapi/ReflexHooks.h>
+#include <hooks/Reflex_Hooks.h>
 #include <magic_enum.hpp>
 #include <sl1_reflex.h>
 #include <nvapi/fakenvapi.h>

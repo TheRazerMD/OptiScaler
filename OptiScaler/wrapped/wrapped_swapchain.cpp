@@ -4,7 +4,7 @@
 #include <Config.h>
 
 #include <nvapi/fakenvapi.h>
-#include <nvapi/ReflexHooks.h>
+#include <hooks/Reflex_Hooks.h>
 
 #include <menu/menu_overlay_dx.h>
 

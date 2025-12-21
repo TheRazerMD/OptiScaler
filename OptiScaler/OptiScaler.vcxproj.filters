@@ -170,7 +170,7 @@
     <ClInclude Include="nvapi\fakenvapi.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="nvapi\ReflexHooks.h">
+    <ClInclude Include="hooks\Reflex_Hooks.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="nvapi\NvApiHooks.h">
@@ -836,7 +836,7 @@
     <ClCompile Include="misc\FrameLimit.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="nvapi\ReflexHooks.cpp">
+    <ClCompile Include="hooks\Reflex_Hooks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="nvapi\NvApiTypes.cpp">

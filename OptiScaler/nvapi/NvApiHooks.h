@@ -1,6 +1,8 @@
 #pragma once
+
+#include <hooks/Reflex_Hooks.h>
+
 #include "NvApiTypes.h"
-#include "ReflexHooks.h"
 #include "fakenvapi.h"
 
 class NvApiHooks

@@ -8,7 +8,7 @@
 #include <upscaler_time/UpscalerTime_Vk.h>
 
 #include <misc/FrameLimit.h>
-#include <nvapi/ReflexHooks.h>
+#include "Reflex_Hooks.h"
 
 #include <vulkan/vulkan.hpp>
 

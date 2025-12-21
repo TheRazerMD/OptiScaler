@@ -1,7 +1,8 @@
-#include "ReflexHooks.h"
+#include "Reflex_Hooks.h"
 #include <Config.h>
 
-#include "fakenvapi.h"
+#include <nvapi/fakenvapi.h>
+
 #include <magic_enum.hpp>
 
 // #define LOG_REFLEX_CALLS

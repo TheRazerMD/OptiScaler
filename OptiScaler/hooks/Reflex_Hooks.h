@@ -1,7 +1,7 @@
 #pragma once
 
 #include <d3d12.h>
-#include "NvApiTypes.h"
+#include <nvapi/NvApiTypes.h>
 
 enum TimingType : uint32_t
 {

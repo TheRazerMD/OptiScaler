@@ -11,7 +11,7 @@
 #include <fsr4/FSR4Upgrade.h>
 
 #include <nvapi/fakenvapi.h>
-#include <nvapi/ReflexHooks.h>
+#include <hooks/Reflex_Hooks.h>
 
 #include <version_check.h>
 
