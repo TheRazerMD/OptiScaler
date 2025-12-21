@@ -165,19 +165,19 @@ FT_Dx12::FT_Dx12(std::string InName, ID3D12Device* InDevice, DXGI_FORMAT InForma
             InFormat == DXGI_FORMAT_R32G32B32_TYPELESS)
         {
             computePsoDesc.CS =
-                CD3DX12_SHADER_BYTECODE(reinterpret_cast<const void*>(r10g10b10a2_cso), sizeof(r10g10b10a2_cso));
+                CD3DX12_SHADER_BYTECODE(reinterpret_cast<const void*>(R10G10B10A2_cso), sizeof(R10G10B10A2_cso));
         }
         else if (InFormat == DXGI_FORMAT_R8G8B8A8_TYPELESS || InFormat == DXGI_FORMAT_R8G8B8A8_UNORM ||
                  InFormat == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB)
         {
             computePsoDesc.CS =
-                CD3DX12_SHADER_BYTECODE(reinterpret_cast<const void*>(r8g8b8a8_cso), sizeof(r8g8b8a8_cso));
+                CD3DX12_SHADER_BYTECODE(reinterpret_cast<const void*>(R8G8B8A8_cso), sizeof(R8G8B8A8_cso));
         }
         else if (InFormat == DXGI_FORMAT_B8G8R8A8_TYPELESS || InFormat == DXGI_FORMAT_B8G8R8A8_UNORM ||
                  InFormat == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB)
         {
             computePsoDesc.CS =
-                CD3DX12_SHADER_BYTECODE(reinterpret_cast<const void*>(b8r8g8a8_cso), sizeof(b8r8g8a8_cso));
+                CD3DX12_SHADER_BYTECODE(reinterpret_cast<const void*>(B8R8G8A8_cso), sizeof(B8R8G8A8_cso));
         }
         else
         {

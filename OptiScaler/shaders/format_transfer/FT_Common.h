@@ -8,7 +8,7 @@ Texture2D<float4> SourceTexture : register(t0);
 RWTexture2D<uint> DestinationTexture : register(u0); // R10G10B10A2_UNORM destination texture
 
 // Shader to perform the conversion
-[numthreads(512, 1, 1)]
+[numthreads(16, 16, 1)]
 void CSMain(uint3 dispatchThreadID : SV_DispatchThreadID)
 {
     // Read from the source texture
@@ -18,10 +18,10 @@ void CSMain(uint3 dispatchThreadID : SV_DispatchThreadID)
     srcColor = saturate(srcColor); // Ensures all values are between 0 and 1
 
     // Convert each channel to its corresponding bit range
-    uint R = (uint)(srcColor.r * 1023.0f); // 10 bits for Red
-    uint G = (uint)(srcColor.g * 1023.0f); // 10 bits for Green
-    uint B = (uint)(srcColor.b * 1023.0f); // 10 bits for Blue
-    uint A = (uint)(srcColor.a * 3.0f);    // 2 bits for Alpha
+    uint R = (uint)round(srcColor.r * 1023.0f); // 10 bits for Red
+    uint G = (uint)round(srcColor.g * 1023.0f); // 10 bits for Green
+    uint B = (uint)round(srcColor.b * 1023.0f); // 10 bits for Blue
+    uint A = (uint)round(srcColor.a * 3.0f);    // 2 bits for Alpha
 
     // Pack the values into a single 32-bit unsigned int
     uint packedColor = R | G << 10 | B << 20 | A << 30;
@@ -36,7 +36,7 @@ Texture2D<float4> SourceTexture : register(t0);
 RWTexture2D<uint> DestinationTexture : register(u0); // R8G8B8A8_UNORM destination texture
 
 // Shader to perform the conversion
-[numthreads(512, 1, 1)]
+[numthreads(16, 16, 1)]
 void CSMain(uint3 dispatchThreadID : SV_DispatchThreadID)
 {
     // Read from the source texture
@@ -46,10 +46,10 @@ void CSMain(uint3 dispatchThreadID : SV_DispatchThreadID)
     srcColor = saturate(srcColor); // Ensures all values are between 0 and 1
 
     // Convert each channel to its corresponding bit range
-    uint R = (uint)(srcColor.r * 255.0f); // 8 bits for Red
-    uint G = (uint)(srcColor.g * 255.0f); // 8 bits for Green
-    uint B = (uint)(srcColor.b * 255.0f); // 8 bits for Blue
-    uint A = (uint)(srcColor.a * 255.0f); // 8 bits for Alpha
+    uint R = (uint)round(srcColor.r * 255.0f); // 8 bits for Red
+    uint G = (uint)round(srcColor.g * 255.0f); // 8 bits for Green
+    uint B = (uint)round(srcColor.b * 255.0f); // 8 bits for Blue
+    uint A = (uint)round(srcColor.a * 255.0f); // 8 bits for Alpha
 
     // Pack the values into a single 32-bit unsigned int
     uint packedColor = R | G << 8 | B << 16 | A << 24;
@@ -64,7 +64,7 @@ Texture2D<float4> SourceTexture : register(t0);
 RWTexture2D<uint> DestinationTexture : register(u0); // B8R8G8A8_UNORM destination texture
 
 // Shader to perform the conversion
-[numthreads(512, 1, 1)]
+[numthreads(16, 16, 1)]
 void CSMain(uint3 dispatchThreadID : SV_DispatchThreadID)
 {
     // Read from the source texture
@@ -74,10 +74,10 @@ void CSMain(uint3 dispatchThreadID : SV_DispatchThreadID)
     srcColor = saturate(srcColor); // Ensures all values are between 0 and 1
 
     // Convert each channel to its corresponding bit range
-    uint R = (uint)(srcColor.r * 255.0f); // 8 bits for Red
-    uint G = (uint)(srcColor.g * 255.0f); // 8 bits for Green
-    uint B = (uint)(srcColor.b * 255.0f); // 8 bits for Blue
-    uint A = (uint)(srcColor.a * 255.0f); // 8 bits for Alpha
+    uint R = (uint)round(srcColor.r * 255.0f); // 8 bits for Red
+    uint G = (uint)round(srcColor.g * 255.0f); // 8 bits for Green
+    uint B = (uint)round(srcColor.b * 255.0f); // 8 bits for Blue
+    uint A = (uint)round(srcColor.a * 255.0f); // 8 bits for Alpha
 
     // Pack the values into a single 32-bit unsigned int
     uint packedColor = B | R << 8 | G << 16 | A << 24;

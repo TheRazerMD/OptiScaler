@@ -21,8 +21,8 @@ class FT_Dx12 : public Shader_Dx12
     uint32_t bufferWidth = 0;
     uint32_t bufferHeight = 0;
 
-    uint32_t InNumThreadsX = 512;
-    uint32_t InNumThreadsY = 1;
+    uint32_t InNumThreadsX = 16;
+    uint32_t InNumThreadsY = 16;
 
   public:
     bool CreateBufferResource(ID3D12Device* InDevice, ID3D12Resource* InSource, D3D12_RESOURCE_STATES InState);
