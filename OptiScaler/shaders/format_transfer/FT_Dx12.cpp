@@ -15,7 +15,7 @@ bool FT_Dx12::CreateBufferResource(ID3D12Device* InDevice, ID3D12Resource* InSou
 
     auto resourceFlags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
-    auto result = Shader_Dx12::CreateBufferResource(InDevice, InSource, InState, &_buffer, resourceFlags);
+    auto result = Shader_Dx12::CreateBufferResource(InDevice, InSource, InState, &_buffer, resourceFlags, 0, 0, format);
 
     if (result)
     {
@@ -74,8 +74,8 @@ bool FT_Dx12::Dispatch(ID3D12Device* InDevice, ID3D12GraphicsCommandList* InCmdL
     UINT dispatchWidth = 0;
     UINT dispatchHeight = 0;
 
-    dispatchWidth = static_cast<UINT>((bufferWidth + InNumThreadsX - 1) / InNumThreadsX);
-    dispatchHeight = (bufferHeight + InNumThreadsY - 1) / InNumThreadsY;
+    dispatchWidth = static_cast<UINT>((inDesc.Width + InNumThreadsX - 1) / InNumThreadsX);
+    dispatchHeight = (inDesc.Height + InNumThreadsY - 1) / InNumThreadsY;
 
     InCmdList->Dispatch(dispatchWidth, dispatchHeight, 1);
 
