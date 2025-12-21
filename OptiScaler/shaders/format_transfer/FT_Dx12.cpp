@@ -2,20 +2,52 @@
 
 #include "FT_Common.h"
 
-#include "precompile/R10G10B10A2_Shader.h"
-#include "precompile/R8G8B8A8_Shader.h"
-#include "precompile/B8R8G8A8_Shader.h"
+#include "precompile/FT_Shader.h"
 
 #include <Config.h>
 
+#include <magic_enum.hpp>
+
+static DXGI_FORMAT GetCreateFormat(DXGI_FORMAT fmt)
+{
+    switch (fmt)
+    {
+    // Common UNORM 8-bit
+    case DXGI_FORMAT_R8G8B8A8_UNORM:
+    case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+        return DXGI_FORMAT_R8G8B8A8_TYPELESS;
+
+    case DXGI_FORMAT_B8G8R8A8_UNORM:
+    case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
+        return DXGI_FORMAT_B8G8R8A8_TYPELESS;
+
+    // 10:10:10:2
+    case DXGI_FORMAT_R10G10B10A2_UNORM:
+        return DXGI_FORMAT_R10G10B10A2_TYPELESS;
+    }
+
+    return fmt;
+}
+
 bool FT_Dx12::CreateBufferResource(ID3D12Device* InDevice, ID3D12Resource* InSource, D3D12_RESOURCE_STATES InState)
 {
+    DXGI_FORMAT createFormat;
     if (InSource != nullptr)
-        LOG_INFO("Texture Format: {}", (UINT) InSource->GetDesc().Format);
+    {
+        auto inFormat = InSource->GetDesc().Format;
+        createFormat = format;
+        LOG_INFO("Input Format: {}, Create Format: {}", magic_enum::enum_name(inFormat),
+                 magic_enum::enum_name(createFormat));
+    }
+    else
+    {
+        return false;
+    }
 
     auto resourceFlags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
-    auto result = Shader_Dx12::CreateBufferResource(InDevice, InSource, InState, &_buffer, resourceFlags, 0, 0, format);
+    auto result =
+        Shader_Dx12::CreateBufferResource(InDevice, InSource, InState, &_buffer, resourceFlags, 0, 0, createFormat);
 
     if (result)
     {
@@ -58,7 +90,7 @@ bool FT_Dx12::Dispatch(ID3D12Device* InDevice, ID3D12GraphicsCommandList* InCmdL
 
     // Create UAV for Output Texture
     D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-    uavDesc.Format = DXGI_FORMAT_R32_UINT;
+    uavDesc.Format = Shader_Dx12::TranslateTypelessFormats(outDesc.Format);
     uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
     uavDesc.Texture2D.MipSlice = 0;
     InDevice->CreateUnorderedAccessView(OutResource, nullptr, &uavDesc, currentHeap.GetUavCPU(0));
@@ -158,32 +190,7 @@ FT_Dx12::FT_Dx12(std::string InName, ID3D12Device* InDevice, DXGI_FORMAT InForma
         computePsoDesc.pRootSignature = _rootSignature;
         computePsoDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
 
-        if (InFormat == DXGI_FORMAT_R10G10B10A2_UNORM || InFormat == DXGI_FORMAT_R10G10B10A2_TYPELESS ||
-            InFormat == DXGI_FORMAT_R16G16B16A16_FLOAT || InFormat == DXGI_FORMAT_R16G16B16A16_TYPELESS ||
-            InFormat == DXGI_FORMAT_R11G11B10_FLOAT || InFormat == DXGI_FORMAT_R32G32B32A32_FLOAT ||
-            InFormat == DXGI_FORMAT_R32G32B32A32_TYPELESS || InFormat == DXGI_FORMAT_R32G32B32_FLOAT ||
-            InFormat == DXGI_FORMAT_R32G32B32_TYPELESS)
-        {
-            computePsoDesc.CS =
-                CD3DX12_SHADER_BYTECODE(reinterpret_cast<const void*>(R10G10B10A2_cso), sizeof(R10G10B10A2_cso));
-        }
-        else if (InFormat == DXGI_FORMAT_R8G8B8A8_TYPELESS || InFormat == DXGI_FORMAT_R8G8B8A8_UNORM ||
-                 InFormat == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB)
-        {
-            computePsoDesc.CS =
-                CD3DX12_SHADER_BYTECODE(reinterpret_cast<const void*>(R8G8B8A8_cso), sizeof(R8G8B8A8_cso));
-        }
-        else if (InFormat == DXGI_FORMAT_B8G8R8A8_TYPELESS || InFormat == DXGI_FORMAT_B8G8R8A8_UNORM ||
-                 InFormat == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB)
-        {
-            computePsoDesc.CS =
-                CD3DX12_SHADER_BYTECODE(reinterpret_cast<const void*>(B8R8G8A8_cso), sizeof(B8R8G8A8_cso));
-        }
-        else
-        {
-            LOG_ERROR("[{0}] texture format is not found!", _name);
-            return;
-        }
+        computePsoDesc.CS = CD3DX12_SHADER_BYTECODE(reinterpret_cast<const void*>(FT_cso), sizeof(FT_cso));
 
         auto hr = InDevice->CreateComputePipelineState(&computePsoDesc, __uuidof(ID3D12PipelineState*),
                                                        (void**) &_pipelineState);
@@ -196,23 +203,7 @@ FT_Dx12::FT_Dx12(std::string InName, ID3D12Device* InDevice, DXGI_FORMAT InForma
     }
     else
     {
-        if (InFormat == DXGI_FORMAT_R10G10B10A2_UNORM)
-        {
-            _recEncodeShader = FT_CompileShader(ftR10G10B10A2Code.c_str(), "CSMain", "cs_5_0");
-        }
-        else if (InFormat == DXGI_FORMAT_R8G8B8A8_UNORM || InFormat == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB)
-        {
-            _recEncodeShader = FT_CompileShader(ftR8G8B8A8Code.c_str(), "CSMain", "cs_5_0");
-        }
-        else if (InFormat == DXGI_FORMAT_B8G8R8A8_UNORM)
-        {
-            _recEncodeShader = FT_CompileShader(ftB8G8R8A8Code.c_str(), "CSMain", "cs_5_0");
-        }
-        else
-        {
-            LOG_ERROR("[{0}] texture format is not found!", _name);
-            return;
-        }
+        _recEncodeShader = FT_CompileShader(FT_ShaderCode.c_str(), "CSMain", "cs_5_0");
 
         if (_recEncodeShader == nullptr)
         {
@@ -254,22 +245,8 @@ FT_Dx12::FT_Dx12(std::string InName, ID3D12Device* InDevice, DXGI_FORMAT InForma
 
 bool FT_Dx12::IsFormatCompatible(DXGI_FORMAT InFormat)
 {
-    if (format == DXGI_FORMAT_R10G10B10A2_UNORM || format == DXGI_FORMAT_R10G10B10A2_TYPELESS)
-    {
-        return InFormat == DXGI_FORMAT_R10G10B10A2_UNORM || InFormat == DXGI_FORMAT_R10G10B10A2_TYPELESS;
-    }
-    else if (format == DXGI_FORMAT_R8G8B8A8_UNORM || format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB ||
-             format == DXGI_FORMAT_R8G8B8A8_TYPELESS)
-    {
-        return InFormat == DXGI_FORMAT_R8G8B8A8_UNORM || InFormat == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB ||
-               InFormat == DXGI_FORMAT_R8G8B8A8_TYPELESS;
-    }
-    else if (format == DXGI_FORMAT_B8G8R8A8_UNORM)
-    {
-        return InFormat == DXGI_FORMAT_B8G8R8A8_UNORM;
-    }
-
-    return false;
+    // Bold move: accept all formats
+    return true;
 }
 
 FT_Dx12::~FT_Dx12()
