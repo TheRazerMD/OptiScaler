@@ -549,6 +549,9 @@ void MenuOverlayDx::CleanupRenderTarget(bool clearQueue, HWND hWnd)
 void MenuOverlayDx::Present(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags,
                             const DXGI_PRESENT_PARAMETERS* pPresentParameters, IUnknown* pDevice, HWND hWnd, bool isUWP)
 {
+    if (!Config::Instance()->OverlayMenu.value_or_default())
+        return;
+
     LOG_DEBUG("");
 
     ID3D12CommandQueue* cq = nullptr;
