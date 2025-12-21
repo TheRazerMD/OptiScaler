@@ -329,30 +329,19 @@ bool Hudfix_Dx12::CheckResource(ResourceInfo* resource)
         return false;
     }
 
-    // resource and target formats are supported by converter
-    if ((resDesc.Format == DXGI_FORMAT_R10G10B10A2_UNORM || resDesc.Format == DXGI_FORMAT_R10G10B10A2_TYPELESS ||
-         resDesc.Format == DXGI_FORMAT_R16G16B16A16_FLOAT || resDesc.Format == DXGI_FORMAT_R16G16B16A16_TYPELESS ||
-         resDesc.Format == DXGI_FORMAT_R11G11B10_FLOAT || resDesc.Format == DXGI_FORMAT_R32G32B32A32_FLOAT ||
-         resDesc.Format == DXGI_FORMAT_R32G32B32A32_TYPELESS || resDesc.Format == DXGI_FORMAT_R32G32B32_FLOAT ||
-         resDesc.Format == DXGI_FORMAT_R32G32B32_TYPELESS || resDesc.Format == DXGI_FORMAT_R8G8B8A8_TYPELESS ||
-         resDesc.Format == DXGI_FORMAT_R8G8B8A8_UNORM || resDesc.Format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB ||
-         resDesc.Format == DXGI_FORMAT_B8G8R8A8_TYPELESS || resDesc.Format == DXGI_FORMAT_B8G8R8A8_UNORM ||
-         resDesc.Format == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB) &&
-        (s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_R10G10B10A2_UNORM ||
-         s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_R10G10B10A2_TYPELESS ||
-         s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_R16G16B16A16_FLOAT ||
-         s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_R16G16B16A16_TYPELESS ||
-         s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_R11G11B10_FLOAT ||
-         s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_R32G32B32A32_FLOAT ||
-         s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_R32G32B32A32_TYPELESS ||
-         s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_R32G32B32_FLOAT ||
-         s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_R32G32B32_TYPELESS ||
-         s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_R8G8B8A8_TYPELESS ||
-         s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_R8G8B8A8_UNORM ||
-         s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB ||
-         s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_B8G8R8A8_TYPELESS ||
-         s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_B8G8R8A8_UNORM ||
-         s.currentSwapchainDesc.BufferDesc.Format == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB))
+    // resource format is one of supported formats
+    if (resDesc.Format == DXGI_FORMAT_R32G32B32A32_TYPELESS || resDesc.Format == DXGI_FORMAT_R32G32B32A32_FLOAT ||
+        resDesc.Format == DXGI_FORMAT_R32G32B32A32_UINT || resDesc.Format == DXGI_FORMAT_R32G32B32A32_SINT ||
+        resDesc.Format == DXGI_FORMAT_R32G32B32_TYPELESS || resDesc.Format == DXGI_FORMAT_R32G32B32_FLOAT ||
+        resDesc.Format == DXGI_FORMAT_R32G32B32_UINT || resDesc.Format == DXGI_FORMAT_R32G32B32_SINT ||
+        resDesc.Format == DXGI_FORMAT_R16G16B16A16_TYPELESS || resDesc.Format == DXGI_FORMAT_R16G16B16A16_FLOAT ||
+        resDesc.Format == DXGI_FORMAT_R16G16B16A16_UNORM || resDesc.Format == DXGI_FORMAT_R16G16B16A16_UINT ||
+        resDesc.Format == DXGI_FORMAT_R16G16B16A16_SNORM || resDesc.Format == DXGI_FORMAT_R16G16B16A16_SINT ||
+        resDesc.Format == DXGI_FORMAT_R10G10B10A2_TYPELESS || resDesc.Format == DXGI_FORMAT_R10G10B10A2_UNORM ||
+        resDesc.Format == DXGI_FORMAT_R10G10B10A2_UINT || resDesc.Format == DXGI_FORMAT_R11G11B10_FLOAT ||
+        resDesc.Format == DXGI_FORMAT_R8G8B8A8_TYPELESS || resDesc.Format == DXGI_FORMAT_R8G8B8A8_UNORM ||
+        resDesc.Format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB || resDesc.Format == DXGI_FORMAT_R8G8B8A8_UINT ||
+        resDesc.Format == DXGI_FORMAT_R8G8B8A8_SNORM || resDesc.Format == DXGI_FORMAT_R8G8B8A8_SINT)
     {
         LOG_DEBUG("{}->{} Width: {}/{}, Height: {}/{}, Format: {}/{}, Resource: {:X}, convertFormat: {} -> TRUE",
                   GetSourceString(source), GetDispatchString(dispatcher), resDesc.Width, width, resDesc.Height, height,
@@ -740,23 +729,35 @@ bool Hudfix_Dx12::CheckForHudless(ID3D12GraphicsCommandList* cmdList, ResourceIn
                 _formatTransfer[fIndex] =
                     new FT_Dx12("FormatTransfer", s.currentD3D12Device, s.currentSwapchainDesc.BufferDesc.Format);
                 s.skipHeapCapture = false;
+                break;
             }
 
-            if (_formatTransfer[fIndex] != nullptr &&
-                _formatTransfer[fIndex]->CreateBufferResource(s.currentD3D12Device, _captureBuffer[fIndex],
-                                                              D3D12_RESOURCE_STATE_UNORDERED_ACCESS))
+            if (_formatTransfer[fIndex] != nullptr)
             {
+                auto buffer = _formatTransfer[fIndex]->Buffer();
+                if (!_formatTransfer[fIndex]->CreateBufferResource(s.currentD3D12Device, _captureBuffer[fIndex],
+                                                                   D3D12_RESOURCE_STATE_UNORDERED_ACCESS))
+                {
+                    _captureCounter[fIndex]--;
+                    break;
+                }
+
+                if (buffer != _formatTransfer[fIndex]->Buffer())
+                    break;
+
+                auto fgCmdList = s.currentFG->GetUICommandList();
+
                 // This will prevent resource tracker to check these operations
                 // Will reset after FG dispatch
                 _skipHudlessChecks = true;
 
-                ResourceBarrier(cmdList, _captureBuffer[fIndex], D3D12_RESOURCE_STATE_COPY_DEST,
+                ResourceBarrier(fgCmdList, _captureBuffer[fIndex], D3D12_RESOURCE_STATE_COPY_DEST,
                                 D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-                _formatTransfer[fIndex]->Dispatch(s.currentD3D12Device, cmdList, _captureBuffer[fIndex],
+                _formatTransfer[fIndex]->Dispatch(s.currentD3D12Device, fgCmdList, _captureBuffer[fIndex],
                                                   _formatTransfer[fIndex]->Buffer());
 
-                ResourceBarrier(cmdList, _captureBuffer[fIndex], D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+                ResourceBarrier(fgCmdList, _captureBuffer[fIndex], D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
                                 D3D12_RESOURCE_STATE_COPY_DEST);
 
                 LOG_TRACE("Using _formatTransfer->Buffer()");
