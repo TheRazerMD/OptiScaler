@@ -5744,6 +5744,7 @@ void MenuCommon::Shutdown()
 
     ImGui::DestroyContext();
 
+    _handle = nullptr;
     _isInited = false;
     _isVisible = false;
 }
