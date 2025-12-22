@@ -10,7 +10,7 @@ void Sl_Inputs_Dx12::CheckForFrame(IFGFeature_Dx12* fg, uint32_t frameId)
 {
     std::scoped_lock lock(_frameBoundaryMutex);
 
-    if (_isFrameFinished && _lastFrameId == _currentFrameId && frameId != _currentFrameId)
+    if (_isFrameFinished && _lastFrameId == _currentFrameId && frameId == 0 && frameId != _currentFrameId)
     {
         LOG_DEBUG("1> CheckForFrame: frameId={}, currentFrameId={}, lastFrameId={}, isFrameFinished={}", frameId,
                   _currentFrameId, _lastFrameId, _isFrameFinished);
@@ -32,10 +32,12 @@ void Sl_Inputs_Dx12::CheckForFrame(IFGFeature_Dx12* fg, uint32_t frameId)
         LOG_DEBUG("2> CheckForFrame: frameId={}, currentFrameId={}, lastFrameId={}, isFrameFinished={}", frameId,
                   _currentFrameId, _lastFrameId, _isFrameFinished);
 
+        _isFrameFinished = false;
+        _lastFrameId = frameId - 1;
+
         fg->StartNewFrame();
         _currentIndex = fg->GetIndex();
         _currentFrameId = frameId;
-        _lastFrameId = frameId - 1;
         _frameIdIndex[_currentIndex] = _currentFrameId;
     }
 }
@@ -335,7 +337,7 @@ bool Sl_Inputs_Dx12::reportResource(const sl::ResourceTag& tag, ID3D12GraphicsCo
     }
     else
     {
-        res.frameIndex = _currentIndex;
+        res.frameIndex = -1;
     }
 
     bool handled = true;
@@ -344,11 +346,27 @@ bool Sl_Inputs_Dx12::reportResource(const sl::ResourceTag& tag, ID3D12GraphicsCo
     if (tag.type == sl::kBufferTypeDepth || tag.type == sl::kBufferTypeHiResDepth ||
         tag.type == sl::kBufferTypeLinearDepth)
     {
+        if (res.frameIndex < 0)
+        {
+            res.frameIndex = fgOutput->GetIndexWillBeDispatched();
+
+            if (fgOutput->HasResource(FG_ResourceType::Depth, res.frameIndex))
+                res.frameIndex = fgOutput->GetIndex();
+        }
+
         res.type = FG_ResourceType::Depth;
         fgOutput->SetResource(&res);
     }
     else if (tag.type == sl::kBufferTypeMotionVectors)
     {
+        if (res.frameIndex < 0)
+        {
+            res.frameIndex = fgOutput->GetIndexWillBeDispatched();
+
+            if (fgOutput->HasResource(FG_ResourceType::Velocity, res.frameIndex))
+                res.frameIndex = fgOutput->GetIndex();
+        }
+
         res.type = FG_ResourceType::Velocity;
         mvsWidth = res.width; // Track locally for dispatch logic
         mvsHeight = res.height;
@@ -356,6 +374,14 @@ bool Sl_Inputs_Dx12::reportResource(const sl::ResourceTag& tag, ID3D12GraphicsCo
     }
     else if (tag.type == sl::kBufferTypeHUDLessColor)
     {
+        if (res.frameIndex < 0)
+        {
+            res.frameIndex = fgOutput->GetIndexWillBeDispatched();
+
+            if (fgOutput->HasResource(FG_ResourceType::HudlessColor, res.frameIndex))
+                res.frameIndex = fgOutput->GetIndex();
+        }
+
         res.type = FG_ResourceType::HudlessColor;
 
         fgOutput->SetInterpolationRect(res.width, res.height);
@@ -363,6 +389,14 @@ bool Sl_Inputs_Dx12::reportResource(const sl::ResourceTag& tag, ID3D12GraphicsCo
     }
     else if (tag.type == sl::kBufferTypeUIColorAndAlpha)
     {
+        if (res.frameIndex < 0)
+        {
+            res.frameIndex = fgOutput->GetIndexWillBeDispatched();
+
+            if (fgOutput->HasResource(FG_ResourceType::UIColor, res.frameIndex))
+                res.frameIndex = fgOutput->GetIndex();
+        }
+
         res.type = FG_ResourceType::UIColor;
 
         // Fallback size logic
