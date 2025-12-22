@@ -96,6 +96,9 @@ static const QuirkEntry quirkTable[] = {
     QUIRK_ENTRY("tlou-i.exe", GameQuirk::AllowedFrameAhead2),
     QUIRK_ENTRY("tlou-i-l.exe", GameQuirk::AllowedFrameAhead2),
 
+    // Horizon Forbidden West
+    QUIRK_ENTRY("horizonforbiddenwest.exe", GameQuirk::AllowedFrameAhead2),
+
     // Crapcom Games, DLSS without dxgi spoofing needs restore compute in those
     //
     // Kunitsu-Gami: Path of the Goddess, Monster Hunter Wilds, MONSTER HUNTER RISE, Dead Rising Deluxe Remaster
