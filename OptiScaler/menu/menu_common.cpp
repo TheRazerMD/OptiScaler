@@ -2421,7 +2421,7 @@ bool MenuCommon::RenderMenu()
                         config->Dx11Upscaler.value_or_default() != "fsr31")
                     {
                         ImGui::Spacing();
-                        if (ImGui::CollapsingHeader("Dx11 with Dx12 Settings"))
+                        if (auto ch = ScopedCollapsingHeader("Dx11 with Dx12 Settings"); ch.IsHeaderOpen())
                         {
                             ScopedIndent indent {};
                             ImGui::Spacing();
@@ -2441,7 +2441,7 @@ bool MenuCommon::RenderMenu()
                     if (currentBackend == "xess" && state.currentFeature->Name() != "DLSSD")
                     {
                         ImGui::Spacing();
-                        if (ImGui::CollapsingHeader("XeSS Settings"))
+                        if (auto ch = ScopedCollapsingHeader("XeSS Settings"); ch.IsHeaderOpen())
                         {
                             ScopedIndent indent {};
                             ImGui::Spacing();
@@ -2738,70 +2738,72 @@ bool MenuCommon::RenderMenu()
                             }
 
                             if (currentFeature->Version() >= feature_version { 3, 1, 1 } &&
-                                currentFeature->Version() < feature_version { 4, 0, 0 } &&
-                                ImGui::CollapsingHeader("FSR 3 Upscaler Fine Tuning"))
+                                currentFeature->Version() < feature_version { 4, 0, 0 })
                             {
-                                ScopedIndent indent {};
-                                ImGui::Spacing();
-                                ImGui::Spacing();
-
-                                ImGui::PushItemWidth(220.0f * config->MenuScale.value_or_default());
-
-                                float velocity = config->FsrVelocity.value_or_default();
-                                if (ImGui::SliderFloat("Velocity Factor", &velocity, 0.00f, 1.0f, "%.2f"))
-                                    config->FsrVelocity = velocity;
-
-                                ShowHelpMarker("Value of 0.0f can improve temporal stability of bright pixels\n"
-                                               "Lower values are more stable with ghosting\n"
-                                               "Higher values are more pixelly but less ghosting.");
-
-                                if (currentFeature->Version() >= feature_version { 3, 1, 4 })
+                                if (auto ch = ScopedCollapsingHeader("FSR 3 Upscaler Fine Tuning"); ch.IsHeaderOpen())
                                 {
-                                    // Reactive Scale
-                                    float reactiveScale = config->FsrReactiveScale.value_or_default();
-                                    if (ImGui::SliderFloat("Reactive Scale", &reactiveScale, 0.0f, 100.0f, "%.1f"))
-                                        config->FsrReactiveScale = reactiveScale;
+                                    ScopedIndent indent {};
+                                    ImGui::Spacing();
+                                    ImGui::Spacing();
 
-                                    ShowHelpMarker("Meant for development purpose to test if\n"
-                                                   "writing a larger value to reactive mask, reduces ghosting.");
+                                    ImGui::PushItemWidth(220.0f * config->MenuScale.value_or_default());
 
-                                    // Shading Scale
-                                    float shadingScale = config->FsrShadingScale.value_or_default();
-                                    if (ImGui::SliderFloat("Shading Scale", &shadingScale, 0.0f, 100.0f, "%.1f"))
-                                        config->FsrShadingScale = shadingScale;
+                                    float velocity = config->FsrVelocity.value_or_default();
+                                    if (ImGui::SliderFloat("Velocity Factor", &velocity, 0.00f, 1.0f, "%.2f"))
+                                        config->FsrVelocity = velocity;
 
-                                    ShowHelpMarker("Increasing this scales fsr3.1 computed shading\n"
-                                                   "change value at read to have higher reactiveness.");
+                                    ShowHelpMarker("Value of 0.0f can improve temporal stability of bright pixels\n"
+                                                   "Lower values are more stable with ghosting\n"
+                                                   "Higher values are more pixelly but less ghosting.");
 
-                                    // Accumulation Added Per Frame
-                                    float accAddPerFrame = config->FsrAccAddPerFrame.value_or_default();
-                                    if (ImGui::SliderFloat("Acc. Added Per Frame", &accAddPerFrame, 0.00f, 1.0f,
-                                                           "%.2f"))
-                                        config->FsrAccAddPerFrame = accAddPerFrame;
+                                    if (currentFeature->Version() >= feature_version { 3, 1, 4 })
+                                    {
+                                        // Reactive Scale
+                                        float reactiveScale = config->FsrReactiveScale.value_or_default();
+                                        if (ImGui::SliderFloat("Reactive Scale", &reactiveScale, 0.0f, 100.0f, "%.1f"))
+                                            config->FsrReactiveScale = reactiveScale;
 
-                                    ShowHelpMarker(
-                                        "Corresponds to amount of accumulation added per frame\n"
-                                        "at pixel coordinate where disocclusion occured or when\n"
-                                        "reactive mask value is > 0.0f. Decreasing this and \n"
-                                        "drawing the ghosting object (IE no mv) to reactive mask \n"
-                                        "with value close to 1.0f can decrease temporal ghosting.\n"
-                                        "Decreasing this could result in more thin feature pixels flickering.");
+                                        ShowHelpMarker("Meant for development purpose to test if\n"
+                                                       "writing a larger value to reactive mask, reduces ghosting.");
 
-                                    // Min Disocclusion Accumulation
-                                    float minDisOccAcc = config->FsrMinDisOccAcc.value_or_default();
-                                    if (ImGui::SliderFloat("Min. Disocclusion Acc.", &minDisOccAcc, -1.0f, 1.0f,
-                                                           "%.2f"))
-                                        config->FsrMinDisOccAcc = minDisOccAcc;
+                                        // Shading Scale
+                                        float shadingScale = config->FsrShadingScale.value_or_default();
+                                        if (ImGui::SliderFloat("Shading Scale", &shadingScale, 0.0f, 100.0f, "%.1f"))
+                                            config->FsrShadingScale = shadingScale;
 
-                                    ShowHelpMarker("Increasing this value may reduce white pixel temporal\n"
-                                                   "flickering around swaying thin objects that are disoccluding \n"
-                                                   "one another often. Too high value may increase ghosting.");
+                                        ShowHelpMarker("Increasing this scales fsr3.1 computed shading\n"
+                                                       "change value at read to have higher reactiveness.");
+
+                                        // Accumulation Added Per Frame
+                                        float accAddPerFrame = config->FsrAccAddPerFrame.value_or_default();
+                                        if (ImGui::SliderFloat("Acc. Added Per Frame", &accAddPerFrame, 0.00f, 1.0f,
+                                                               "%.2f"))
+                                            config->FsrAccAddPerFrame = accAddPerFrame;
+
+                                        ShowHelpMarker(
+                                            "Corresponds to amount of accumulation added per frame\n"
+                                            "at pixel coordinate where disocclusion occured or when\n"
+                                            "reactive mask value is > 0.0f. Decreasing this and \n"
+                                            "drawing the ghosting object (IE no mv) to reactive mask \n"
+                                            "with value close to 1.0f can decrease temporal ghosting.\n"
+                                            "Decreasing this could result in more thin feature pixels flickering.");
+
+                                        // Min Disocclusion Accumulation
+                                        float minDisOccAcc = config->FsrMinDisOccAcc.value_or_default();
+                                        if (ImGui::SliderFloat("Min. Disocclusion Acc.", &minDisOccAcc, -1.0f, 1.0f,
+                                                               "%.2f"))
+                                            config->FsrMinDisOccAcc = minDisOccAcc;
+
+                                        ShowHelpMarker("Increasing this value may reduce white pixel temporal\n"
+                                                       "flickering around swaying thin objects that are disoccluding \n"
+                                                       "one another often. Too high value may increase ghosting.");
+                                    }
+
+                                    ImGui::PopItemWidth();
+
+                                    ImGui::Spacing();
+                                    ImGui::Spacing();
                                 }
-
-                                ImGui::PopItemWidth();
-
-                                ImGui::Spacing();
-                                ImGui::Spacing();
                             }
                         }
                     }
@@ -2864,7 +2866,9 @@ bool MenuCommon::RenderMenu()
 
                         ImGui::Spacing();
 
-                        if (ImGui::CollapsingHeader(usesDlssd ? "Advanced DLSSD Settings" : "Advanced DLSS Settings"))
+                        if (auto ch = ScopedCollapsingHeader(usesDlssd ? "Advanced DLSSD Settings"
+                                                                       : "Advanced DLSS Settings");
+                            ch.IsHeaderOpen())
                         {
                             ScopedIndent indent {};
                             ImGui::Spacing();
@@ -3327,7 +3331,8 @@ bool MenuCommon::RenderMenu()
                         }
 
                         ImGui::Spacing();
-                        if (ImGui::CollapsingHeader("Advanced FSR FG Settings"))
+                        ImGui::Spacing();
+                        if (auto ch = ScopedCollapsingHeader("Advanced FSR FG Settings"); ch.IsHeaderOpen())
                         {
                             ScopedIndent indent {};
                             ImGui::Spacing();
@@ -3409,6 +3414,7 @@ bool MenuCommon::RenderMenu()
                                 FfxApiProxy::VersionDx12_FG() >= feature_version { 3, 1, 3 })
                             {
                                 ImGui::Spacing();
+
                                 if (ImGui::TreeNode("Frame Pacing Tuning"))
                                 {
                                     auto fptEnabled = config->FGFramePacingTuning.value_or_default();
@@ -3587,7 +3593,7 @@ bool MenuCommon::RenderMenu()
                         // ShowHelpMarker("Display only XeFG generated frames");
 
                         ImGui::Spacing();
-                        if (ImGui::CollapsingHeader("Advanced XeFG Settings"))
+                        if (auto ch = ScopedCollapsingHeader("Advanced XeFG Settings"); ch.IsHeaderOpen())
                         {
                             ImGui::Spacing();
                             if (ImGui::TreeNode("Rectangle Settings"))
@@ -3731,7 +3737,8 @@ bool MenuCommon::RenderMenu()
                         ShowHelpMarker("Use height difference as offset");
 
                         ImGui::Spacing();
-                        if (ImGui::CollapsingHeader("Advanced OptiFG Settings"))
+
+                        if (auto ch = ScopedCollapsingHeader("Advanced OptiFG Settings"); ch.IsHeaderOpen())
                         {
                             ScopedIndent indent {};
                             ImGui::Spacing();
@@ -4092,7 +4099,7 @@ bool MenuCommon::RenderMenu()
                             config->FsrUseFsrInputValues = useFsrVales;
 
                         ImGui::Spacing();
-                        if (ImGui::CollapsingHeader("FoV & Camera Values"))
+                        if (auto ch = ScopedCollapsingHeader("FoV & Camera Values"); ch.IsHeaderOpen())
                         {
                             ScopedIndent indent {};
                             ImGui::Spacing();
@@ -4245,7 +4252,7 @@ bool MenuCommon::RenderMenu()
                     }
 
                     ImGui::Spacing();
-                    if (ImGui::CollapsingHeader("VRR Frame Cap Calculator"))
+                    if (auto ch = ScopedCollapsingHeader("VRR Frame Cap Calculator"); ch.IsHeaderOpen())
                     {
                         ScopedIndent indent {};
                         ImGui::Spacing();
@@ -4395,7 +4402,7 @@ bool MenuCommon::RenderMenu()
                         ImGui::EndDisabled();
 
                         ImGui::Spacing();
-                        if (ImGui::CollapsingHeader("Motion Adaptive Sharpness##2"))
+                        if (auto ch = ScopedCollapsingHeader("Motion Adaptive Sharpness##2"); ch.IsHeaderOpen())
                         {
                             ScopedIndent indent {};
                             ImGui::Spacing();
@@ -4655,7 +4662,7 @@ bool MenuCommon::RenderMenu()
                         ImGui::EndTable();
 
                         ImGui::Spacing();
-                        if (ImGui::CollapsingHeader("Advanced Init Flags"))
+                        if (auto ch = ScopedCollapsingHeader("Advanced Init Flags"); ch.IsHeaderOpen())
                         {
                             ScopedIndent indent {};
                             ImGui::Spacing();
@@ -4752,7 +4759,7 @@ bool MenuCommon::RenderMenu()
                 if (state.detectedQuirks.size() > 0)
                 {
                     ImGui::Spacing();
-                    if (ImGui::CollapsingHeader("Active Quirks"))
+                    if (auto ch = ScopedCollapsingHeader("Active Quirks"); ch.IsHeaderOpen())
                     {
                         ScopedIndent indent {};
                         ImGui::Spacing();
@@ -4766,7 +4773,7 @@ bool MenuCommon::RenderMenu()
 
                 // ADVANCED SETTINGS -----------------------------
                 ImGui::Spacing();
-                if (ImGui::CollapsingHeader("Advanced Settings"))
+                if (auto ch = ScopedCollapsingHeader("Advanced Settings"); ch.IsHeaderOpen())
                 {
                     ScopedIndent indent {};
                     ImGui::Spacing();
@@ -4814,7 +4821,7 @@ bool MenuCommon::RenderMenu()
                     {
                         // BARRIERS -----------------------------
                         ImGui::Spacing();
-                        if (ImGui::CollapsingHeader("Resource Barriers"))
+                        if (auto ch = ScopedCollapsingHeader("Resource Barriers"); ch.IsHeaderOpen())
                         {
                             ScopedIndent indent {};
                             ImGui::Spacing();
@@ -4831,7 +4838,7 @@ bool MenuCommon::RenderMenu()
                         if (state.api == DX12)
                         {
                             ImGui::Spacing();
-                            if (ImGui::CollapsingHeader("Root Signatures"))
+                            if (auto ch = ScopedCollapsingHeader("Root Signatures"); ch.IsHeaderOpen())
                             {
                                 ScopedIndent indent {};
                                 ImGui::Spacing();
@@ -4850,7 +4857,7 @@ bool MenuCommon::RenderMenu()
 
                 // LOGGING -----------------------------
                 ImGui::Spacing();
-                if (ImGui::CollapsingHeader("Logging"))
+                if (auto ch = ScopedCollapsingHeader("Logging"); ch.IsHeaderOpen())
                 {
                     ScopedIndent indent {};
                     ImGui::Spacing();
@@ -4897,7 +4904,7 @@ bool MenuCommon::RenderMenu()
 
                 // FPS OVERLAY -----------------------------
                 ImGui::Spacing();
-                if (ImGui::CollapsingHeader("FPS Overlay"))
+                if (auto ch = ScopedCollapsingHeader("FPS Overlay"); ch.IsHeaderOpen())
                 {
                     ScopedIndent indent {};
                     ImGui::Spacing();
@@ -4968,7 +4975,9 @@ bool MenuCommon::RenderMenu()
                 // UPSCALER INPUTS -----------------------------
                 ImGui::Spacing();
                 auto uiStateOpen = currentFeature == nullptr || currentFeature->IsFrozen();
-                if (ImGui::CollapsingHeader("Upscaler Inputs", uiStateOpen ? ImGuiTreeNodeFlags_DefaultOpen : 0))
+                if (auto ch =
+                        ScopedCollapsingHeader("Upscaler Inputs", uiStateOpen ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+                    ch.IsHeaderOpen())
                 {
                     ScopedIndent indent {};
                     ImGui::Spacing();
@@ -5013,7 +5022,7 @@ bool MenuCommon::RenderMenu()
                 {
                     // V-SYNC -----------------------------
                     ImGui::Spacing();
-                    if (ImGui::CollapsingHeader("V-Sync Settings"))
+                    if (auto ch = ScopedCollapsingHeader("V-Sync Settings"); ch.IsHeaderOpen())
                     {
                         ScopedIndent indent {};
                         ImGui::Spacing();
@@ -5073,9 +5082,11 @@ bool MenuCommon::RenderMenu()
 
                     // MIPMAP BIAS & Anisotropy -----------------------------
                     ImGui::Spacing();
-                    if (ImGui::CollapsingHeader("Mipmap Bias", (currentFeature == nullptr || currentFeature->IsFrozen())
-                                                                   ? ImGuiTreeNodeFlags_DefaultOpen
-                                                                   : 0))
+                    if (auto ch = ScopedCollapsingHeader("Mipmap Bias",
+                                                         (currentFeature == nullptr || currentFeature->IsFrozen())
+                                                             ? ImGuiTreeNodeFlags_DefaultOpen
+                                                             : 0);
+                        ch.IsHeaderOpen())
                     {
                         ScopedIndent indent {};
                         ImGui::Spacing();
@@ -5193,10 +5204,11 @@ bool MenuCommon::RenderMenu()
                     }
 
                     ImGui::Spacing();
-                    if (ImGui::CollapsingHeader("Anisotropic Filtering",
-                                                (currentFeature == nullptr || currentFeature->IsFrozen())
-                                                    ? ImGuiTreeNodeFlags_DefaultOpen
-                                                    : 0))
+                    if (auto ch = ScopedCollapsingHeader("Anisotropic Filtering",
+                                                         (currentFeature == nullptr || currentFeature->IsFrozen())
+                                                             ? ImGuiTreeNodeFlags_DefaultOpen
+                                                             : 0);
+                        ch.IsHeaderOpen())
                     {
                         ScopedIndent indent {};
                         ImGui::Spacing();
@@ -5255,7 +5267,7 @@ bool MenuCommon::RenderMenu()
                 }
 
                 ImGui::Spacing();
-                if (ImGui::CollapsingHeader("Keybinds"))
+                if (auto ch = ScopedCollapsingHeader("Keybinds"); ch.IsHeaderOpen())
                 {
                     ScopedIndent indent {};
                     ImGui::Spacing();
@@ -5415,6 +5427,8 @@ bool MenuCommon::RenderMenu()
 
                 ImGui::End();
             }
+
+            ImGui::ShowMetricsWindow();
 
             // Mipmap calculation window
             if (_showMipmapCalcWindow && currentFeature != nullptr && !currentFeature->IsFrozen() &&
