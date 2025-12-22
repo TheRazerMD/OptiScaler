@@ -5428,7 +5428,8 @@ bool MenuCommon::RenderMenu()
                 ImGui::End();
             }
 
-            ImGui::ShowMetricsWindow();
+            // Metrics window (for debug)
+            // ImGui::ShowMetricsWindow();
 
             // Mipmap calculation window
             if (_showMipmapCalcWindow && currentFeature != nullptr && !currentFeature->IsFrozen() &&
