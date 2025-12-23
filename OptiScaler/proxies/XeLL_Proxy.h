@@ -249,6 +249,26 @@ class XeLLProxy
 
     static PFN_xellD3D12CreateContext D3D12CreateContext() { return _xellD3D12CreateContext; }
 
+    static bool DestroyXeLLContext()
+    {
+        LOG_DEBUG("");
+
+        if (_xellContext != nullptr)
+        {
+            auto context = _xellContext;
+            _xellContext = nullptr;
+            auto xellResult = _xellDestroyContext(context);
+
+            LOG_INFO("XeLL DestroyContext result: {} ({})", magic_enum::enum_name(xellResult), (UINT) xellResult);
+
+            // Set it back because context is not destroyed
+            if (xellResult != XELL_RESULT_SUCCESS)
+                _xellContext = context;
+        }
+
+        return true;
+    }
+
     static bool CreateContext(ID3D12Device* device)
     {
         if (!InitXeLL())
@@ -257,14 +277,21 @@ class XeLLProxy
             return false;
         }
 
+        if (_xellContext != nullptr)
+            DestroyXeLLContext();
+
         State::Instance().skipSpoofing = true;
-        auto xellResult = D3D12CreateContext()(device, &_xellContext);
+        auto xellResult = _xellD3D12CreateContext(device, &_xellContext);
         State::Instance().skipSpoofing = false;
 
         if (xellResult != XELL_RESULT_SUCCESS)
         {
             LOG_ERROR("XeLL D3D12CreateContext error: {} ({})", magic_enum::enum_name(xellResult), (UINT) xellResult);
             return false;
+        }
+        else
+        {
+            LOG_INFO("XeLL context created");
         }
 
         xellResult = SetLoggingCallback()(_xellContext, XELL_LOGGING_LEVEL_DEBUG, xellLogCallback);

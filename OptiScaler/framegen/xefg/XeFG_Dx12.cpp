@@ -133,9 +133,16 @@ bool XeFG_Dx12::DestroySwapchainContext()
 
         // Set it back because context is not destroyed
         if (result != XEFG_SWAPCHAIN_RESULT_SUCCESS)
+        {
             _swapChainContext = context;
+        }
         else
+        {
+            if (XeLLProxy::Context() != nullptr)
+                XeLLProxy::DestroyXeLLContext();
+
             State::Instance().currentFGSwapchain = nullptr;
+        }
     }
 
     return true;
@@ -1242,7 +1249,7 @@ bool XeFG_Dx12::ReleaseSwapchain(HWND hwnd)
     if (State::Instance().isShuttingDown && _swapChainContext != nullptr)
         DestroySwapchainContext();
 
-    // ReleaseObjects();
+    ReleaseObjects();
 
     if (Config::Instance()->FGUseMutexForSwapchain.value_or_default())
     {
