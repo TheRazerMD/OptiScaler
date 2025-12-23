@@ -221,6 +221,7 @@ void FGHooks::HookFGSwapchain(IDXGISwapChain* pSwapChain)
 
     void** pFactoryVTable = *reinterpret_cast<void***>(pSwapChain);
 
+    o_FGRelease = (PFN_Release) pFactoryVTable[2];
     o_FGSCPresent = (PFN_Present) pFactoryVTable[8];
     o_FGSCSetFullscreenState = (PFN_SetFullscreenState) pFactoryVTable[10];
     o_FGSCGetFullscreenState = (PFN_GetFullscreenState) pFactoryVTable[11];
@@ -233,6 +234,7 @@ void FGHooks::HookFGSwapchain(IDXGISwapChain* pSwapChain)
     if (o_FGSCPresent != nullptr)
     {
         LOG_INFO("Hooking FG SwapChain present");
+        LOG_TRACE("FGRelease: {:X}", (size_t) o_FGRelease);
         LOG_TRACE("FGSCPresent: {:X}", (size_t) o_FGSCPresent);
         LOG_TRACE("FGSCSetFullscreenState: {:X}", (size_t) o_FGSCSetFullscreenState);
         LOG_TRACE("FGSCGetFullscreenState: {:X}", (size_t) o_FGSCGetFullscreenState);
@@ -245,6 +247,7 @@ void FGHooks::HookFGSwapchain(IDXGISwapChain* pSwapChain)
         DetourTransactionBegin();
         DetourUpdateThread(GetCurrentThread());
 
+        DetourAttach(&(PVOID&) o_FGRelease, hkFGRelease);
         DetourAttach(&(PVOID&) o_FGSCPresent, hkFGPresent);
         DetourAttach(&(PVOID&) o_FGSCResizeTarget, hkResizeTarget);
         DetourAttach(&(PVOID&) o_FGSCResizeBuffers, hkResizeBuffers);
@@ -881,4 +884,19 @@ HRESULT FGHooks::FGPresent(void* This, UINT SyncInterval, UINT Flags, const DXGI
     }
 
     return result;
+}
+
+HRESULT FGHooks::hkFGRelease(IDXGISwapChain* This)
+{
+    if (State::Instance().currentFGSwapchain != This || State::Instance().isShuttingDown)
+        return o_FGRelease(This);
+
+    This->AddRef();
+    if (o_FGRelease(This) == 1)
+    {
+        LOG_INFO("Preserving FG Swapchain from release");
+        return 0;
+    }
+
+    return o_FGRelease(This);
 }
