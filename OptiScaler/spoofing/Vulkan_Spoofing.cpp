@@ -711,11 +711,11 @@ void VulkanSpoofing::HookForVulkanSpoofing(HMODULE vulkanModule)
             if (o_vkGetPhysicalDeviceProperties2KHR)
                 DetourAttach(&(PVOID&) o_vkGetPhysicalDeviceProperties2KHR, hkvkGetPhysicalDeviceProperties2KHR);
 
-            if (o_vkGetInstanceProcAddr)
-                DetourAttach(&(PVOID&) o_vkGetInstanceProcAddr, hkvkGetInstanceProcAddr);
+            // if (o_vkGetInstanceProcAddr)
+            //     DetourAttach(&(PVOID&) o_vkGetInstanceProcAddr, hkvkGetInstanceProcAddr);
 
-            if (o_vkGetDeviceProcAddr)
-                DetourAttach(&(PVOID&) o_vkGetDeviceProcAddr, hkvkGetDeviceProcAddr);
+            // if (o_vkGetDeviceProcAddr)
+            //     DetourAttach(&(PVOID&) o_vkGetDeviceProcAddr, hkvkGetDeviceProcAddr);
 
             DetourTransactionCommit();
         }
