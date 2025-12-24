@@ -35,6 +35,7 @@ enum class GameQuirk : uint64_t
     SkipFsr3Method,
     FastFeatureReset,
     LoadD3D12Manually,
+    LoadVulkanManually,
     KernelBaseHooks,
     VulkanDLSSBarrierFixup,
     ForceUnrealEngine,
@@ -283,7 +284,8 @@ static const QuirkEntry quirkTable[] = {
                 GameQuirk::VulkanDLSSBarrierFixup),
 
     // Enshrouded
-    QUIRK_ENTRY("enshrouded.exe", GameQuirk::EnableVulkanSpoofing, GameQuirk::EnableVulkanExtensionSpoofing),
+    QUIRK_ENTRY("enshrouded.exe", GameQuirk::EnableVulkanSpoofing, GameQuirk::EnableVulkanExtensionSpoofing,
+                GameQuirk::LoadVulkanManually),
 
 };
 

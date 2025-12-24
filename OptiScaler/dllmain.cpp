@@ -728,7 +728,8 @@ static void CheckWorkingMode()
 
             // Vulkan
             vulkanModule = GetDllNameWModule(&vkNamesW);
-            if (State::Instance().isRunningOnDXVK || State::Instance().isRunningOnLinux)
+            if (State::Instance().isRunningOnDXVK || State::Instance().isRunningOnLinux ||
+                State::Instance().gameQuirks & GameQuirk::LoadVulkanManually)
             {
                 vulkanModule = NtdllProxy::LoadLibraryExW_Ldr(L"vulkan-1.dll", NULL, 0);
                 LOG_DEBUG("Loading vulkan-1.dll for Linux, result: {:X}", (size_t) vulkanModule);
@@ -1164,6 +1165,12 @@ static void printQuirks(flag_set<GameQuirk>& quirks)
     {
         spdlog::info("Quirk: Create D3D12 device for Luma before loading Reshade");
         state->detectedQuirks.push_back("Create D3D12 device for Luma before loading Reshade");
+    }
+
+    if (quirks & GameQuirk::LoadVulkanManually)
+    {
+        spdlog::info("Quirk: Load vulkan-1.dll");
+        state->detectedQuirks.push_back("Load vulkan-1.dll");
     }
 
     return;
