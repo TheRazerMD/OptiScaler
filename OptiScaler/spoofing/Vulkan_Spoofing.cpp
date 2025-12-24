@@ -26,6 +26,8 @@ static PFN_vkGetPhysicalDeviceMemoryProperties2 o_vkGetPhysicalDeviceMemoryPrope
 static PFN_vkGetPhysicalDeviceMemoryProperties2KHR o_vkGetPhysicalDeviceMemoryProperties2KHR = nullptr;
 static PFN_vkEnumerateDeviceExtensionProperties o_vkEnumerateDeviceExtensionProperties = nullptr;
 static PFN_vkEnumerateInstanceExtensionProperties o_vkEnumerateInstanceExtensionProperties = nullptr;
+static PFN_vkGetInstanceProcAddr o_vkGetInstanceProcAddr = nullptr;
+static PFN_vkGetDeviceProcAddr o_vkGetDeviceProcAddr = nullptr;
 
 static uint32_t vkEnumerateInstanceExtensionPropertiesCount = 0;
 static uint32_t vkEnumerateDeviceExtensionPropertiesCount = 0;
@@ -119,6 +121,8 @@ inline static void hkvkGetPhysicalDeviceProperties(VkPhysicalDevice physical_dev
         properties->vendorID = Config::Instance()->SpoofedVendorId.value_or_default();
         properties->deviceID = Config::Instance()->SpoofedDeviceId.value_or_default();
         properties->driverVersion = VK_MAKE_API_VERSION(999, 99, 0, 0);
+
+        LOG_DEBUG("Spoofed");
     }
     else
     {
@@ -174,6 +178,8 @@ inline static void hkvkGetPhysicalDeviceProperties2(VkPhysicalDevice phys_dev, V
                 next = (VkDummyProps*) next->pNext;
             }
         }
+
+        LOG_DEBUG("Spoofed");
     }
     else
     {
@@ -230,6 +236,8 @@ inline static void hkvkGetPhysicalDeviceProperties2KHR(VkPhysicalDevice phys_dev
                 next = (VkDummyProps*) next->pNext;
             }
         }
+
+        LOG_DEBUG("Spoofed");
     }
     else
     {
@@ -549,6 +557,122 @@ inline static VkResult hkvkEnumerateInstanceExtensionProperties(const char* pLay
     return result;
 }
 
+inline static PFN_vkVoidFunction hkvkGetInstanceProcAddr(VkInstance instance, const char* pName)
+{
+    auto procName = std::string(pName);
+
+    LOG_DEBUG("{}", procName);
+
+    if (procName == std::string("vkGetPhysicalDeviceProperties"))
+    {
+        return (PFN_vkVoidFunction) hkvkGetPhysicalDeviceProperties;
+    }
+    else if (procName == std::string("vkGetPhysicalDeviceProperties2"))
+    {
+        return (PFN_vkVoidFunction) hkvkGetPhysicalDeviceProperties2;
+    }
+    else if (procName == std::string("vkGetPhysicalDeviceProperties2KHR"))
+    {
+        return (PFN_vkVoidFunction) hkvkGetPhysicalDeviceProperties2KHR;
+    }
+
+    if (Config::Instance()->VulkanExtensionSpoofing.value_or_default())
+    {
+        if (procName == std::string("vkCreateInstance"))
+        {
+            return (PFN_vkVoidFunction) hkvkCreateInstance;
+        }
+        else if (procName == std::string("vkCreateDevice"))
+        {
+            return (PFN_vkVoidFunction) hkvkCreateDevice;
+        }
+        else if (procName == std::string("vkEnumerateInstanceExtensionProperties"))
+        {
+            return (PFN_vkVoidFunction) hkvkEnumerateInstanceExtensionProperties;
+        }
+        else if (procName == std::string("vkEnumerateDeviceExtensionProperties"))
+        {
+            return (PFN_vkVoidFunction) hkvkEnumerateDeviceExtensionProperties;
+        }
+    }
+
+    if (Config::Instance()->VulkanVRAM.has_value())
+    {
+        if (procName == std::string("vkGetPhysicalDeviceMemoryProperties"))
+        {
+            return (PFN_vkVoidFunction) hkvkGetPhysicalDeviceMemoryProperties;
+        }
+        else if (procName == std::string("vkGetPhysicalDeviceMemoryProperties2"))
+        {
+            return (PFN_vkVoidFunction) hkvkGetPhysicalDeviceMemoryProperties2;
+        }
+        else if (procName == std::string("vkGetPhysicalDeviceMemoryProperties2KHR"))
+        {
+            return (PFN_vkVoidFunction) hkvkGetPhysicalDeviceMemoryProperties2KHR;
+        }
+    }
+
+    return o_vkGetInstanceProcAddr(instance, pName);
+}
+
+inline static PFN_vkVoidFunction hkvkGetDeviceProcAddr(VkDevice device, const char* pName)
+{
+    auto procName = std::string(pName);
+
+    LOG_DEBUG("{}", procName);
+
+    if (procName == std::string("vkGetPhysicalDeviceProperties"))
+    {
+        return (PFN_vkVoidFunction) hkvkGetPhysicalDeviceProperties;
+    }
+    else if (procName == std::string("vkGetPhysicalDeviceProperties2"))
+    {
+        return (PFN_vkVoidFunction) hkvkGetPhysicalDeviceProperties2;
+    }
+    else if (procName == std::string("vkGetPhysicalDeviceProperties2KHR"))
+    {
+        return (PFN_vkVoidFunction) hkvkGetPhysicalDeviceProperties2KHR;
+    }
+
+    if (Config::Instance()->VulkanExtensionSpoofing.value_or_default())
+    {
+        if (procName == std::string("vkCreateInstance"))
+        {
+            return (PFN_vkVoidFunction) hkvkCreateInstance;
+        }
+        else if (procName == std::string("vkCreateDevice"))
+        {
+            return (PFN_vkVoidFunction) hkvkCreateDevice;
+        }
+        else if (procName == std::string("vkEnumerateInstanceExtensionProperties"))
+        {
+            return (PFN_vkVoidFunction) hkvkEnumerateInstanceExtensionProperties;
+        }
+        else if (procName == std::string("vkEnumerateDeviceExtensionProperties"))
+        {
+            return (PFN_vkVoidFunction) hkvkEnumerateDeviceExtensionProperties;
+        }
+    }
+
+    if (Config::Instance()->VulkanVRAM.has_value())
+    {
+        if (procName == std::string("vkGetPhysicalDeviceMemoryProperties"))
+        {
+            return (PFN_vkVoidFunction) hkvkGetPhysicalDeviceMemoryProperties;
+        }
+        else if (procName == std::string("vkGetPhysicalDeviceMemoryProperties2"))
+        {
+            return (PFN_vkVoidFunction) hkvkGetPhysicalDeviceMemoryProperties2;
+        }
+        else if (procName == std::string("vkGetPhysicalDeviceMemoryProperties2KHR"))
+        {
+            return (PFN_vkVoidFunction) hkvkGetPhysicalDeviceMemoryProperties2KHR;
+        }
+    }
+
+    return o_vkGetDeviceProcAddr(device, pName);
+}
+
 void VulkanSpoofing::HookForVulkanSpoofing(HMODULE vulkanModule)
 {
     if (!State::Instance().isWorkingAsNvngx && Config::Instance()->VulkanSpoofing.value_or_default() &&
@@ -565,6 +689,12 @@ void VulkanSpoofing::HookForVulkanSpoofing(HMODULE vulkanModule)
         address = KernelBaseProxy::GetProcAddress_()(vulkanModule, "vkGetPhysicalDeviceProperties2KHR");
         o_vkGetPhysicalDeviceProperties2KHR = (PFN_vkGetPhysicalDeviceProperties2KHR) address;
 
+        address = KernelBaseProxy::GetProcAddress_()(vulkanModule, "vkGetInstanceProcAddr");
+        o_vkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr) address;
+
+        address = KernelBaseProxy::GetProcAddress_()(vulkanModule, "vkGetDeviceProcAddr");
+        o_vkGetDeviceProcAddr = (PFN_vkGetDeviceProcAddr) address;
+
         if (o_vkGetPhysicalDeviceProperties != nullptr)
         {
             LOG_INFO("Attaching Vulkan device spoofing hooks");
@@ -580,6 +710,12 @@ void VulkanSpoofing::HookForVulkanSpoofing(HMODULE vulkanModule)
 
             if (o_vkGetPhysicalDeviceProperties2KHR)
                 DetourAttach(&(PVOID&) o_vkGetPhysicalDeviceProperties2KHR, hkvkGetPhysicalDeviceProperties2KHR);
+
+            if (o_vkGetInstanceProcAddr)
+                DetourAttach(&(PVOID&) o_vkGetInstanceProcAddr, hkvkGetInstanceProcAddr);
+
+            if (o_vkGetDeviceProcAddr)
+                DetourAttach(&(PVOID&) o_vkGetDeviceProcAddr, hkvkGetDeviceProcAddr);
 
             DetourTransactionCommit();
         }
