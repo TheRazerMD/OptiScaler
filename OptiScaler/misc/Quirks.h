@@ -186,7 +186,7 @@ static const QuirkEntry quirkTable[] = {
     // Ronin, DYNASTY WARRIORS: ORIGINS, Crysis Remastered, Crysis 2 Remastered, Mortal Shell, Sekiro: Shadows Die
     // Twice (for SekiroTSR mod), The Medium, NINJA GAIDEN 4 (+ WinGDK), Dead Space Remake, God of War (2018), Europa
     // Universalis V, Need for Speed Unbound, Nioh 2 – The Complete Edition, Control Ultimate Edition, Deathloop, Where
-    // Winds Meet, FINAL FANTASY VII REMAKE INTERGRADE (for Luma mod), Assassin’s Creed Shadows
+    // Winds Meet, FINAL FANTASY VII REMAKE INTERGRADE (for Luma mod), Assassin’s Creed Shadows, Farming Simulator 2025
     QUIRK_ENTRY("witcher3.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("alanwake2.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("crysis3remastered.exe", GameQuirk::DisableDxgiSpoofing),
@@ -222,6 +222,7 @@ static const QuirkEntry quirkTable[] = {
     QUIRK_ENTRY("wwm.exe", GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("ff7remake_.exe", GameQuirk::DisableDxgiSpoofing), // Luma mod required for upscalers
     QUIRK_ENTRY("acshadows.exe", GameQuirk::DisableDxgiSpoofing),
+    QUIRK_ENTRY("farmingsimulator2025game.exe", GameQuirk::DisableDxgiSpoofing),
 
     // FSR2 only, no spoof needed
     //

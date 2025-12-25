@@ -21,7 +21,7 @@ if not exist OptiScaler.dll (
     echo Either a folder permissions issue or the repo source code was downloaded.
     echo.
     echo If "OptiScaler.dll" exists, please manually rename to a supported filename ^(e.g. dxgi/winmm.dll^) and you are done^^!
-    echo If .sln or .git files are in the folder, congratz, you have the source code. Now try properly downloading Opti :^)
+    echo If .sln or .git files are in the folder, congratz, you have the source code. Now try properly downloading Opti please
     echo Hint - use the Releases page on GitHub, or RTFM :^)
     echo.
     echo.
