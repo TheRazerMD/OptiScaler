@@ -22,6 +22,41 @@ static bool _nvnxgInited = false;
 static float qualityRatios[] = { 1.0f, 1.5f, 1.7f, 2.0f, 3.0f };
 static size_t _contextCounter = 0x00001ee7;
 
+static float halton(int32_t index, int32_t base)
+{
+    float f = 1.0f, result = 0.0f;
+
+    for (int32_t currentIndex = index; currentIndex > 0;)
+    {
+
+        f /= (float) base;
+        result = result + f * (float) (currentIndex % base);
+        currentIndex = (uint32_t) (floorf((float) (currentIndex) / (float) (base)));
+    }
+
+    return result;
+}
+
+static bool ffxGetJitterOffsetLocal(float* outX, float* outY, int32_t index, int32_t phaseCount)
+{
+    if (outX == nullptr)
+        return false;
+
+    if (outY == nullptr)
+        return false;
+
+    if (phaseCount <= 0)
+        return false;
+
+    const float x = halton((index % phaseCount) + 1, 2) - 0.5f;
+    const float y = halton((index % phaseCount) + 1, 3) - 0.5f;
+
+    *outX = x;
+    *outY = y;
+
+    return true;
+}
+
 static std::string FfxGetGetDescTypeName(ffxStructType_t type)
 {
     switch ((UINT) type)
@@ -600,10 +635,25 @@ ffxReturnCode_t ffxQuery_Dx12(ffxContext* context, ffxQueryDescHeader* desc)
 
         return FFX_API_RETURN_OK;
     }
-
     else if (desc->type == FFX_API_QUERY_DESC_TYPE_UPSCALE_GETJITTEROFFSET)
     {
-        return FfxApiProxy::D3D12_Query(context, desc);
+        auto joDesc = (ffxQueryDescUpscaleGetJitterOffset*) desc;
+
+        if (ffxGetJitterOffsetLocal(joDesc->pOutX, joDesc->pOutY, joDesc->index, joDesc->phaseCount))
+        {
+            LOG_DEBUG("Jitter offset: ({}, {})", *joDesc->pOutX, *joDesc->pOutY);
+            return FFX_API_RETURN_OK;
+        }
+
+        if (joDesc->pOutX != nullptr)
+            *joDesc->pOutX = 0.0f;
+
+        if (joDesc->pOutY != nullptr)
+            *joDesc->pOutY = 0.0f;
+
+        LOG_DEBUG("Jitter offset: (0.0, 0.0)");
+
+        return FFX_API_RETURN_OK;
     }
 
     if (context != nullptr && _contexts.contains(*context) && !Config::Instance()->EnableHotSwapping.value_or_default())
