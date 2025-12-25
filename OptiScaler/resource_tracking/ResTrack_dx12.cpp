@@ -637,7 +637,8 @@ void ResTrack_Dx12::hkCreateRenderTargetView(ID3D12Device* This, ID3D12Resource*
     if (Config::Instance()->FGHudfixDisableRTV.value_or_default())
         return;
 
-    if (pResource == nullptr)
+    if (pResource == nullptr || pDesc == nullptr || pDesc->ViewDimension != D3D12_RTV_DIMENSION_TEXTURE2D ||
+        !CheckResource(pResource))
     {
         auto heap = GetHeapByCpuHandleRTV(DestDescriptor.ptr);
 
@@ -647,8 +648,8 @@ void ResTrack_Dx12::hkCreateRenderTargetView(ID3D12Device* This, ID3D12Resource*
         return;
     }
 
-    if (!CheckResource(pResource))
-        return;
+    // if (!CheckResource(pResource))
+    //     return;
 
     auto heap = GetHeapByCpuHandleRTV(DestDescriptor.ptr);
     if (heap != nullptr)
@@ -691,7 +692,8 @@ void ResTrack_Dx12::hkCreateShaderResourceView(ID3D12Device* This, ID3D12Resourc
     if (Config::Instance()->FGHudfixDisableSRV.value_or_default())
         return;
 
-    if (pResource == nullptr)
+    if (pResource == nullptr || pDesc == nullptr || pDesc->ViewDimension != D3D12_SRV_DIMENSION_TEXTURE2D ||
+        !CheckResource(pResource))
     {
         auto heap = GetHeapByCpuHandleSRV(DestDescriptor.ptr);
 
@@ -701,8 +703,8 @@ void ResTrack_Dx12::hkCreateShaderResourceView(ID3D12Device* This, ID3D12Resourc
         return;
     }
 
-    if (!CheckResource(pResource))
-        return;
+    // if (!CheckResource(pResource))
+    //     return;
 
     auto heap = GetHeapByCpuHandleSRV(DestDescriptor.ptr);
     if (heap != nullptr)
@@ -745,7 +747,8 @@ void ResTrack_Dx12::hkCreateUnorderedAccessView(ID3D12Device* This, ID3D12Resour
     if (Config::Instance()->FGHudfixDisableUAV.value_or_default())
         return;
 
-    if (pResource == nullptr)
+    if (pResource == nullptr || pDesc == nullptr || pDesc->ViewDimension != D3D12_UAV_DIMENSION_TEXTURE2D ||
+        !CheckResource(pResource))
     {
         auto heap = GetHeapByCpuHandleUAV(DestDescriptor.ptr);
 
@@ -755,8 +758,8 @@ void ResTrack_Dx12::hkCreateUnorderedAccessView(ID3D12Device* This, ID3D12Resour
         return;
     }
 
-    if (!CheckResource(pResource))
-        return;
+    // if (!CheckResource(pResource))
+    //     return;
 
     auto heap = GetHeapByCpuHandleUAV(DestDescriptor.ptr);
     if (heap != nullptr)
