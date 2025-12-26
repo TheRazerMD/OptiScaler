@@ -389,6 +389,19 @@ HRESULT FGHooks::hkResizeBuffers(IDXGISwapChain* This, UINT BufferCount, UINT Wi
     {
         LOG_DEBUG("XeFG call skipping");
         _skipResize = false;
+
+        IDXGISwapChain* sc = nullptr;
+
+        if (State::Instance().currentWrappedSwapchain != nullptr)
+            sc = State::Instance().currentWrappedSwapchain;
+        else if (State::Instance().currentSwapchain != nullptr)
+            sc = State::Instance().currentSwapchain;
+        else if (State::Instance().currentRealSwapchain != nullptr)
+            sc = State::Instance().currentRealSwapchain;
+
+        if (sc != nullptr)
+            return sc->ResizeBuffers(BufferCount, Width, Height, NewFormat, SwapChainFlags);
+
         return o_FGSCResizeBuffers(This, BufferCount, Width, Height, NewFormat, SwapChainFlags);
     }
 
@@ -429,9 +442,10 @@ HRESULT FGHooks::hkResizeBuffers(IDXGISwapChain* This, UINT BufferCount, UINT Wi
             if (BufferCount == 0)
                 BufferCount = desc.BufferCount;
 
-            if (desc.BufferDesc.Width == Width && desc.BufferDesc.Height == Height &&
-                NewFormat == desc.BufferDesc.Format && State::Instance().SCLastFlags == SwapChainFlags &&
-                BufferCount == desc.BufferCount)
+            if ((desc.BufferDesc.Width == Width || Width == 0) && (desc.BufferDesc.Height == Height || Height == 0) &&
+                (NewFormat == desc.BufferDesc.Format || NewFormat == 0) &&
+                State::Instance().SCLastFlags == SwapChainFlags &&
+                (BufferCount == desc.BufferCount || BufferCount == 0))
             {
                 LOG_DEBUG("Skipping resize");
 
@@ -564,6 +578,20 @@ HRESULT FGHooks::hkResizeBuffers1(IDXGISwapChain* This, UINT BufferCount, UINT W
     {
         LOG_DEBUG("XeFG call skipping");
         _skipResize1 = false;
+
+        IDXGISwapChain3* sc = nullptr;
+
+        if (State::Instance().currentWrappedSwapchain != nullptr)
+            sc = (IDXGISwapChain3*) State::Instance().currentWrappedSwapchain;
+        else if (State::Instance().currentSwapchain != nullptr)
+            sc = (IDXGISwapChain3*) State::Instance().currentSwapchain;
+        else if (State::Instance().currentRealSwapchain != nullptr)
+            sc = (IDXGISwapChain3*) State::Instance().currentRealSwapchain;
+
+        if (sc != nullptr)
+            return sc->ResizeBuffers1(BufferCount, Width, Height, Format, SwapChainFlags, pCreationNodeMask,
+                                      ppPresentQueue);
+
         return o_FGSCResizeBuffers1(This, BufferCount, Width, Height, Format, SwapChainFlags, pCreationNodeMask,
                                     ppPresentQueue);
     }
@@ -604,9 +632,9 @@ HRESULT FGHooks::hkResizeBuffers1(IDXGISwapChain* This, UINT BufferCount, UINT W
             if (BufferCount == 0)
                 BufferCount = desc.BufferCount;
 
-            if (desc.BufferDesc.Width == Width && desc.BufferDesc.Height == Height &&
-                Format == desc.BufferDesc.Format && State::Instance().SCLastFlags == SwapChainFlags &&
-                BufferCount == desc.BufferCount)
+            if ((desc.BufferDesc.Width == Width || Width == 0) && (desc.BufferDesc.Height == Height || Height == 0) &&
+                (Format == desc.BufferDesc.Format || Format == 0) && State::Instance().SCLastFlags == SwapChainFlags &&
+                (BufferCount == desc.BufferCount || BufferCount == 0))
             {
                 LOG_DEBUG("Skipping resize");
 
