@@ -1114,15 +1114,18 @@ bool FSRFG_Dx12::SetResource(Dx12Resource* inputResource)
     else if (type == FG_ResourceType::HudlessColor)
     {
         auto scFormat = State::Instance().currentSwapchainDesc.BufferDesc.Format;
+        auto scFfxFormat =
+            (FfxApiSurfaceFormat) ffxApiGetSurfaceFormatDX12(State::Instance().currentSwapchainDesc.BufferDesc.Format);
+
         _lastHudlessFormat =
             (FfxApiSurfaceFormat) ffxApiGetSurfaceFormatDX12(fResource->GetResource()->GetDesc().Format);
 
-        if (_lastHudlessFormat != FFX_API_SURFACE_FORMAT_UNKNOWN && _lastHudlessFormat != scFormat)
+        if (_lastHudlessFormat != FFX_API_SURFACE_FORMAT_UNKNOWN && _lastHudlessFormat != scFfxFormat)
         {
             if (!HudlessFormatTransfer(fIndex, _device, scFormat, fResource))
             {
                 LOG_WARN("Skipping hudless resource due to format mismatch! hudless: {}, swapchain: {}",
-                         magic_enum::enum_name(_lastHudlessFormat), magic_enum::enum_name(scFormat));
+                         magic_enum::enum_name(_lastHudlessFormat), magic_enum::enum_name(scFfxFormat));
 
                 _lastHudlessFormat = FFX_API_SURFACE_FORMAT_UNKNOWN;
                 _frameResources[fIndex][type] = {};
