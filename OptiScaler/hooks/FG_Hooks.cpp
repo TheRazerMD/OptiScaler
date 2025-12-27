@@ -392,15 +392,19 @@ HRESULT FGHooks::hkResizeBuffers(IDXGISwapChain* This, UINT BufferCount, UINT Wi
 
         IDXGISwapChain* sc = nullptr;
 
-        if (State::Instance().currentWrappedSwapchain != nullptr)
-            sc = State::Instance().currentWrappedSwapchain;
-        else if (State::Instance().currentSwapchain != nullptr)
-            sc = State::Instance().currentSwapchain;
-        else if (State::Instance().currentRealSwapchain != nullptr)
-            sc = State::Instance().currentRealSwapchain;
+        // if (State::Instance().currentWrappedSwapchain != nullptr)
+        //     sc = State::Instance().currentWrappedSwapchain;
+        // else if (State::Instance().currentSwapchain != nullptr)
+        //     sc = State::Instance().currentSwapchain;
+        // else if (State::Instance().currentRealSwapchain != nullptr)
+        //     sc = State::Instance().currentRealSwapchain;
 
         if (sc != nullptr)
-            return sc->ResizeBuffers(BufferCount, Width, Height, NewFormat, SwapChainFlags);
+        {
+            auto result = sc->ResizeBuffers(BufferCount, Width, Height, NewFormat, SwapChainFlags);
+            LOG_DEBUG("XeFG internal ResizeBuffers result: {:X}", (UINT) result);
+            return result;
+        }
 
         return o_FGSCResizeBuffers(This, BufferCount, Width, Height, NewFormat, SwapChainFlags);
     }
@@ -581,16 +585,21 @@ HRESULT FGHooks::hkResizeBuffers1(IDXGISwapChain* This, UINT BufferCount, UINT W
 
         IDXGISwapChain3* sc = nullptr;
 
-        if (State::Instance().currentWrappedSwapchain != nullptr)
-            sc = (IDXGISwapChain3*) State::Instance().currentWrappedSwapchain;
-        else if (State::Instance().currentSwapchain != nullptr)
-            sc = (IDXGISwapChain3*) State::Instance().currentSwapchain;
-        else if (State::Instance().currentRealSwapchain != nullptr)
-            sc = (IDXGISwapChain3*) State::Instance().currentRealSwapchain;
+        // if (State::Instance().currentWrappedSwapchain != nullptr)
+        //     sc = (IDXGISwapChain3*) State::Instance().currentWrappedSwapchain;
+        // else if (State::Instance().currentSwapchain != nullptr)
+        //     sc = (IDXGISwapChain3*) State::Instance().currentSwapchain;
+        // else if (State::Instance().currentRealSwapchain != nullptr)
+        //     sc = (IDXGISwapChain3*) State::Instance().currentRealSwapchain;
 
         if (sc != nullptr)
-            return sc->ResizeBuffers1(BufferCount, Width, Height, Format, SwapChainFlags, pCreationNodeMask,
-                                      ppPresentQueue);
+        {
+            auto result = sc->ResizeBuffers1(BufferCount, Width, Height, Format, SwapChainFlags, pCreationNodeMask,
+                                             ppPresentQueue);
+
+            LOG_DEBUG("XeFG internal ResizeBuffers1 result: {:X}", (UINT) result);
+            return result;
+        }
 
         return o_FGSCResizeBuffers1(This, BufferCount, Width, Height, Format, SwapChainFlags, pCreationNodeMask,
                                     ppPresentQueue);
@@ -747,8 +756,29 @@ HRESULT FGHooks::hkFGPresent(void* This, UINT SyncInterval, UINT Flags)
     if (_skipPresent)
     {
         LOG_DEBUG("XeFG call skipping");
-        auto result = o_FGSCPresent(This, SyncInterval, Flags);
-        LOG_DEBUG("o_FGSCPresent result: {:X}", (UINT) result);
+
+        IDXGISwapChain* sc = nullptr;
+
+        // if (State::Instance().currentWrappedSwapchain != nullptr)
+        //     sc = State::Instance().currentWrappedSwapchain;
+        // else if (State::Instance().currentSwapchain != nullptr)
+        //     sc = State::Instance().currentSwapchain;
+        // else if (State::Instance().currentRealSwapchain != nullptr)
+        //     sc = State::Instance().currentRealSwapchain;
+
+        HRESULT result;
+
+        if (sc != nullptr)
+        {
+            result = sc->Present(SyncInterval, Flags);
+            LOG_DEBUG("sc->Present result: {:X}", (UINT) result);
+        }
+        else
+        {
+            result = o_FGSCPresent(This, SyncInterval, Flags);
+            LOG_DEBUG("o_FGSCPresent result: {:X}", (UINT) result);
+        }
+
         return result;
     }
 
@@ -768,8 +798,29 @@ HRESULT FGHooks::hkFGPresent1(void* This, UINT SyncInterval, UINT Flags,
     if (_skipPresent1)
     {
         LOG_DEBUG("XeFG call skipping");
-        auto result = o_FGSCPresent1(This, SyncInterval, Flags, pPresentParameters);
-        LOG_DEBUG("o_FGSCPresent result: {:X}", (UINT) result);
+
+        IDXGISwapChain3* sc = nullptr;
+
+        // if (State::Instance().currentWrappedSwapchain != nullptr)
+        //     sc = (IDXGISwapChain3*) State::Instance().currentWrappedSwapchain;
+        // else if (State::Instance().currentSwapchain != nullptr)
+        //     sc = (IDXGISwapChain3*) State::Instance().currentSwapchain;
+        // else if (State::Instance().currentRealSwapchain != nullptr)
+        //     sc = (IDXGISwapChain3*) State::Instance().currentRealSwapchain;
+
+        HRESULT result;
+
+        if (sc != nullptr)
+        {
+            result = sc->Present1(SyncInterval, Flags, pPresentParameters);
+            LOG_DEBUG("sc->Present result: {:X}", (UINT) result);
+        }
+        else
+        {
+            result = o_FGSCPresent1(This, SyncInterval, Flags, pPresentParameters);
+            LOG_DEBUG("o_FGSCPresent result: {:X}", (UINT) result);
+        }
+
         return result;
     }
 
