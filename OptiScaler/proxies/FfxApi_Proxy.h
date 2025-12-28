@@ -18,6 +18,8 @@
 #include <ffx_framegeneration.h>
 #include <ffx_upscale.h>
 
+#include <magic_enum.hpp>
+
 // A mess to be able to import both
 #define FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_WAITCALLBACK FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_WAITCALLBACK_DX12
 #define FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_FRAMEPACINGTUNING FFX_API_CONFIGURE_FG_SWAPCHAIN_KEY_FRAMEPACINGTUNING_DX12
@@ -635,13 +637,21 @@ class FfxApiProxy
         contextToType[context] = type;
 
         if (isFg && fg_dx12.dll != nullptr)
+        {
+            LOG_DEBUG("Creating with fg_dx12");
             return fg_dx12.CreateContext(context, desc, memCb);
+        }
         else if (!isFg && upscaling_dx12.dll != nullptr)
+        {
+            LOG_DEBUG("Creating with upscaling_dx12");
             return upscaling_dx12.CreateContext(context, desc, memCb);
+        }
 
         if (main_dx12.dll != nullptr && !(isFg && fg_dx12.skipCreateCalls) &&
             !(!isFg && upscaling_dx12.skipCreateCalls))
         {
+            LOG_DEBUG("Creating with main_dx12");
+
             if (isFg)
                 fg_dx12.skipCreateCalls = true;
             else
@@ -667,54 +677,85 @@ class FfxApiProxy
 
         if (contextToType.contains(context))
         {
+            LOG_DEBUG("Found context type mapping: {}", magic_enum::enum_name(type));
             type = contextToType[context];
             contextToType.erase(context);
+        }
+        else
+        {
+            LOG_DEBUG("No context type mapping found, defaulting to Unknown");
         }
 
         switch (type)
         {
         case FFXStructType::General:
+            LOG_DEBUG("Destroying with main_dx12");
             if (main_dx12.dll != nullptr)
-                return main_dx12.DestroyContext(context, memCb);
+                result = main_dx12.DestroyContext(context, memCb);
             break;
 
         case FFXStructType::Upscaling:
+            LOG_DEBUG("Destroying with upscaling_dx12");
             if (upscaling_dx12.dll != nullptr)
-                return upscaling_dx12.DestroyContext(context, memCb);
+                result = upscaling_dx12.DestroyContext(context, memCb);
             break;
 
         case FFXStructType::FG:
         case FFXStructType::SwapchainDX12:
+            LOG_DEBUG("Destroying with fg_dx12");
             if (fg_dx12.dll != nullptr)
-                return fg_dx12.DestroyContext(context, memCb);
+                result = fg_dx12.DestroyContext(context, memCb);
             break;
 
         default:
             break;
         }
 
+        if (result == FFX_API_RETURN_OK)
+        {
+            LOG_DEBUG("Destroyed with mapped module");
+            return result;
+        }
+
+        if (upscaling_dx12.dll != nullptr)
+        {
+            LOG_DEBUG("Destroying with upscaling_dx12");
+            result = upscaling_dx12.DestroyContext(context, memCb);
+        }
+
+        if (result == FFX_API_RETURN_OK)
+        {
+            LOG_DEBUG("Destroyed with upscaling_dx12");
+            return result;
+        }
+
+        if (fg_dx12.dll != nullptr)
+        {
+            LOG_DEBUG("Destroying with fg_dx12");
+            result = fg_dx12.DestroyContext(context, memCb);
+        }
+
+        if (result == FFX_API_RETURN_OK)
+        {
+            LOG_DEBUG("Destroyed with fg_dx12");
+            return result;
+        }
+
         if (main_dx12.dll != nullptr && !_skipDestroyCalls)
         {
+            LOG_DEBUG("Destroying with main_dx12");
             _skipDestroyCalls = true;
             result = main_dx12.DestroyContext(context, memCb);
             _skipDestroyCalls = false;
         }
 
         if (result == FFX_API_RETURN_OK)
+        {
+            LOG_DEBUG("Destroyed with main_dx12");
             return result;
+        }
 
-        if (upscaling_dx12.dll != nullptr)
-            result = upscaling_dx12.DestroyContext(context, memCb);
-
-        if (result == FFX_API_RETURN_OK)
-            return result;
-
-        if (fg_dx12.dll != nullptr)
-            result = fg_dx12.DestroyContext(context, memCb);
-
-        if (result == FFX_API_RETURN_OK)
-            return result;
-
+        LOG_ERROR("Failed to destroy context in any module");
         return FFX_API_RETURN_NO_PROVIDER;
     }
 
