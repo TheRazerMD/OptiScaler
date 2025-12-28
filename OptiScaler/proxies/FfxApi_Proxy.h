@@ -11,6 +11,8 @@
 #include <inputs/FfxApi_Dx12.h>
 #include <inputs/FfxApi_Vk.h>
 
+#include <fsr4/FSR4ModelSelection.h>
+
 #include "ffx_api.h"
 #include <detours/detours.h>
 #include <ffx_framegeneration.h>
@@ -319,6 +321,7 @@ class FfxApiProxy
                     if (upscaling_dx12.dll != nullptr)
                     {
                         LOG_INFO("{} loaded from exe folder", wstring_to_string(dllNames[i]));
+                        FSR4ModelSelection::Hook(upscaling_dx12.dll);
                         break;
                     }
                 }

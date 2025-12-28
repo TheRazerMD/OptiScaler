@@ -5,7 +5,6 @@
 #include "Logger.h"
 #include "resource.h"
 #include "DllNames.h"
-#include "fsr4/FSR4Upgrade.h"
 
 #include "proxies/Dxgi_Proxy.h"
 #include <proxies/XeSS_Proxy.h>
@@ -24,6 +23,9 @@
 #include "inputs/FSR2_Dx12.h"
 #include "inputs/FSR3_Dx12.h"
 #include "inputs/FG/FSR3_Dx12_FG.h"
+
+#include "fsr4/FSR4Upgrade.h"
+#include <fsr4/FSR4ModelSelection.h>
 
 #include "spoofing/Vulkan_Spoofing.h"
 
@@ -862,6 +864,7 @@ static void CheckWorkingMode()
             if (ffxDx12SRModule != nullptr)
             {
                 LOG_DEBUG("amd_fidelityfx_upscaler_dx12.dll already in memory");
+                FSR4ModelSelection::Hook(ffxDx12SRModule);
                 FfxApiProxy::InitFfxDx12_SR(ffxDx12SRModule);
             }
 
