@@ -21,7 +21,9 @@ class FSRFG_Dx12 : public virtual IFGFeature_Dx12
     uint32_t _maxRenderHeight = 0;
 
     std::unique_ptr<FT_Dx12> _hudlessTransfer[BUFFER_COUNT];
+    ID3D12Resource* _hudlessCopyResource[BUFFER_COUNT] {};
     std::unique_ptr<FT_Dx12> _uiTransfer[BUFFER_COUNT];
+    ID3D12Resource* _uiCopyResource[BUFFER_COUNT] {};
 
     ID3D12GraphicsCommandList* _fgCommandList[BUFFER_COUNT] {};
     ID3D12CommandAllocator* _fgCommandAllocator[BUFFER_COUNT] {};

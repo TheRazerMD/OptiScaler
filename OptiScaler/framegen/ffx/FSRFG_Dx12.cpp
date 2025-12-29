@@ -7,6 +7,68 @@
 
 #include <magic_enum.hpp>
 
+static inline int GetFormatIndex(DXGI_FORMAT format)
+{
+    switch (format)
+    {
+
+    case DXGI_FORMAT_R32G32B32A32_TYPELESS:
+        return 0;
+
+    case DXGI_FORMAT_R32G32B32A32_FLOAT:
+    case DXGI_FORMAT_R32G32B32A32_UINT:
+        return 1;
+
+    case DXGI_FORMAT_R16G16B16A16_TYPELESS:
+        return 20;
+
+    case DXGI_FORMAT_R16G16B16A16_FLOAT:
+        return 21;
+
+    case DXGI_FORMAT_R10G10B10A2_TYPELESS:
+        return 30;
+
+    case DXGI_FORMAT_R10G10B10A2_UNORM:
+        return 31;
+
+    case DXGI_FORMAT_R11G11B10_FLOAT:
+        return 41;
+
+    case DXGI_FORMAT_R8G8B8A8_TYPELESS:
+        return 50;
+
+    case DXGI_FORMAT_R8G8B8A8_UNORM:
+    case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+    case DXGI_FORMAT_R8G8B8A8_SNORM:
+    case DXGI_FORMAT_R8G8B8A8_SINT:
+        return 51;
+    }
+
+    return -1;
+}
+
+static inline bool FormatsCompatible(DXGI_FORMAT format1, DXGI_FORMAT format2)
+{
+    if (format1 == format2)
+        return true;
+
+    auto fi1 = GetFormatIndex(format1);
+    if (fi1 < 0)
+        return false;
+
+    auto fi2 = GetFormatIndex(format2);
+    if (fi2 < 0)
+        return false;
+
+    if (fi1 == fi2)
+        return true;
+
+    if ((fi1 - 1 == fi2) || (fi2 - 1 == fi1))
+        return true;
+
+    return false;
+}
+
 static inline void ResourceBarrier(ID3D12GraphicsCommandList* InCommandList, ID3D12Resource* InResource,
                                    D3D12_RESOURCE_STATES InBeforeState, D3D12_RESOURCE_STATES InAfterState)
 {
@@ -39,20 +101,47 @@ bool FSRFG_Dx12::HudlessFormatTransfer(int index, ID3D12Device* device, DXGI_FOR
 
     if (_hudlessTransfer[index].get() != nullptr &&
         _hudlessTransfer[index].get()->CreateBufferResource(device, resource->GetResource(),
-                                                            D3D12_RESOURCE_STATE_UNORDERED_ACCESS))
+                                                            D3D12_RESOURCE_STATE_UNORDERED_ACCESS) &&
+        (resource->cmdList == nullptr ||
+         CreateBufferResource(device, resource->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST,
+                              &_hudlessCopyResource[index])))
     {
         auto cmdList = GetUICommandList(index);
 
-        ResourceBarrier(cmdList, resource->GetResource(), resource->state,
-                        D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        if (resource->cmdList != nullptr && _hudlessCopyResource[index] != nullptr)
+        {
+            ResourceBarrier(resource->cmdList, resource->GetResource(), resource->state,
+                            D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-        _hudlessTransfer[index].get()->Dispatch(device, cmdList, resource->GetResource(),
-                                                _hudlessTransfer[index].get()->Buffer());
+            resource->cmdList->CopyResource(_hudlessCopyResource[index], resource->GetResource());
 
-        ResourceBarrier(cmdList, resource->GetResource(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
-                        resource->state);
+            ResourceBarrier(resource->cmdList, resource->GetResource(), D3D12_RESOURCE_STATE_COPY_SOURCE,
+                            resource->state);
+
+            ResourceBarrier(resource->cmdList, _hudlessCopyResource[index], D3D12_RESOURCE_STATE_COPY_DEST,
+                            D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+            _hudlessTransfer[index].get()->Dispatch(device, cmdList, _hudlessCopyResource[index],
+                                                    _hudlessTransfer[index].get()->Buffer());
+
+            ResourceBarrier(cmdList, _hudlessCopyResource[index], D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+                            D3D12_RESOURCE_STATE_COPY_DEST);
+        }
+        else
+        {
+            ResourceBarrier(cmdList, resource->GetResource(), resource->state,
+                            D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+            _hudlessTransfer[index].get()->Dispatch(device, cmdList, resource->GetResource(),
+                                                    _hudlessTransfer[index].get()->Buffer());
+
+            ResourceBarrier(cmdList, resource->GetResource(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+                            resource->state);
+        }
 
         resource->copy = _hudlessTransfer[index].get()->Buffer();
+        resource->state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+
         return true;
     }
 
@@ -557,7 +646,7 @@ bool FSRFG_Dx12::CreateSwapchain(IDXGIFactory* factory, ID3D12CommandQueue* cmdQ
     if (State::Instance().currentFGSwapchain != nullptr && _hwnd == desc->OutputWindow)
     {
 
-        LOG_WARN("XeFG swapchain already created for the same output window!");
+        LOG_WARN("FG swapchain already created for the same output window!");
         auto result = State::Instance().currentFGSwapchain->ResizeBuffers(desc->BufferCount, desc->BufferDesc.Width,
                                                                           desc->BufferDesc.Height,
                                                                           desc->BufferDesc.Format, desc->Flags) == S_OK;
@@ -1117,10 +1206,10 @@ bool FSRFG_Dx12::SetResource(Dx12Resource* inputResource)
         auto scFfxFormat =
             (FfxApiSurfaceFormat) ffxApiGetSurfaceFormatDX12(State::Instance().currentSwapchainDesc.BufferDesc.Format);
 
-        _lastHudlessFormat =
-            (FfxApiSurfaceFormat) ffxApiGetSurfaceFormatDX12(fResource->GetResource()->GetDesc().Format);
+        auto resFormat = fResource->GetResource()->GetDesc().Format;
+        _lastHudlessFormat = (FfxApiSurfaceFormat) ffxApiGetSurfaceFormatDX12(resFormat);
 
-        if (_lastHudlessFormat != FFX_API_SURFACE_FORMAT_UNKNOWN && _lastHudlessFormat != scFfxFormat)
+        if (_lastHudlessFormat != FFX_API_SURFACE_FORMAT_UNKNOWN && !FormatsCompatible(resFormat, scFormat))
         {
             if (!HudlessFormatTransfer(fIndex, _device, scFormat, fResource))
             {
