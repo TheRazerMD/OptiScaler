@@ -126,6 +126,9 @@ class State
     NVSDK_NGX_LoggingInfo NVNGX_Logger { nullptr, NVSDK_NGX_LOGGING_LEVEL_OFF, false };
     NVSDK_NGX_EngineType NVNGX_Engine = NVSDK_NGX_ENGINE_TYPE_CUSTOM;
     std::string NVNGX_EngineVersion;
+    std::optional<std::wstring> NVNGX_DLSS_Path;
+    std::optional<std::wstring> NVNGX_DLSSD_Path;
+    std::optional<std::wstring> NVNGX_DLSSG_Path;
 
     // NGX OTA
     std::string NGX_OTA_Dlss;

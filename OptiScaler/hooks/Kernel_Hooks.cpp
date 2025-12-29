@@ -221,7 +221,7 @@ HANDLE WINAPI KernelHooks::hk_K32_CreateFileW(LPCWSTR lpFileName, DWORD dwDesire
         auto path = wstring_to_string(std::wstring(lpFileName));
         to_lower_in_place(path);
 
-        static auto signedDll = Util::FindFilePath(Util::DllPath().remove_filename(), "nvngx_dlss.dll");
+        static auto signedDll = Util::FindFilePath(Util::ExePath().remove_filename(), "nvngx_dlss.dll");
 
         if (path.contains("nvngx.dll") && !path.contains("_nvngx.dll") && // apply the override to just one path
             !IsInsideWindowsDirectory(path) && signedDll.has_value())

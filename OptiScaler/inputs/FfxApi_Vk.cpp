@@ -331,15 +331,14 @@ ffxReturnCode_t ffxCreateContext_Vk(ffxContext* context, ffxCreateContextDescHea
     {
         NVSDK_NGX_FeatureCommonInfo fcInfo {};
 
-        auto dllPath = Util::DllPath().remove_filename();
-        auto nvngxDlssPath = Util::FindFilePath(dllPath, "nvngx_dlss.dll");
-        auto nvngxDlssDPath = Util::FindFilePath(dllPath, "nvngx_dlssd.dll");
-        auto nvngxDlssGPath = Util::FindFilePath(dllPath, "nvngx_dlssg.dll");
+        auto exePath = Util::ExePath().remove_filename();
+        auto nvngxDlssPath = Util::FindFilePath(exePath, "nvngx_dlss.dll");
+        auto nvngxDlssDPath = Util::FindFilePath(exePath, "nvngx_dlssd.dll");
+        auto nvngxDlssGPath = Util::FindFilePath(exePath, "nvngx_dlssg.dll");
 
         std::vector<std::wstring> pathStorage;
 
-        pathStorage.push_back(dllPath.wstring());
-
+        pathStorage.push_back(exePath.wstring());
         if (nvngxDlssPath.has_value())
             pathStorage.push_back(nvngxDlssPath.value().parent_path().wstring());
 
@@ -363,7 +362,7 @@ ffxReturnCode_t ffxCreateContext_Vk(ffxContext* context, ffxCreateContextDescHea
         fcInfo.PathListInfo.Length = (int) pathStorage.size();
 
         auto nvResult = NVSDK_NGX_VULKAN_Init_ProjectID_Ext(
-            "OptiScaler", State::Instance().NVNGX_Engine, VER_PRODUCT_VERSION_STR, dllPath.c_str(),
+            "OptiScaler", State::Instance().NVNGX_Engine, VER_PRODUCT_VERSION_STR, exePath.c_str(),
             State::Instance().VulkanInstance, _vkPhysicalDevice, _vkDevice, vkGetInstanceProcAddr, _vkDeviceProcAddress,
             State::Instance().NVNGX_Version, &fcInfo);
 

@@ -40,12 +40,12 @@ bool FeatureProvider_Vk::GetFeature(std::string upscalerName, UINT handleId, NVS
 
         if (Config::Instance()->DLSSEnabled.value_or_default())
         {
-            if (upscalerName == "dlss")
+            if (upscalerName == "dlss" && State::Instance().NVNGX_DLSS_Path.has_value())
             {
                 *feature = std::make_unique<DLSSFeatureVk>(handleId, parameters);
                 break;
             }
-            else if (upscalerName == "dlssd")
+            else if (upscalerName == "dlssd" && State::Instance().NVNGX_DLSSD_Path.has_value())
             {
                 *feature = std::make_unique<DLSSDFeatureVk>(handleId, parameters);
                 break;

@@ -41,12 +41,12 @@ bool FeatureProvider_Dx12::GetFeature(std::string upscalerName, UINT handleId, N
 
         if (Config::Instance()->DLSSEnabled.value_or_default())
         {
-            if (upscalerName == "dlss")
+            if (upscalerName == "dlss" && State::Instance().NVNGX_DLSS_Path.has_value())
             {
                 *feature = std::make_unique<DLSSFeatureDx12>(handleId, parameters);
                 break;
             }
-            else if (upscalerName == "dlssd")
+            else if (upscalerName == "dlssd" && State::Instance().NVNGX_DLSSD_Path.has_value())
             {
                 *feature = std::make_unique<DLSSDFeatureDx12>(handleId, parameters);
                 break;

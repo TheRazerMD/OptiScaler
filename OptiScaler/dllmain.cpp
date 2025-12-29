@@ -1525,23 +1525,39 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 
             if (State::Instance().isRunningOnNvidia)
             {
-                spdlog::info("Running on Nvidia, setting DLSS as default upscaler and disabling spoofing options "
-                             "set to auto");
+                spdlog::info("Running on Nvidia");
 
-                Config::Instance()->DLSSEnabled.set_volatile_value(true);
+                auto exePath = Util::ExePath().remove_filename();
+                State::Instance().NVNGX_DLSS_Path = Util::FindFilePath(exePath, "nvngx_dlss.dll");
+                State::Instance().NVNGX_DLSSD_Path = Util::FindFilePath(exePath, "nvngx_dlssd.dll");
+                State::Instance().NVNGX_DLSSG_Path = Util::FindFilePath(exePath, "nvngx_dlssg.dll");
+
+                if (State::Instance().NVNGX_DLSS_Path.has_value())
+                {
+                    spdlog::info("Enabling DLSS");
+                    Config::Instance()->DLSSEnabled.set_volatile_value(true);
+                }
+                else
+                {
+                    spdlog::warn("nvngx_dlss.dll not found, disabling DLSS");
+                    Config::Instance()->DLSSEnabled.set_volatile_value(false);
+                }
 
                 if (!Config::Instance()->DxgiSpoofing.has_value())
+                {
+                    spdlog::info("Disabling DxgiSpoofing");
                     Config::Instance()->DxgiSpoofing.set_volatile_value(false);
+                }
 
                 // StreamlineSpoofing is more selective on Nvidia now
                 // if (!Config::Instance()->StreamlineSpoofing.has_value())
                 //    Config::Instance()->StreamlineSpoofing.set_volatile_value(false);
             }
-            else
-            {
-                spdlog::info("Not running on Nvidia, disabling DLSS");
-                Config::Instance()->DLSSEnabled.set_volatile_value(false);
-            }
+        }
+        else
+        {
+            spdlog::info("Not running on Nvidia, disabling DLSS");
+            Config::Instance()->DLSSEnabled.set_volatile_value(false);
         }
 
         // OptiFG & Overlay Checks
