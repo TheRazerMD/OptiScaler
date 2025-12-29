@@ -272,8 +272,6 @@ class FfxApiProxy
         LOG_INFO("LoadResult: {}", loadResult);
 
         if (loadResult)
-            VersionDx12();
-        else
             main_dx12.dll = nullptr;
 
         return loadResult;
@@ -373,8 +371,6 @@ class FfxApiProxy
         LOG_INFO("LoadResult: {}", loadResult);
 
         if (loadResult)
-            VersionDx12_SR();
-        else
             upscaling_dx12.dll = nullptr;
 
         return loadResult;
@@ -471,8 +467,6 @@ class FfxApiProxy
         LOG_INFO("LoadResult: {}", loadResult);
 
         if (loadResult)
-            VersionDx12_FG();
-        else
             fg_dx12.dll = nullptr;
 
         return loadResult;
