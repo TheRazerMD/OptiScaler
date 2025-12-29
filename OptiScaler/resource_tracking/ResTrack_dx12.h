@@ -35,6 +35,9 @@ static void TestResource(ResourceInfo* info)
 #define USE_SPINLOCK_MUTEX
 
 #ifdef USE_SPINLOCK_MUTEX
+
+#define USE_PERF_SPINLOCK
+
 #ifdef __cpp_lib_hardware_interference_size
 constexpr size_t CACHE_LINE_SIZE = std::hardware_destructive_interference_size;
 #else
@@ -49,6 +52,43 @@ constexpr size_t CACHE_LINE_SIZE = 128;
 #endif
 
 #ifdef USE_SPINLOCK_MUTEX
+#ifdef USE_PERF_SPINLOCK
+class SpinLock
+{
+    std::atomic<bool> _lock = { false };
+
+  public:
+    void lock()
+    {
+        int backoff = 1;
+
+        while (true)
+        {
+            // 1. Optimistic Read (TTAS)
+            // Using 'relaxed' because we don't need ordering until we actually acquire.
+            if (!_lock.load(std::memory_order_relaxed))
+            {
+
+                // 2. Attempt Acquire
+                // 'acquire' ensures no memory ops move before this lock
+                if (!_lock.exchange(true, std::memory_order_acquire))
+                {
+                    return; // Success
+                }
+            }
+
+            // 3. Pause instruction to help HT and branch prediction
+            _mm_pause();
+        }
+    }
+
+    void unlock()
+    {
+        // 'release' ensures all memory ops are finished before unlocking
+        _lock.store(false, std::memory_order_release);
+    }
+};
+#else
 struct SpinLock
 {
     std::atomic<bool> _lock = { false };
@@ -76,6 +116,7 @@ struct SpinLock
 
     __forceinline void unlock() { _lock.store(false, std::memory_order_release); }
 };
+#endif
 #endif
 
 static ankerl::unordered_dense::map<ID3D12Resource*, std::vector<ResourceInfo*>> _trackedResources;
