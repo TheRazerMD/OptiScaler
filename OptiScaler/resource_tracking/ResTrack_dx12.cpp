@@ -119,7 +119,7 @@ static SpinLock _heapCreationMutex;
 static std::mutex _heapCreationMutex;
 #endif
 
-#define USE_ATOMIC_INDEX
+// #define USE_ATOMIC_INDEX
 
 #ifdef USE_ATOMIC_INDEX
 static std::atomic<UINT> fgHeapIndex { 0 };
