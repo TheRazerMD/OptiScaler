@@ -534,7 +534,9 @@ ffxReturnCode_t ffxConfigure_Dx12FG(ffxContext* context, ffxConfigureDescHeader*
             hudless.resource = (ID3D12Resource*) cDesc->HUDLessColor.resource;
             hudless.state = GetD3D12State((FfxApiResourceState) cDesc->HUDLessColor.state);
             hudless.type = FG_ResourceType::HudlessColor;
-            hudless.validity = FG_ResourceValidity::UntilPresent; // Not sure about this
+            hudless.validity = Config::Instance()->FGHudlessValidNow.value_or_default()
+                                   ? FG_ResourceValidity::ValidNow
+                                   : FG_ResourceValidity::UntilPresent; // Not sure about this
             hudless.width = width;
             hudless.left = left;
             hudless.top = top;
@@ -976,7 +978,7 @@ ffxReturnCode_t ffxDispatch_Dx12FG(ffxContext* context, ffxDispatchDescHeader* d
             depth.state = GetD3D12State((FfxApiResourceState) cdDesc->depth.state);
             depth.type = FG_ResourceType::Depth;
 
-            if (Config::Instance()->FSRFGDepthAndVelocityValidNow.value_or_default())
+            if (Config::Instance()->FGDepthValidNow.value_or_default())
                 depth.validity = FG_ResourceValidity::ValidNow;
             else
                 depth.validity = FG_ResourceValidity::JustTrackCmdlist;
@@ -1010,7 +1012,7 @@ ffxReturnCode_t ffxDispatch_Dx12FG(ffxContext* context, ffxDispatchDescHeader* d
             velocity.state = GetD3D12State((FfxApiResourceState) cdDesc->motionVectors.state);
             velocity.type = FG_ResourceType::Velocity;
 
-            if (Config::Instance()->FSRFGDepthAndVelocityValidNow.value_or_default())
+            if (Config::Instance()->FGVelocityValidNow.value_or_default())
                 velocity.validity = FG_ResourceValidity::ValidNow;
             else
                 velocity.validity = FG_ResourceValidity::JustTrackCmdlist;
@@ -1245,7 +1247,9 @@ void ffxPresentCallback()
                 hudless.resource = _hudless[fIndex];
                 hudless.state = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
                 hudless.type = FG_ResourceType::HudlessColor;
-                hudless.validity = FG_ResourceValidity::UntilPresent;
+                hudless.validity = Config::Instance()->FGHudlessValidNow.value_or_default()
+                                       ? FG_ResourceValidity::ValidNow
+                                       : FG_ResourceValidity::UntilPresent;
                 hudless.width = hDesc.Width;
                 hudless.frameIndex = fIndex;
 

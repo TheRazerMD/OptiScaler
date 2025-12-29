@@ -113,6 +113,10 @@ bool Config::Reload(std::filesystem::path iniPath)
             FGAllowedFrameAhead.set_from_config(readInt("FrameGen", "AllowedFrameAhead"));
             if (FGAllowedFrameAhead.has_value() && (FGAllowedFrameAhead.value() < 1 || FGAllowedFrameAhead.value() > 3))
                 FGAllowedFrameAhead.reset();
+
+            FGDepthValidNow.set_from_config(readBool("FrameGen", "DepthValidNow"));
+            FGVelocityValidNow.set_from_config(readBool("FrameGen", "VelocityValidNow"));
+            FGHudlessValidNow.set_from_config(readBool("FrameGen", "HudlessValidNow"));
         }
 
         // FSR FG
@@ -179,7 +183,6 @@ bool Config::Reload(std::filesystem::path iniPath)
         {
             FSRFGSkipConfigForHudless.set_from_config(readBool("FSRFGInputs", "SkipConfigForHudless"));
             FSRFGSkipDispatchForHudless.set_from_config(readBool("FSRFGInputs", "SkipDispatchForHudless"));
-            FSRFGDepthAndVelocityValidNow.set_from_config(readBool("FSRFGInputs", "DepthAndVelocityValidNow"));
         }
 
         // Framerate
@@ -704,6 +707,11 @@ bool Config::SaveIni()
         ini.SetValue("FrameGen", "RectHeight", GetIntValue(Instance()->FGRectHeight.value_for_config()).c_str());
         ini.SetValue("FrameGen", "AllowedFrameAhead",
                      GetIntValue(Instance()->FGAllowedFrameAhead.value_for_config()).c_str());
+        ini.SetValue("FrameGen", "DepthValidNow", GetBoolValue(Instance()->FGDepthValidNow.value_for_config()).c_str());
+        ini.SetValue("FrameGen", "VelocityValidNow",
+                     GetBoolValue(Instance()->FGVelocityValidNow.value_for_config()).c_str());
+        ini.SetValue("FrameGen", "HudlessValidNow",
+                     GetBoolValue(Instance()->FGHudlessValidNow.value_for_config()).c_str());
     }
 
     // FSR FG output
@@ -804,8 +812,6 @@ bool Config::SaveIni()
                      GetBoolValue(Instance()->FSRFGSkipConfigForHudless.value_for_config()).c_str());
         ini.SetValue("FSRFGInputs", "SkipDispatchForHudless",
                      GetBoolValue(Instance()->FSRFGSkipDispatchForHudless.value_for_config()).c_str());
-        ini.SetValue("FSRFGInputs", "DepthAndVelocityValidNow",
-                     GetBoolValue(Instance()->FSRFGDepthAndVelocityValidNow.value_for_config()).c_str());
     }
 
     // Framerate

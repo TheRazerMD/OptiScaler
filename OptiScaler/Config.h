@@ -399,6 +399,9 @@ class Config
     CustomOptional<bool> FGDisableUI { true };
     CustomOptional<bool> FGSkipReset { false };
     CustomOptional<int> FGAllowedFrameAhead { 1 };
+    CustomOptional<bool> FGDepthValidNow { false };
+    CustomOptional<bool> FGVelocityValidNow { false };
+    CustomOptional<bool> FGHudlessValidNow { false };
 
     // OptiFG
     CustomOptional<bool> FGEnabled { false };
@@ -454,7 +457,6 @@ class Config
 
     CustomOptional<bool> FSRFGSkipConfigForHudless { false };
     CustomOptional<bool> FSRFGSkipDispatchForHudless { false };
-    CustomOptional<bool> FSRFGDepthAndVelocityValidNow { false };
     CustomOptional<bool> FSRFGEnableWatermark { false };
 
     // OptiFG - XeFG

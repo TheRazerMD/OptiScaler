@@ -354,6 +354,9 @@ bool Sl_Inputs_Dx12::reportResource(const sl::ResourceTag& tag, ID3D12GraphicsCo
                 res.frameIndex = fgOutput->GetIndex();
         }
 
+        if (Config::Instance()->FGDepthValidNow.value_or_default())
+            res.validity = FG_ResourceValidity::ValidNow;
+
         res.type = FG_ResourceType::Depth;
         fgOutput->SetResource(&res);
     }
@@ -366,6 +369,9 @@ bool Sl_Inputs_Dx12::reportResource(const sl::ResourceTag& tag, ID3D12GraphicsCo
             if (fgOutput->HasResource(FG_ResourceType::Velocity, res.frameIndex))
                 res.frameIndex = fgOutput->GetIndex();
         }
+
+        if (Config::Instance()->FGVelocityValidNow.value_or_default())
+            res.validity = FG_ResourceValidity::ValidNow;
 
         res.type = FG_ResourceType::Velocity;
         mvsWidth = res.width; // Track locally for dispatch logic
@@ -383,6 +389,9 @@ bool Sl_Inputs_Dx12::reportResource(const sl::ResourceTag& tag, ID3D12GraphicsCo
         }
 
         res.type = FG_ResourceType::HudlessColor;
+
+        if (Config::Instance()->FGHudlessValidNow.value_or_default())
+            res.validity = FG_ResourceValidity::ValidNow;
 
         fgOutput->SetInterpolationRect(res.width, res.height);
         fgOutput->SetResource(&res);
