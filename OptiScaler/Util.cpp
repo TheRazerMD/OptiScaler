@@ -386,14 +386,20 @@ std::optional<std::filesystem::path> Util::FindFilePath(const std::filesystem::p
 
     // 3) Unreal-Engine/WinGDK fallback: check for Win64 or WinGDK in parent
     std::filesystem::path parent = startDir.parent_path().parent_path();
+    uint32_t cnt = 0;
     for (const char* folder : { "Win64", "WinGDK", "Win64MasterMasterSteamPGO" })
     {
         if (std::filesystem::exists(parent / folder) && std::filesystem::is_directory(parent / folder))
         {
-            // Move up two more levels from 'parent' to reach UE project root
-            std::filesystem::path ueRoot = parent.parent_path().parent_path();
+            // Move up two more levels from 'parent' to reach UE project root but one level for KCD2
+            std::filesystem::path gameRoot;
+            if (cnt < 2)
+                gameRoot = parent.parent_path().parent_path();
+            else
+                gameRoot = parent.parent_path();
+
             for (auto& entry : std::filesystem::recursive_directory_iterator(
-                     ueRoot, std::filesystem::directory_options::skip_permission_denied))
+                     gameRoot, std::filesystem::directory_options::skip_permission_denied))
             {
                 if (!entry.is_directory() && entry.path().filename() == fileName)
                 {
@@ -405,6 +411,8 @@ std::optional<std::filesystem::path> Util::FindFilePath(const std::filesystem::p
             // If not found under this folder, break to avoid double-search
             break;
         }
+
+        cnt++;
     }
 
     // Not found anywhere
