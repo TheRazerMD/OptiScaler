@@ -62,6 +62,7 @@ class DxgiFactoryHooks
     {
       private:
         bool previousState;
+
       public:
         ScopedSkipFGSCCreation()
         {
@@ -69,12 +70,13 @@ class DxgiFactoryHooks
             DxgiFactoryHooks::_skipFGSwapChainCreation = true;
         }
         ~ScopedSkipFGSCCreation() { DxgiFactoryHooks::_skipFGSwapChainCreation = previousState; }
-    };  
+    };
 
     class ScopedSkipHighPerfCheck
     {
       private:
         bool previousState;
+
       public:
         ScopedSkipHighPerfCheck()
         {
