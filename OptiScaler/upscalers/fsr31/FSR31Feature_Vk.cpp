@@ -145,97 +145,97 @@ bool FSR31FeatureVk::InitFSR3(const NVSDK_NGX_Parameter* InParameters)
         return false;
     }
 
-    State::Instance().skipSpoofing = true;
+    {
+        ScopedSkipSpoofing skipSpoofing {};
 
-    ffxQueryDescGetVersions versionQuery {};
-    versionQuery.header.type = FFX_API_QUERY_DESC_TYPE_GET_VERSIONS;
-    versionQuery.createDescType = FFX_API_CREATE_CONTEXT_DESC_TYPE_UPSCALE;
-    // versionQuery.device = Device; // only for DirectX 12 applications
-    uint64_t versionCount = 0;
-    versionQuery.outputCount = &versionCount;
-    // get number of versions for allocation
-    FfxApiProxy::VULKAN_Query()(nullptr, &versionQuery.header);
+        ffxQueryDescGetVersions versionQuery {};
+        versionQuery.header.type = FFX_API_QUERY_DESC_TYPE_GET_VERSIONS;
+        versionQuery.createDescType = FFX_API_CREATE_CONTEXT_DESC_TYPE_UPSCALE;
+        // versionQuery.device = Device; // only for DirectX 12 applications
+        uint64_t versionCount = 0;
+        versionQuery.outputCount = &versionCount;
+        // get number of versions for allocation
+        FfxApiProxy::VULKAN_Query()(nullptr, &versionQuery.header);
 
-    State::Instance().ffxUpscalerVersionIds.resize(versionCount);
-    State::Instance().ffxUpscalerVersionNames.resize(versionCount);
-    versionQuery.versionIds = State::Instance().ffxUpscalerVersionIds.data();
-    versionQuery.versionNames = State::Instance().ffxUpscalerVersionNames.data();
-    // fill version ids and names arrays.
-    FfxApiProxy::VULKAN_Query()(nullptr, &versionQuery.header);
+        State::Instance().ffxUpscalerVersionIds.resize(versionCount);
+        State::Instance().ffxUpscalerVersionNames.resize(versionCount);
+        versionQuery.versionIds = State::Instance().ffxUpscalerVersionIds.data();
+        versionQuery.versionNames = State::Instance().ffxUpscalerVersionNames.data();
+        // fill version ids and names arrays.
+        FfxApiProxy::VULKAN_Query()(nullptr, &versionQuery.header);
 
-    _contextDesc.header.type = FFX_API_CREATE_CONTEXT_DESC_TYPE_UPSCALE;
-    _contextDesc.fpMessage = FfxLogCallback;
+        _contextDesc.header.type = FFX_API_CREATE_CONTEXT_DESC_TYPE_UPSCALE;
+        _contextDesc.fpMessage = FfxLogCallback;
 
 #ifdef _DEBUG
-    _contextDesc.flags |= FFX_UPSCALE_ENABLE_DEBUG_CHECKING;
+        _contextDesc.flags |= FFX_UPSCALE_ENABLE_DEBUG_CHECKING;
 #endif
 
-    if (DepthInverted())
-        _contextDesc.flags |= FFX_UPSCALE_ENABLE_DEPTH_INVERTED;
+        if (DepthInverted())
+            _contextDesc.flags |= FFX_UPSCALE_ENABLE_DEPTH_INVERTED;
 
-    if (AutoExposure())
-        _contextDesc.flags |= FFX_UPSCALE_ENABLE_AUTO_EXPOSURE;
+        if (AutoExposure())
+            _contextDesc.flags |= FFX_UPSCALE_ENABLE_AUTO_EXPOSURE;
 
-    if (IsHdr())
-        _contextDesc.flags |= FFX_UPSCALE_ENABLE_HIGH_DYNAMIC_RANGE;
+        if (IsHdr())
+            _contextDesc.flags |= FFX_UPSCALE_ENABLE_HIGH_DYNAMIC_RANGE;
 
-    if (JitteredMV())
-        _contextDesc.flags |= FFX_UPSCALE_ENABLE_MOTION_VECTORS_JITTER_CANCELLATION;
+        if (JitteredMV())
+            _contextDesc.flags |= FFX_UPSCALE_ENABLE_MOTION_VECTORS_JITTER_CANCELLATION;
 
-    if (!LowResMV())
-        _contextDesc.flags |= FFX_UPSCALE_ENABLE_DISPLAY_RESOLUTION_MOTION_VECTORS;
+        if (!LowResMV())
+            _contextDesc.flags |= FFX_UPSCALE_ENABLE_DISPLAY_RESOLUTION_MOTION_VECTORS;
 
-    if (Config::Instance()->FsrNonLinearPQ.value_or_default() ||
-        Config::Instance()->FsrNonLinearSRGB.value_or_default())
-    {
-        _contextDesc.flags |= FFX_UPSCALE_ENABLE_NON_LINEAR_COLORSPACE;
-        LOG_INFO("contextDesc.initFlags (NonLinearColorSpace) {0:b}", _contextDesc.flags);
-    }
+        if (Config::Instance()->FsrNonLinearPQ.value_or_default() ||
+            Config::Instance()->FsrNonLinearSRGB.value_or_default())
+        {
+            _contextDesc.flags |= FFX_UPSCALE_ENABLE_NON_LINEAR_COLORSPACE;
+            LOG_INFO("contextDesc.initFlags (NonLinearColorSpace) {0:b}", _contextDesc.flags);
+        }
 
-    if (Config::Instance()->ExtendedLimits.value_or_default())
-    {
-        _contextDesc.maxRenderSize.width = RenderWidth() < DisplayWidth() ? DisplayWidth() : RenderWidth();
-        _contextDesc.maxRenderSize.height = RenderHeight() < DisplayHeight() ? DisplayHeight() : RenderHeight();
-    }
-    else
-    {
-        _contextDesc.maxRenderSize.width = DisplayWidth();
-        _contextDesc.maxRenderSize.height = DisplayHeight();
-    }
+        if (Config::Instance()->ExtendedLimits.value_or_default())
+        {
+            _contextDesc.maxRenderSize.width = RenderWidth() < DisplayWidth() ? DisplayWidth() : RenderWidth();
+            _contextDesc.maxRenderSize.height = RenderHeight() < DisplayHeight() ? DisplayHeight() : RenderHeight();
+        }
+        else
+        {
+            _contextDesc.maxRenderSize.width = DisplayWidth();
+            _contextDesc.maxRenderSize.height = DisplayHeight();
+        }
 
-    _contextDesc.maxUpscaleSize.width = DisplayWidth();
-    _contextDesc.maxUpscaleSize.height = DisplayHeight();
+        _contextDesc.maxUpscaleSize.width = DisplayWidth();
+        _contextDesc.maxUpscaleSize.height = DisplayHeight();
 
-    ffxCreateBackendVKDesc backendDesc = { 0 };
-    backendDesc.header.type = FFX_API_CREATE_CONTEXT_DESC_TYPE_BACKEND_VK;
-    backendDesc.vkDevice = Device;
-    backendDesc.vkPhysicalDevice = PhysicalDevice;
+        ffxCreateBackendVKDesc backendDesc = { 0 };
+        backendDesc.header.type = FFX_API_CREATE_CONTEXT_DESC_TYPE_BACKEND_VK;
+        backendDesc.vkDevice = Device;
+        backendDesc.vkPhysicalDevice = PhysicalDevice;
 
-    if (GDPA == nullptr)
-        backendDesc.vkDeviceProcAddr = vkGetDeviceProcAddr;
-    else
-        backendDesc.vkDeviceProcAddr = GDPA;
+        if (GDPA == nullptr)
+            backendDesc.vkDeviceProcAddr = vkGetDeviceProcAddr;
+        else
+            backendDesc.vkDeviceProcAddr = GDPA;
 
-    _contextDesc.header.pNext = &backendDesc.header;
+        _contextDesc.header.pNext = &backendDesc.header;
 
-    if (Config::Instance()->FfxUpscalerIndex.value_or_default() < 0 ||
-        Config::Instance()->FfxUpscalerIndex.value_or_default() >= State::Instance().ffxUpscalerVersionIds.size())
-        Config::Instance()->FfxUpscalerIndex.set_volatile_value(0);
+        if (Config::Instance()->FfxUpscalerIndex.value_or_default() < 0 ||
+            Config::Instance()->FfxUpscalerIndex.value_or_default() >= State::Instance().ffxUpscalerVersionIds.size())
+            Config::Instance()->FfxUpscalerIndex.set_volatile_value(0);
 
-    ffxOverrideVersion ov = { 0 };
-    ov.header.type = FFX_API_DESC_TYPE_OVERRIDE_VERSION;
-    ov.versionId = State::Instance().ffxUpscalerVersionIds[Config::Instance()->FfxUpscalerIndex.value_or_default()];
-    backendDesc.header.pNext = &ov.header;
+        ffxOverrideVersion ov = { 0 };
+        ov.header.type = FFX_API_DESC_TYPE_OVERRIDE_VERSION;
+        ov.versionId = State::Instance().ffxUpscalerVersionIds[Config::Instance()->FfxUpscalerIndex.value_or_default()];
+        backendDesc.header.pNext = &ov.header;
 
-    LOG_DEBUG("_createContext!");
-    auto ret = FfxApiProxy::VULKAN_CreateContext()(&_context, &_contextDesc.header, NULL);
+        LOG_DEBUG("_createContext!");
+        auto ret = FfxApiProxy::VULKAN_CreateContext()(&_context, &_contextDesc.header, NULL);
 
-    State::Instance().skipSpoofing = false;
-
-    if (ret != FFX_API_RETURN_OK)
-    {
-        LOG_ERROR("_createContext error: {0}", FfxApiProxy::ReturnCodeToString(ret));
-        return false;
+        if (ret != FFX_API_RETURN_OK)
+        {
+            LOG_ERROR("_createContext error: {0}", FfxApiProxy::ReturnCodeToString(ret));
+            return false;
+        }
     }
 
     auto version = State::Instance().ffxUpscalerVersionNames[Config::Instance()->FfxUpscalerIndex.value_or_default()];

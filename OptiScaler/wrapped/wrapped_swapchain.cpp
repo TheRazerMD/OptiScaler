@@ -93,7 +93,7 @@ static HRESULT LocalPresent(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT 
 
                 if (qResult == S_OK)
                 {
-                    State::Instance().skipSpoofing = true;
+                    ScopedSkipSpoofing skipSpoofing {};
 
                     std::wstring szName;
                     DXGI_ADAPTER_DESC desc {};
@@ -109,8 +109,6 @@ static HRESULT LocalPresent(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT 
                     {
                         LOG_ERROR("GetDesc: {:X}", (UINT) qResult);
                     }
-
-                    State::Instance().skipSpoofing = false;
                 }
                 else
                 {
@@ -600,13 +598,17 @@ HRESULT STDMETHODCALLTYPE WrappedIDXGISwapChain4::ResizeBuffers(UINT BufferCount
               Height, (UINT) NewFormat, SwapChainFlags);
 
     if (Config::Instance()->FGDontUseSwapchainBuffers.value_or_default())
-        State::Instance().skipHeapCapture = true;
+    {
+        ScopedSkipHeapCapture skipHeapCapture {};
 
-    _lastFlags = SwapChainFlags;
-    result = _real->ResizeBuffers(BufferCount, Width, Height, NewFormat, SwapChainFlags);
-
-    if (Config::Instance()->FGDontUseSwapchainBuffers.value_or_default())
-        State::Instance().skipHeapCapture = false;
+        _lastFlags = SwapChainFlags;
+        result = _real->ResizeBuffers(BufferCount, Width, Height, NewFormat, SwapChainFlags);
+    }
+    else
+    {
+        _lastFlags = SwapChainFlags;
+        result = _real->ResizeBuffers(BufferCount, Width, Height, NewFormat, SwapChainFlags);
+    }
 
     if (result == S_OK && State::Instance().currentFeature == nullptr)
     {
@@ -905,14 +907,19 @@ HRESULT STDMETHODCALLTYPE WrappedIDXGISwapChain4::ResizeBuffers1(UINT BufferCoun
               (UINT) Format, SwapChainFlags);
 
     if (Config::Instance()->FGDontUseSwapchainBuffers.value_or_default())
-        State::Instance().skipHeapCapture = true;
+    {
+        ScopedSkipHeapCapture skipHeapCapture {};
 
-    _lastFlags = SwapChainFlags;
-    result =
-        _real3->ResizeBuffers1(BufferCount, Width, Height, Format, SwapChainFlags, pCreationNodeMask, ppPresentQueue);
-
-    if (Config::Instance()->FGDontUseSwapchainBuffers.value_or_default())
-        State::Instance().skipHeapCapture = false;
+        _lastFlags = SwapChainFlags;
+        result = _real3->ResizeBuffers1(BufferCount, Width, Height, Format, SwapChainFlags, pCreationNodeMask,
+                                        ppPresentQueue);
+    }
+    else
+    {
+        _lastFlags = SwapChainFlags;
+        result = _real3->ResizeBuffers1(BufferCount, Width, Height, Format, SwapChainFlags, pCreationNodeMask,
+                                        ppPresentQueue);
+    }
 
     if (result == S_OK && State::Instance().currentFeature == nullptr)
     {

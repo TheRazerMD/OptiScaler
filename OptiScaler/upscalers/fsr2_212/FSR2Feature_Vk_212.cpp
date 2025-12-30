@@ -18,64 +18,64 @@ bool FSR2FeatureVk212::InitFSR2(const NVSDK_NGX_Parameter* InParameters)
         return false;
     }
 
-    State::Instance().skipSpoofing = true;
-
-    auto scratchBufferSize = Fsr212::ffxFsr2GetScratchMemorySizeVK212(PhysicalDevice);
-    void* scratchBuffer = calloc(scratchBufferSize, 1);
-
-    auto errorCode = Fsr212::ffxFsr2GetInterfaceVK212(&_contextDesc.callbacks, scratchBuffer, scratchBufferSize,
-                                                      PhysicalDevice, vkGetDeviceProcAddr);
-
-    if (errorCode != Fsr212::FFX_OK)
     {
-        LOG_ERROR("ffxGetInterfaceVK error: {0}", ResultToString212(errorCode));
-        free(scratchBuffer);
-        return false;
-    }
+        ScopedSkipSpoofing skipSpoofing {};
 
-    _contextDesc.device = Fsr212::ffxGetDeviceVK212(Device);
+        auto scratchBufferSize = Fsr212::ffxFsr2GetScratchMemorySizeVK212(PhysicalDevice);
+        void* scratchBuffer = calloc(scratchBufferSize, 1);
 
-    if (Config::Instance()->ExtendedLimits.value_or_default())
-    {
-        _contextDesc.maxRenderSize.width = RenderWidth() < DisplayWidth() ? DisplayWidth() : RenderWidth();
-        _contextDesc.maxRenderSize.height = RenderHeight() < DisplayHeight() ? DisplayHeight() : RenderHeight();
-    }
-    else
-    {
-        _contextDesc.maxRenderSize.width = DisplayWidth();
-        _contextDesc.maxRenderSize.height = DisplayHeight();
-    }
+        auto errorCode = Fsr212::ffxFsr2GetInterfaceVK212(&_contextDesc.callbacks, scratchBuffer, scratchBufferSize,
+                                                          PhysicalDevice, vkGetDeviceProcAddr);
 
-    _contextDesc.displaySize.width = DisplayWidth();
-    _contextDesc.displaySize.height = DisplayHeight();
+        if (errorCode != Fsr212::FFX_OK)
+        {
+            LOG_ERROR("ffxGetInterfaceVK error: {0}", ResultToString212(errorCode));
+            free(scratchBuffer);
+            return false;
+        }
 
-    _contextDesc.flags = 0;
+        _contextDesc.device = Fsr212::ffxGetDeviceVK212(Device);
 
-    if (DepthInverted())
-        _contextDesc.flags |= Fsr212::FFX_FSR2_ENABLE_DEPTH_INVERTED;
+        if (Config::Instance()->ExtendedLimits.value_or_default())
+        {
+            _contextDesc.maxRenderSize.width = RenderWidth() < DisplayWidth() ? DisplayWidth() : RenderWidth();
+            _contextDesc.maxRenderSize.height = RenderHeight() < DisplayHeight() ? DisplayHeight() : RenderHeight();
+        }
+        else
+        {
+            _contextDesc.maxRenderSize.width = DisplayWidth();
+            _contextDesc.maxRenderSize.height = DisplayHeight();
+        }
 
-    if (AutoExposure())
-        _contextDesc.flags |= Fsr212::FFX_FSR2_ENABLE_AUTO_EXPOSURE;
+        _contextDesc.displaySize.width = DisplayWidth();
+        _contextDesc.displaySize.height = DisplayHeight();
 
-    if (IsHdr())
-        _contextDesc.flags |= Fsr212::FFX_FSR2_ENABLE_HIGH_DYNAMIC_RANGE;
+        _contextDesc.flags = 0;
 
-    if (JitteredMV())
-        _contextDesc.flags |= Fsr212::FFX_FSR2_ENABLE_MOTION_VECTORS_JITTER_CANCELLATION;
+        if (DepthInverted())
+            _contextDesc.flags |= Fsr212::FFX_FSR2_ENABLE_DEPTH_INVERTED;
 
-    if (!LowResMV())
-        _contextDesc.flags |= Fsr212::FFX_FSR2_ENABLE_DISPLAY_RESOLUTION_MOTION_VECTORS;
+        if (AutoExposure())
+            _contextDesc.flags |= Fsr212::FFX_FSR2_ENABLE_AUTO_EXPOSURE;
 
-    LOG_DEBUG("ffxFsr2ContextCreate!");
+        if (IsHdr())
+            _contextDesc.flags |= Fsr212::FFX_FSR2_ENABLE_HIGH_DYNAMIC_RANGE;
 
-    auto ret = Fsr212::ffxFsr2ContextCreate212(&_context, &_contextDesc);
+        if (JitteredMV())
+            _contextDesc.flags |= Fsr212::FFX_FSR2_ENABLE_MOTION_VECTORS_JITTER_CANCELLATION;
 
-    State::Instance().skipSpoofing = false;
+        if (!LowResMV())
+            _contextDesc.flags |= Fsr212::FFX_FSR2_ENABLE_DISPLAY_RESOLUTION_MOTION_VECTORS;
 
-    if (ret != Fsr212::FFX_OK)
-    {
-        LOG_ERROR("ffxFsr2ContextCreate error: {0}", ResultToString212(ret));
-        return false;
+        LOG_DEBUG("ffxFsr2ContextCreate!");
+
+        auto ret = Fsr212::ffxFsr2ContextCreate212(&_context, &_contextDesc);
+
+        if (ret != Fsr212::FFX_OK)
+        {
+            LOG_ERROR("ffxFsr2ContextCreate error: {0}", ResultToString212(ret));
+            return false;
+        }
     }
 
     SetInit(true);

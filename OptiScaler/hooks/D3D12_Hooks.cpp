@@ -162,13 +162,13 @@ static HRESULT hkD3D12CreateDevice(IDXGIAdapter* pAdapter, D3D_FEATURE_LEVEL Min
     std::wstring szName;
     if (pAdapter != nullptr && MinimumFeatureLevel != D3D_FEATURE_LEVEL_1_0_CORE)
     {
-        State::Instance().skipSpoofing = true;
+        ScopedSkipSpoofing skipSpoofing {};
+
         if (pAdapter->GetDesc(&desc) == S_OK)
         {
             szName = desc.Description;
             LOG_INFO("Adapter Desc: {}", wstring_to_string(szName));
         }
-        State::Instance().skipSpoofing = false;
     }
 
     auto minLevel = MinimumFeatureLevel;
@@ -178,13 +178,16 @@ static HRESULT hkD3D12CreateDevice(IDXGIAdapter* pAdapter, D3D_FEATURE_LEVEL Min
         minLevel = D3D_FEATURE_LEVEL_11_0;
     }
 
+    HRESULT result;
     if (desc.VendorId == VendorId::Intel)
-        State::Instance().skipSpoofing = true;
-
-    auto result = o_D3D12CreateDevice(pAdapter, minLevel, riid, ppDevice);
-
-    if (desc.VendorId == VendorId::Intel)
-        State::Instance().skipSpoofing = false;
+    {
+        ScopedSkipSpoofing skipSpoofing {};
+        result = o_D3D12CreateDevice(pAdapter, minLevel, riid, ppDevice);
+    }
+    else
+    {
+        result = o_D3D12CreateDevice(pAdapter, minLevel, riid, ppDevice);
+    }
 
     LOG_DEBUG("o_D3D12CreateDevice result: {:X}", (UINT) result);
 

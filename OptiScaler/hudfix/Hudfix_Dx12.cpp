@@ -725,10 +725,11 @@ bool Hudfix_Dx12::CheckForHudless(ID3D12GraphicsCommandList* cmdList, ResourceIn
                     delete _formatTransfer[fIndex];
 
                 _formatTransfer[fIndex] = nullptr;
-                s.skipHeapCapture = true;
+
+                ScopedSkipHeapCapture skipHeapCapture {};
+
                 _formatTransfer[fIndex] =
                     new FT_Dx12("FormatTransfer", s.currentD3D12Device, s.currentSwapchainDesc.BufferDesc.Format);
-                s.skipHeapCapture = false;
                 break;
             }
 

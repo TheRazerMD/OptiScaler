@@ -352,9 +352,8 @@ ffxReturnCode_t ffxCreateContext_Dx12(ffxContext* context, ffxCreateContextDescH
 
     if (!upscaleContext || Config::Instance()->EnableHotSwapping.value_or_default())
     {
-        state.skipHeapCapture = true;
+        ScopedSkipHeapCapture skipHeapCapture {};
         auto ffxApiResult = FfxApiProxy::D3D12_CreateContext(context, desc, memCb);
-        state.skipHeapCapture = false;
 
         LOG_DEBUG("D3D12_CreateContext result: {:X} ({}), context: {:X}", (UINT) ffxApiResult,
                   FfxApiProxy::ReturnCodeToString(ffxApiResult), (size_t) *context);

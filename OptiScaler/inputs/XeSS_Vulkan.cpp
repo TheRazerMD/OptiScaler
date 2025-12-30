@@ -399,12 +399,10 @@ xess_result_t hk_xessVKGetRequiredInstanceExtensions(uint32_t* instanceExtension
 {
     LOG_DEBUG();
 
-    State::Instance().skipSpoofing = true;
+    ScopedSkipSpoofing skipSpoofing {};
 
     auto result =
         XeSSProxy::VKGetRequiredInstanceExtensions()(instanceExtensionsCount, instanceExtensions, minVkApiVersion);
-
-    State::Instance().skipSpoofing = false;
 
     return result;
 }
@@ -415,12 +413,10 @@ xess_result_t hk_xessVKGetRequiredDeviceExtensions(VkInstance instance, VkPhysic
 {
     LOG_DEBUG();
 
-    State::Instance().skipSpoofing = true;
+    ScopedSkipSpoofing skipSpoofing {};
 
     auto result =
         XeSSProxy::VKGetRequiredDeviceExtensions()(instance, physicalDevice, deviceExtensionsCount, deviceExtensions);
-
-    State::Instance().skipSpoofing = false;
 
     return result;
 }
@@ -429,11 +425,9 @@ xess_result_t hk_xessVKGetRequiredDeviceFeatures(VkInstance instance, VkPhysical
 {
     LOG_DEBUG();
 
-    State::Instance().skipSpoofing = true;
+    ScopedSkipSpoofing skipSpoofing {};
 
     auto result = XeSSProxy::VKGetRequiredDeviceFeatures()(instance, physicalDevice, features);
-
-    State::Instance().skipSpoofing = false;
 
     return result;
 }

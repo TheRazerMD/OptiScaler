@@ -225,7 +225,7 @@ FT_Dx12::FT_Dx12(std::string InName, ID3D12Device* InDevice, DXGI_FORMAT InForma
         }
     }
 
-    State::Instance().skipHeapCapture = true;
+    ScopedSkipHeapCapture skipHeapCapture {};
 
     for (int i = 0; i < FT_NUM_OF_HEAPS; i++)
     {
@@ -233,12 +233,9 @@ FT_Dx12::FT_Dx12(std::string InName, ID3D12Device* InDevice, DXGI_FORMAT InForma
         {
             LOG_ERROR("[{0}] Failed to init heap", _name);
             _init = false;
-            State::Instance().skipHeapCapture = false;
             return;
         }
     }
-
-    State::Instance().skipHeapCapture = false;
 
     _init = true;
 }

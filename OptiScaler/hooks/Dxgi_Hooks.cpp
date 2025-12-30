@@ -115,16 +115,15 @@ static void CheckLumaAndReShade(IDXGIFactory* factory)
     if (State::Instance().gameQuirks & GameQuirk::CreateD3D12DeviceForLuma &&
         State::Instance().currentD3D12Device == nullptr)
     {
-        State::Instance().skipDxgiLoadChecks = true;
-        State::Instance().skipSpoofing = true;
+        ScopedSkipDxgiLoadChecks skipDxgiLoadChecks {};
+
+        ScopedSkipSpoofing skipSpoofing {};
         creatingD3D12DeviceForLuma = true;
 
         LOG_INFO("Applying Luma DX12 workaround - creating D3D12 device early");
         InitD3D12DeviceForLuma(factory);
 
         creatingD3D12DeviceForLuma = false;
-        State::Instance().skipSpoofing = false;
-        State::Instance().skipDxgiLoadChecks = false;
     }
 
     // Loading Reshade after Luma's D3D12 device creation to prevent conflicts

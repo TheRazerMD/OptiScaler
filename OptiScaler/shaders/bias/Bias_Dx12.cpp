@@ -234,7 +234,7 @@ Bias_Dx12::Bias_Dx12(std::string InName, ID3D12Device* InDevice) : Shader_Dx12(I
         }
     }
 
-    State::Instance().skipHeapCapture = true;
+    ScopedSkipHeapCapture skipHeapCapture {};
 
     for (int i = 0; i < BIAS_NUM_OF_HEAPS; i++)
     {
@@ -242,12 +242,9 @@ Bias_Dx12::Bias_Dx12(std::string InName, ID3D12Device* InDevice) : Shader_Dx12(I
         {
             LOG_ERROR("[{0}] Failed to init heap", _name);
             _init = false;
-            State::Instance().skipHeapCapture = false;
             return;
         }
     }
-
-    State::Instance().skipHeapCapture = false;
 
     _init = true;
 }

@@ -366,8 +366,8 @@ HRESULT IFeature_Dx11wDx12::CreateDx12Device(D3D_FEATURE_LEVEL InFeatureLevel)
 {
     LOG_FUNC();
 
-    State::Instance().vulkanSkipHooks = true;
-    State::Instance().skipSpoofing = true;
+    ScopedSkipSpoofing skipSpoofing {};
+    ScopedSkipVulkanHooks skipVulkanHooks {};
 
     HRESULT result;
 
@@ -383,8 +383,6 @@ HRESULT IFeature_Dx11wDx12::CreateDx12Device(D3D_FEATURE_LEVEL InFeatureLevel)
         if (result != S_OK)
         {
             LOG_ERROR("Can't create factory: {0:x}", result);
-            State::Instance().vulkanSkipHooks = false;
-            State::Instance().skipSpoofing = false;
             return result;
         }
 
@@ -403,8 +401,6 @@ HRESULT IFeature_Dx11wDx12::CreateDx12Device(D3D_FEATURE_LEVEL InFeatureLevel)
         if (result != S_OK)
         {
             LOG_ERROR("Can't create device: {:X}", (UINT) result);
-            State::Instance().vulkanSkipHooks = false;
-            State::Instance().skipSpoofing = false;
             return result;
         }
 
@@ -432,8 +428,6 @@ HRESULT IFeature_Dx11wDx12::CreateDx12Device(D3D_FEATURE_LEVEL InFeatureLevel)
         if (result != S_OK || Dx12CommandQueue == nullptr)
         {
             LOG_DEBUG("CreateCommandQueue result: {0:x}", result);
-            State::Instance().vulkanSkipHooks = false;
-            State::Instance().skipSpoofing = false;
             return E_NOINTERFACE;
         }
     }
@@ -446,8 +440,6 @@ HRESULT IFeature_Dx11wDx12::CreateDx12Device(D3D_FEATURE_LEVEL InFeatureLevel)
         if (result != S_OK)
         {
             LOG_ERROR("CreateCommandAllocator error: {0:x}", result);
-            State::Instance().vulkanSkipHooks = false;
-            State::Instance().skipSpoofing = false;
             return E_NOINTERFACE;
         }
     }
@@ -460,8 +452,6 @@ HRESULT IFeature_Dx11wDx12::CreateDx12Device(D3D_FEATURE_LEVEL InFeatureLevel)
         if (result != S_OK)
         {
             LOG_ERROR("CreateCommandAllocator error: {0:x}", result);
-            State::Instance().vulkanSkipHooks = false;
-            State::Instance().skipSpoofing = false;
             return E_NOINTERFACE;
         }
     }
@@ -475,8 +465,6 @@ HRESULT IFeature_Dx11wDx12::CreateDx12Device(D3D_FEATURE_LEVEL InFeatureLevel)
         if (result != S_OK)
         {
             LOG_ERROR("CreateCommandList error: {0:x}", result);
-            State::Instance().vulkanSkipHooks = false;
-            State::Instance().skipSpoofing = false;
             return E_NOINTERFACE;
         }
 
@@ -492,8 +480,6 @@ HRESULT IFeature_Dx11wDx12::CreateDx12Device(D3D_FEATURE_LEVEL InFeatureLevel)
         if (result != S_OK)
         {
             LOG_ERROR("CreateCommandList error: {0:x}", result);
-            State::Instance().vulkanSkipHooks = false;
-            State::Instance().skipSpoofing = false;
             return E_NOINTERFACE;
         }
 
@@ -507,8 +493,6 @@ HRESULT IFeature_Dx11wDx12::CreateDx12Device(D3D_FEATURE_LEVEL InFeatureLevel)
         if (result != S_OK)
         {
             LOG_ERROR("CreateFence error: {0:X}", result);
-            State::Instance().vulkanSkipHooks = false;
-            State::Instance().skipSpoofing = false;
             return E_NOINTERFACE;
         }
 
@@ -517,14 +501,10 @@ HRESULT IFeature_Dx11wDx12::CreateDx12Device(D3D_FEATURE_LEVEL InFeatureLevel)
         if (Dx12FenceEvent == nullptr)
         {
             LOG_ERROR("CreateEvent error!");
-            State::Instance().vulkanSkipHooks = false;
-            State::Instance().skipSpoofing = false;
             return E_NOINTERFACE;
         }
     }
 
-    State::Instance().vulkanSkipHooks = false;
-    State::Instance().skipSpoofing = false;
     return S_OK;
 }
 

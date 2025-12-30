@@ -153,9 +153,11 @@ static VkResult hkvkCreateInstance(const VkInstanceCreateInfo* pCreateInfo, cons
 {
     LOG_FUNC();
 
-    State::Instance().skipSpoofing = true;
-    auto result = o_vkCreateInstance(pCreateInfo, pAllocator, pInstance);
-    State::Instance().skipSpoofing = false;
+    VkResult result;
+    {
+        ScopedSkipSpoofing skipSpoofing {};
+        result = o_vkCreateInstance(pCreateInfo, pAllocator, pInstance);
+    }
 
     if (result == VK_SUCCESS && !State::Instance().vulkanSkipHooks)
     {
@@ -200,7 +202,7 @@ static VkResult hkvkCreateDevice(VkPhysicalDevice physicalDevice, const VkDevice
         LOG_DEBUG("_device captured: {0:X}", (UINT64) _device);
         HookDevice(_device);
 
-        State::Instance().skipSpoofing = true;
+        ScopedSkipSpoofing skipSpoofing {};
 
         VkPhysicalDeviceProperties prop {};
         vkGetPhysicalDeviceProperties(physicalDevice, &prop);
@@ -209,8 +211,6 @@ static VkResult hkvkCreateDevice(VkPhysicalDevice physicalDevice, const VkDevice
 
         if (szName.size() > 0)
             State::Instance().DeviceAdapterNames[*pDevice] = szName;
-
-        State::Instance().skipSpoofing = false;
     }
 
     LOG_FUNC_RESULT(result);
@@ -242,9 +242,8 @@ static VkResult hkvkQueuePresentKHR(VkQueue queue, VkPresentInfoKHR* pPresentInf
     ReflexHooks::update(false, true);
 
     // original call
-    State::Instance().vulkanCreatingSC = true;
+    ScopedVulkanCreatingSC scopedVulkanCreatingSC {};
     auto result = o_QueuePresentKHR(queue, pPresentInfo);
-    State::Instance().vulkanCreatingSC = false;
 
     // Unsure about Vulkan Reflex fps limit and if that could be causing an issue here
     if (!State::Instance().reflexLimitsFps)
@@ -259,9 +258,8 @@ static VkResult hkvkCreateSwapchainKHR(VkDevice device, const VkSwapchainCreateI
 {
     LOG_FUNC();
 
-    State::Instance().vulkanCreatingSC = true;
+    ScopedVulkanCreatingSC scopedVulkanCreatingSC {};
     auto result = o_CreateSwapchainKHR(device, pCreateInfo, pAllocator, pSwapchain);
-    State::Instance().vulkanCreatingSC = false;
 
     if (result == VK_SUCCESS && device != VK_NULL_HANDLE && pCreateInfo != nullptr && *pSwapchain != VK_NULL_HANDLE &&
         !State::Instance().vulkanSkipHooks)

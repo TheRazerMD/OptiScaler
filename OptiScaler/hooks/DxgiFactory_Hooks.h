@@ -57,4 +57,30 @@ class DxgiFactoryHooks
     inline static bool _skipHighPerfCheck = false;
 
     static void CheckAdapter(IUnknown* unkAdapter);
+
+    class ScopedSkipFGSCCreation
+    {
+      private:
+        bool previousState;
+      public:
+        ScopedSkipFGSCCreation()
+        {
+            previousState = DxgiFactoryHooks::_skipFGSwapChainCreation;
+            DxgiFactoryHooks::_skipFGSwapChainCreation = true;
+        }
+        ~ScopedSkipFGSCCreation() { DxgiFactoryHooks::_skipFGSwapChainCreation = previousState; }
+    };  
+
+    class ScopedSkipHighPerfCheck
+    {
+      private:
+        bool previousState;
+      public:
+        ScopedSkipHighPerfCheck()
+        {
+            previousState = DxgiFactoryHooks::_skipHighPerfCheck;
+            DxgiFactoryHooks::_skipHighPerfCheck = true;
+        }
+        ~ScopedSkipHighPerfCheck() { DxgiFactoryHooks::_skipHighPerfCheck = previousState; }
+    };
 };

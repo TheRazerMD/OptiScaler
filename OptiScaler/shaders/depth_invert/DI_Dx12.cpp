@@ -188,7 +188,7 @@ DI_Dx12::DI_Dx12(std::string InName, ID3D12Device* InDevice) : Shader_Dx12(InNam
         }
     }
 
-    State::Instance().skipHeapCapture = true;
+    ScopedSkipHeapCapture skipHeapCapture {};
 
     for (int i = 0; i < DI_NUM_OF_HEAPS; i++)
     {
@@ -196,12 +196,9 @@ DI_Dx12::DI_Dx12(std::string InName, ID3D12Device* InDevice) : Shader_Dx12(InNam
         {
             LOG_ERROR("[{0}] Failed to init heap", _name);
             _init = false;
-            State::Instance().skipHeapCapture = false;
             return;
         }
     }
-
-    State::Instance().skipHeapCapture = false;
 
     _init = true;
 }

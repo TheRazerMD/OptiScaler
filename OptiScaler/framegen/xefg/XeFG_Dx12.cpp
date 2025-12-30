@@ -44,7 +44,7 @@ bool XeFG_Dx12::CreateSwapchainContext(ID3D12Device* device)
 
     auto createResult = false;
 
-    State::Instance().skipSpoofing = true;
+    ScopedSkipSpoofing skipSpoofing {};
 
     do
     {
@@ -97,8 +97,6 @@ bool XeFG_Dx12::CreateSwapchainContext(ID3D12Device* device)
         createResult = true;
 
     } while (false);
-
-    State::Instance().skipSpoofing = false;
 
     return createResult;
 }
@@ -310,12 +308,12 @@ bool XeFG_Dx12::CreateSwapchain(IDXGIFactory* factory, ID3D12CommandQueue* cmdQu
     if (Config::Instance()->FGXeFGHighResMV.value_or_default())
         _constants.flags |= FG_Flags::DisplayResolutionMVs;
 
-    State::Instance().skipSpoofing = true;
-
-    auto result = XeFGProxy::D3D12InitFromSwapChainDesc()(_swapChainContext, hwnd, &scDesc, &fsDesc, realQueue,
-                                                          factory12, &params);
-
-    State::Instance().skipSpoofing = false;
+    xefg_swapchain_result_t result;
+    {
+        ScopedSkipSpoofing skipSpoofing {};
+        result = XeFGProxy::D3D12InitFromSwapChainDesc()(_swapChainContext, hwnd, &scDesc, &fsDesc, realQueue,
+                                                         factory12, &params);
+    }
 
     if (result != XEFG_SWAPCHAIN_RESULT_SUCCESS)
     {
@@ -421,8 +419,12 @@ bool XeFG_Dx12::CreateSwapchain1(IDXGIFactory* factory, ID3D12CommandQueue* cmdQ
 
     State::Instance().skipSpoofing = true;
 
-    auto result = XeFGProxy::D3D12InitFromSwapChainDesc()(_swapChainContext, hwnd, desc, pFullscreenDesc, realQueue,
-                                                          factory12, &params);
+    xefg_swapchain_result_t result;
+    {
+        ScopedSkipSpoofing skipSpoofing {};
+        result = XeFGProxy::D3D12InitFromSwapChainDesc()(_swapChainContext, hwnd, desc, pFullscreenDesc, realQueue,
+                                                         factory12, &params);
+    }
 
     State::Instance().skipSpoofing = false;
 

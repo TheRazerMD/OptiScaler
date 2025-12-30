@@ -192,66 +192,70 @@ class XeFGProxy
 
         _dll = libxefgModule;
 
-        State::Instance().skipDxgiLoadChecks = true;
-
-        if (_dll != nullptr)
         {
-            // Common
-            _xefgSwapChainGetVersion =
-                (PFN_xefgSwapChainGetVersion) KernelBaseProxy::GetProcAddress_()(_dll, "xefgSwapChainGetVersion");
-            _xefgSwapChainGetProperties =
-                (PFN_xefgSwapChainGetProperties) KernelBaseProxy::GetProcAddress_()(_dll, "xefgSwapChainGetProperties");
-            _xefgSwapChainTagFrameConstants = (PFN_xefgSwapChainTagFrameConstants) KernelBaseProxy::GetProcAddress_()(
-                _dll, "xefgSwapChainTagFrameConstants");
-            _xefgSwapChainSetEnabled =
-                (PFN_xefgSwapChainSetEnabled) KernelBaseProxy::GetProcAddress_()(_dll, "xefgSwapChainSetEnabled");
-            _xefgSwapChainSetPresentId =
-                (PFN_xefgSwapChainSetPresentId) KernelBaseProxy::GetProcAddress_()(_dll, "xefgSwapChainSetPresentId");
-            _xefgSwapChainGetLastPresentStatus =
-                (PFN_xefgSwapChainGetLastPresentStatus) KernelBaseProxy::GetProcAddress_()(
-                    _dll, "xefgSwapChainGetLastPresentStatus");
-            _xefgSwapChainSetLoggingCallback = (PFN_xefgSwapChainSetLoggingCallback) KernelBaseProxy::GetProcAddress_()(
-                _dll, "xefgSwapChainSetLoggingCallback");
-            _xefgSwapChainDestroy =
-                (PFN_xefgSwapChainDestroy) KernelBaseProxy::GetProcAddress_()(_dll, "xefgSwapChainDestroy");
-            _xefgSwapChainSetLatencyReduction =
-                (PFN_xefgSwapChainSetLatencyReduction) KernelBaseProxy::GetProcAddress_()(
-                    _dll, "xefgSwapChainSetLatencyReduction");
-            _xefgSwapChainSetSceneChangeThreshold =
-                (PFN_xefgSwapChainSetSceneChangeThreshold) KernelBaseProxy::GetProcAddress_()(
-                    _dll, "xefgSwapChainSetSceneChangeThreshold");
-            _xefgSwapChainGetPipelineBuildStatus =
-                (PFN_xefgSwapChainGetPipelineBuildStatus) KernelBaseProxy::GetProcAddress_()(
-                    _dll, "xefgSwapChainGetPipelineBuildStatus");
+            ScopedSkipDxgiLoadChecks skipDxgiLoadChecks {};
 
-            // Dx12
-            _xefgSwapChainD3D12CreateContext = (PFN_xefgSwapChainD3D12CreateContext) KernelBaseProxy::GetProcAddress_()(
-                _dll, "xefgSwapChainD3D12CreateContext");
-            _xefgSwapChainD3D12BuildPipelines =
-                (PFN_xefgSwapChainD3D12BuildPipelines) KernelBaseProxy::GetProcAddress_()(
-                    _dll, "xefgSwapChainD3D12BuildPipelines");
-            _xefgSwapChainD3D12InitFromSwapChain =
-                (PFN_xefgSwapChainD3D12InitFromSwapChain) KernelBaseProxy::GetProcAddress_()(
-                    _dll, "xefgSwapChainD3D12InitFromSwapChain");
-            _xefgSwapChainD3D12InitFromSwapChainDesc =
-                (PFN_xefgSwapChainD3D12InitFromSwapChainDesc) KernelBaseProxy::GetProcAddress_()(
-                    _dll, "xefgSwapChainD3D12InitFromSwapChainDesc");
-            _xefgSwapChainD3D12GetSwapChainPtr =
-                (PFN_xefgSwapChainD3D12GetSwapChainPtr) KernelBaseProxy::GetProcAddress_()(
-                    _dll, "xefgSwapChainD3D12GetSwapChainPtr");
-            _xefgSwapChainD3D12TagFrameResource =
-                (PFN_xefgSwapChainD3D12TagFrameResource) KernelBaseProxy::GetProcAddress_()(
-                    _dll, "xefgSwapChainD3D12TagFrameResource");
-            _xefgSwapChainD3D12SetDescriptorHeap =
-                (PFN_xefgSwapChainD3D12SetDescriptorHeap) KernelBaseProxy::GetProcAddress_()(
-                    _dll, "xefgSwapChainD3D12SetDescriptorHeap");
+            if (_dll != nullptr)
+            {
+                // Common
+                _xefgSwapChainGetVersion =
+                    (PFN_xefgSwapChainGetVersion) KernelBaseProxy::GetProcAddress_()(_dll, "xefgSwapChainGetVersion");
+                _xefgSwapChainGetProperties = (PFN_xefgSwapChainGetProperties) KernelBaseProxy::GetProcAddress_()(
+                    _dll, "xefgSwapChainGetProperties");
+                _xefgSwapChainTagFrameConstants =
+                    (PFN_xefgSwapChainTagFrameConstants) KernelBaseProxy::GetProcAddress_()(
+                        _dll, "xefgSwapChainTagFrameConstants");
+                _xefgSwapChainSetEnabled =
+                    (PFN_xefgSwapChainSetEnabled) KernelBaseProxy::GetProcAddress_()(_dll, "xefgSwapChainSetEnabled");
+                _xefgSwapChainSetPresentId = (PFN_xefgSwapChainSetPresentId) KernelBaseProxy::GetProcAddress_()(
+                    _dll, "xefgSwapChainSetPresentId");
+                _xefgSwapChainGetLastPresentStatus =
+                    (PFN_xefgSwapChainGetLastPresentStatus) KernelBaseProxy::GetProcAddress_()(
+                        _dll, "xefgSwapChainGetLastPresentStatus");
+                _xefgSwapChainSetLoggingCallback =
+                    (PFN_xefgSwapChainSetLoggingCallback) KernelBaseProxy::GetProcAddress_()(
+                        _dll, "xefgSwapChainSetLoggingCallback");
+                _xefgSwapChainDestroy =
+                    (PFN_xefgSwapChainDestroy) KernelBaseProxy::GetProcAddress_()(_dll, "xefgSwapChainDestroy");
+                _xefgSwapChainSetLatencyReduction =
+                    (PFN_xefgSwapChainSetLatencyReduction) KernelBaseProxy::GetProcAddress_()(
+                        _dll, "xefgSwapChainSetLatencyReduction");
+                _xefgSwapChainSetSceneChangeThreshold =
+                    (PFN_xefgSwapChainSetSceneChangeThreshold) KernelBaseProxy::GetProcAddress_()(
+                        _dll, "xefgSwapChainSetSceneChangeThreshold");
+                _xefgSwapChainGetPipelineBuildStatus =
+                    (PFN_xefgSwapChainGetPipelineBuildStatus) KernelBaseProxy::GetProcAddress_()(
+                        _dll, "xefgSwapChainGetPipelineBuildStatus");
 
-            // Debug
-            _xefgSwapChainEnableDebugFeature = (PFN_xefgSwapChainEnableDebugFeature) KernelBaseProxy::GetProcAddress_()(
-                _dll, "xefgSwapChainEnableDebugFeature");
+                // Dx12
+                _xefgSwapChainD3D12CreateContext =
+                    (PFN_xefgSwapChainD3D12CreateContext) KernelBaseProxy::GetProcAddress_()(
+                        _dll, "xefgSwapChainD3D12CreateContext");
+                _xefgSwapChainD3D12BuildPipelines =
+                    (PFN_xefgSwapChainD3D12BuildPipelines) KernelBaseProxy::GetProcAddress_()(
+                        _dll, "xefgSwapChainD3D12BuildPipelines");
+                _xefgSwapChainD3D12InitFromSwapChain =
+                    (PFN_xefgSwapChainD3D12InitFromSwapChain) KernelBaseProxy::GetProcAddress_()(
+                        _dll, "xefgSwapChainD3D12InitFromSwapChain");
+                _xefgSwapChainD3D12InitFromSwapChainDesc =
+                    (PFN_xefgSwapChainD3D12InitFromSwapChainDesc) KernelBaseProxy::GetProcAddress_()(
+                        _dll, "xefgSwapChainD3D12InitFromSwapChainDesc");
+                _xefgSwapChainD3D12GetSwapChainPtr =
+                    (PFN_xefgSwapChainD3D12GetSwapChainPtr) KernelBaseProxy::GetProcAddress_()(
+                        _dll, "xefgSwapChainD3D12GetSwapChainPtr");
+                _xefgSwapChainD3D12TagFrameResource =
+                    (PFN_xefgSwapChainD3D12TagFrameResource) KernelBaseProxy::GetProcAddress_()(
+                        _dll, "xefgSwapChainD3D12TagFrameResource");
+                _xefgSwapChainD3D12SetDescriptorHeap =
+                    (PFN_xefgSwapChainD3D12SetDescriptorHeap) KernelBaseProxy::GetProcAddress_()(
+                        _dll, "xefgSwapChainD3D12SetDescriptorHeap");
+
+                // Debug
+                _xefgSwapChainEnableDebugFeature =
+                    (PFN_xefgSwapChainEnableDebugFeature) KernelBaseProxy::GetProcAddress_()(
+                        _dll, "xefgSwapChainEnableDebugFeature");
+            }
         }
-
-        State::Instance().skipDxgiLoadChecks = true;
 
         bool loadResult = _xefgSwapChainGetVersion != nullptr;
         LOG_INFO("LoadResult: {}", loadResult);

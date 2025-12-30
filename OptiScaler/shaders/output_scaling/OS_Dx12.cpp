@@ -348,7 +348,7 @@ OS_Dx12::OS_Dx12(std::string InName, ID3D12Device* InDevice, bool InUpsample)
         }
     }
 
-    State::Instance().skipHeapCapture = true;
+    ScopedSkipHeapCapture skipHeapCapture {};
 
     for (int i = 0; i < OS_NUM_OF_HEAPS; i++)
     {
@@ -356,12 +356,9 @@ OS_Dx12::OS_Dx12(std::string InName, ID3D12Device* InDevice, bool InUpsample)
         {
             LOG_ERROR("[{0}] Failed to init heap", _name);
             _init = false;
-            State::Instance().skipHeapCapture = false;
             return;
         }
     }
-
-    State::Instance().skipHeapCapture = false;
 
     _init = true;
 }

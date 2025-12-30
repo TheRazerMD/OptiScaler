@@ -150,30 +150,32 @@ static HRESULT hkD3D11CreateDevice(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE Drive
     std::wstring szName;
     if (pAdapter != nullptr)
     {
-        State::Instance().skipSpoofing = true;
-        if (pAdapter->GetDesc(&desc) == S_OK)
         {
-            szName = desc.Description;
-            LOG_INFO("Adapter Desc: {}", wstring_to_string(szName));
+            ScopedSkipSpoofing skipSpoofing {};
 
-            if (desc.VendorId == VendorId::Microsoft)
+            if (pAdapter->GetDesc(&desc) == S_OK)
             {
-                State::Instance().skipSpoofing = false;
+                szName = desc.Description;
+                LOG_INFO("Adapter Desc: {}", wstring_to_string(szName));
 
-                _skipDx11Create = true;
-                State::Instance().skipParentWrapping = true;
+                if (desc.VendorId == VendorId::Microsoft)
+                {
+                    _skipDx11Create = true;
 
-                auto result = o_D3D11CreateDevice(pAdapter, DriverType, Software, Flags, pFeatureLevels, FeatureLevels,
-                                                  SDKVersion, ppDevice, pFeatureLevel, ppImmediateContext);
+                    HRESULT result;
+                    {
+                        ScopedSkipParentWrapping skipParentWrapping {};
+                        result =
+                            o_D3D11CreateDevice(pAdapter, DriverType, Software, Flags, pFeatureLevels, FeatureLevels,
+                                                SDKVersion, ppDevice, pFeatureLevel, ppImmediateContext);
+                    }
 
-                State::Instance().skipParentWrapping = false;
-                _skipDx11Create = false;
+                    _skipDx11Create = false;
 
-                return result;
+                    return result;
+                }
             }
         }
-
-        State::Instance().skipSpoofing = false;
     }
 
     if (!(State::Instance().gameQuirks & GameQuirk::SkipD3D11FeatureLevelElevation))
@@ -202,12 +204,12 @@ static HRESULT hkD3D11CreateDevice(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE Drive
 
     _skipDx11Create = true;
 
-    State::Instance().skipParentWrapping = true;
-
-    auto result = o_D3D11CreateDevice(pAdapter, DriverType, Software, Flags, pFeatureLevels, FeatureLevels, SDKVersion,
-                                      ppDevice, pFeatureLevel, ppImmediateContext);
-
-    State::Instance().skipParentWrapping = false;
+    HRESULT result;
+    {
+        ScopedSkipParentWrapping skipParentWrapping {};
+        result = o_D3D11CreateDevice(pAdapter, DriverType, Software, Flags, pFeatureLevels, FeatureLevels, SDKVersion,
+                                     ppDevice, pFeatureLevel, ppImmediateContext);
+    }
 
     _skipDx11Create = false;
 
@@ -255,31 +257,32 @@ static HRESULT hkD3D11CreateDeviceAndSwapChain(IDXGIAdapter* pAdapter, D3D_DRIVE
     std::wstring szName;
     if (pAdapter != nullptr)
     {
-        State::Instance().skipSpoofing = true;
-        if (pAdapter->GetDesc(&desc) == S_OK)
         {
-            szName = desc.Description;
-            LOG_INFO("Adapter Desc: {}", wstring_to_string(szName));
+            ScopedSkipSpoofing skipSpoofing {};
 
-            if (desc.VendorId == VendorId::Microsoft)
+            if (pAdapter->GetDesc(&desc) == S_OK)
             {
-                State::Instance().skipSpoofing = false;
+                szName = desc.Description;
+                LOG_INFO("Adapter Desc: {}", wstring_to_string(szName));
 
-                _skipDx11Create = true;
-                State::Instance().skipParentWrapping = true;
+                if (desc.VendorId == VendorId::Microsoft)
+                {
+                    _skipDx11Create = true;
 
-                auto result = o_D3D11CreateDeviceAndSwapChain(pAdapter, DriverType, Software, Flags, pFeatureLevels,
-                                                              FeatureLevels, SDKVersion, pSwapChainDesc, ppSwapChain,
-                                                              ppDevice, pFeatureLevel, ppImmediateContext);
+                    HRESULT result;
+                    {
+                        ScopedSkipParentWrapping skipParentWrapping {};
+                        result = o_D3D11CreateDeviceAndSwapChain(pAdapter, DriverType, Software, Flags, pFeatureLevels,
+                                                                 FeatureLevels, SDKVersion, pSwapChainDesc, ppSwapChain,
+                                                                 ppDevice, pFeatureLevel, ppImmediateContext);
+                    }
 
-                State::Instance().skipParentWrapping = false;
-                _skipDx11Create = false;
+                    _skipDx11Create = false;
 
-                return result;
+                    return result;
+                }
             }
         }
-
-        State::Instance().skipSpoofing = false;
     }
 
     if (!(State::Instance().gameQuirks & GameQuirk::SkipD3D11FeatureLevelElevation))

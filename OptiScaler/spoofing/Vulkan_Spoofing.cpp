@@ -318,9 +318,11 @@ inline static VkResult hkvkCreateInstance(VkInstanceCreateInfo* pCreateInfo, con
     pCreateInfo->ppEnabledExtensionNames = newExtensionList.data();
 
     // Skip spoofing for Intel Arc
-    State::Instance().skipSpoofing = true;
-    auto result = o_vkCreateInstance(pCreateInfo, pAllocator, pInstance);
-    State::Instance().skipSpoofing = false;
+    VkResult result;
+    {
+        ScopedSkipSpoofing skipSpoofing {};
+        result = o_vkCreateInstance(pCreateInfo, pAllocator, pInstance);
+    }
 
     LOG_DEBUG("o_vkCreateInstance result: {:X}", (INT) result);
 
@@ -418,9 +420,8 @@ inline static VkResult hkvkCreateDevice(VkPhysicalDevice physicalDevice, VkDevic
         LOG_DEBUG("  {0}", pCreateInfo->ppEnabledExtensionNames[i]);
 
     // Skip spoofing for Intel Arc
-    State::Instance().skipSpoofing = true;
+    ScopedSkipSpoofing skipSpoofing {};
     auto result = o_vkCreateDevice(physicalDevice, pCreateInfo, pAllocator, pDevice);
-    State::Instance().skipSpoofing = false;
 
     LOG_FUNC_RESULT(result);
 

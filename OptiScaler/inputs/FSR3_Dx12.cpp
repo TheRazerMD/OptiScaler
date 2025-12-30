@@ -214,17 +214,20 @@ static Fsr3::FfxErrorCode ffxFsr3ContextCreate_Dx12(Fsr3::FfxFsr3UpscalerContext
         return Fsr3::FFX_ERROR_INVALID_ARGUMENT;
 
     auto& state = State::Instance();
+    Fsr3::FfxErrorCode ccResult = Fsr3::FFX_ERROR_INVALID_ARGUMENT;
 
-    _skipCreate = true;
-    state.skipHeapCapture = true;
-    auto ccResult = o_ffxFsr3UpscalerContextCreate_Dx12(pContext, pContextDescription);
-    state.skipHeapCapture = false;
-    _skipCreate = false;
-
-    if (ccResult != Fsr3::FFX_OK)
     {
-        LOG_ERROR("create error: {}", (UINT) ccResult);
-        return ccResult;
+        ScopedSkipHeapCapture skipHeapCapture {};
+
+        _skipCreate = true;
+        ccResult = o_ffxFsr3UpscalerContextCreate_Dx12(pContext, pContextDescription);
+        _skipCreate = false;
+
+        if (ccResult != Fsr3::FFX_OK)
+        {
+            LOG_ERROR("create error: {}", (UINT) ccResult);
+            return ccResult;
+        }
     }
 
     // check for d3d12 device
@@ -441,25 +444,20 @@ ffxFsr3ContextCreate_Pattern_Dx12(Fsr3::FfxFsr3UpscalerContext* pContext,
 
     auto& state = State::Instance();
 
-    bool skip = false;
-    if (!state.skipHeapCapture)
+    Fsr3::FfxErrorCode ccResult = Fsr3::FFX_OK;
     {
-        skip = true;
-        state.skipHeapCapture = true;
-    }
+        ScopedSkipHeapCapture skipHeapCapture {};
 
-    auto ccResult = o_ffxFsr3UpscalerContextCreate_Pattern_Dx12(pContext, pContextDescription);
+        ccResult = o_ffxFsr3UpscalerContextCreate_Pattern_Dx12(pContext, pContextDescription);
 
-    if (skip)
-        state.skipHeapCapture = false;
+        if (_skipCreate)
+            return ccResult;
 
-    if (_skipCreate)
-        return ccResult;
-
-    if (ccResult != Fsr3::FFX_OK)
-    {
-        LOG_ERROR("create error: {}", (UINT) ccResult);
-        return ccResult;
+        if (ccResult != Fsr3::FFX_OK)
+        {
+            LOG_ERROR("create error: {}", (UINT) ccResult);
+            return ccResult;
+        }
     }
 
     // check for d3d12 device

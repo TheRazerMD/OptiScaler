@@ -311,3 +311,91 @@ class State
 
     State() = default;
 };
+
+class ScopedSkipSpoofing
+{
+  private:
+    bool previousState;
+
+  public:
+    ScopedSkipSpoofing()
+    {
+        previousState = State::Instance().skipSpoofing;
+        State::Instance().skipSpoofing = true;
+    }
+
+    ~ScopedSkipSpoofing() { State::Instance().skipSpoofing = previousState; }
+};
+
+class ScopedSkipDxgiLoadChecks
+{
+  private:
+    bool previousState;
+
+  public:
+    ScopedSkipDxgiLoadChecks()
+    {
+        previousState = State::Instance().skipDxgiLoadChecks;
+        State::Instance().skipDxgiLoadChecks = true;
+    }
+
+    ~ScopedSkipDxgiLoadChecks() { State::Instance().skipDxgiLoadChecks = previousState; }
+};
+
+class ScopedSkipParentWrapping
+{
+  private:
+    bool previousState;
+
+  public:
+    ScopedSkipParentWrapping()
+    {
+        previousState = State::Instance().skipParentWrapping;
+        State::Instance().skipParentWrapping = true;
+    }
+
+    ~ScopedSkipParentWrapping() { State::Instance().skipParentWrapping = previousState; }
+};
+
+class ScopedSkipHeapCapture
+{
+  private:
+    bool previousState;
+
+  public:
+    ScopedSkipHeapCapture()
+    {
+        previousState = State::Instance().skipHeapCapture;
+        State::Instance().skipHeapCapture = true;
+    }
+
+    ~ScopedSkipHeapCapture() { State::Instance().skipHeapCapture = previousState; }
+};
+
+class ScopedSkipVulkanHooks
+{
+  private:
+    bool previousState;
+
+  public:
+    ScopedSkipVulkanHooks()
+    {
+        previousState = State::Instance().vulkanSkipHooks;
+        State::Instance().vulkanSkipHooks = true;
+    }
+    ~ScopedSkipVulkanHooks() { State::Instance().vulkanSkipHooks = previousState; }
+};
+
+class ScopedVulkanCreatingSC
+{
+  private:
+    bool previousState;
+
+  public:
+    ScopedVulkanCreatingSC()
+    {
+        previousState = State::Instance().vulkanCreatingSC;
+        State::Instance().vulkanCreatingSC = true;
+    }
+    ~ScopedVulkanCreatingSC() { State::Instance().vulkanCreatingSC = previousState; }
+};

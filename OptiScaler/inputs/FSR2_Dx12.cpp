@@ -365,15 +365,19 @@ static Fsr212::FfxErrorCode ffxFsr2ContextCreate_Dx12(Fsr212::FfxFsr2Context* co
     auto& state = State::Instance();
 
     _skipCreate = true;
-    state.skipHeapCapture = true;
-    auto ccResult = o_ffxFsr2ContextCreate_Dx12(context, contextDescription);
-    state.skipHeapCapture = false;
-    _skipCreate = false;
 
-    if (ccResult != Fsr212::FFX_OK)
+    Fsr212::FfxErrorCode ccResult = Fsr212::FFX_OK;
     {
-        LOG_ERROR("ccResult: {:X}", (UINT) ccResult);
-        return ccResult;
+        ScopedSkipHeapCapture skipHeapCapture {};
+
+        ccResult = o_ffxFsr2ContextCreate_Dx12(context, contextDescription);
+        _skipCreate = false;
+
+        if (ccResult != Fsr212::FFX_OK)
+        {
+            LOG_ERROR("ccResult: {:X}", (UINT) ccResult);
+            return ccResult;
+        }
     }
 
     // check for d3d12 device
@@ -475,25 +479,20 @@ static Fsr212::FfxErrorCode ffxFsr2ContextCreate_Pattern_Dx12(Fsr212::FfxFsr2Con
 
     auto& state = State::Instance();
 
-    bool skip = false;
-    if (!state.skipHeapCapture)
+    Fsr212::FfxErrorCode ccResult = Fsr212::FFX_OK;
     {
-        skip = true;
-        state.skipHeapCapture = true;
-    }
+        ScopedSkipHeapCapture skipHeapCapture {};
 
-    auto ccResult = o_ffxFsr2ContextCreate_Pattern_Dx12(context, contextDescription);
+        ccResult = o_ffxFsr2ContextCreate_Pattern_Dx12(context, contextDescription);
 
-    if (skip)
-        state.skipHeapCapture = false;
+        if (_skipCreate)
+            return ccResult;
 
-    if (_skipCreate)
-        return ccResult;
-
-    if (ccResult != Fsr212::FFX_OK)
-    {
-        LOG_ERROR("ccResult: {:X}", (UINT) ccResult);
-        return ccResult;
+        if (ccResult != Fsr212::FFX_OK)
+        {
+            LOG_ERROR("ccResult: {:X}", (UINT) ccResult);
+            return ccResult;
+        }
     }
 
     // check for d3d12 device

@@ -45,10 +45,13 @@ bool DLSSDFeatureDx12::Init(ID3D12Device* InDevice, ID3D12GraphicsCommandList* I
             ProcessInitParams(InParameters);
 
             _p_dlssdHandle = &_dlssdHandle;
-            State::Instance().skipHeapCapture = true;
-            nvResult = NVNGXProxy::D3D12_CreateFeature()(InCommandList, NVSDK_NGX_Feature_RayReconstruction,
-                                                         InParameters, &_p_dlssdHandle);
-            State::Instance().skipHeapCapture = false;
+
+            {
+                ScopedSkipHeapCapture skipHeapCapture {};
+
+                nvResult = NVNGXProxy::D3D12_CreateFeature()(InCommandList, NVSDK_NGX_Feature_RayReconstruction,
+                                                             InParameters, &_p_dlssdHandle);
+            }
 
             if (nvResult != NVSDK_NGX_Result_Success)
             {

@@ -157,9 +157,10 @@ void CheckForGPU()
             continue;
         }
 
-        State::Instance().skipSpoofing = true;
-        result = adapter->GetDesc(&adapterDesc);
-        State::Instance().skipSpoofing = false;
+        {
+            ScopedSkipSpoofing skipSpoofing {};
+            result = adapter->GetDesc(&adapterDesc);
+        }
 
         if (result == S_OK && adapterDesc.VendorId != VendorId::Microsoft)
         {

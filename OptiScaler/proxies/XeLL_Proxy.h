@@ -193,25 +193,26 @@ class XeLLProxy
 
         _dll = libxellModule;
 
-        State::Instance().skipDxgiLoadChecks = true;
-
-        if (_dll != nullptr)
         {
-            _xellDestroyContext =
-                (PFN_xellDestroyContext) KernelBaseProxy::GetProcAddress_()(_dll, "xellDestroyContext");
-            _xellSetSleepMode = (PFN_xellSetSleepMode) KernelBaseProxy::GetProcAddress_()(_dll, "xellSetSleepMode");
-            _xellGetSleepMode = (PFN_xellGetSleepMode) KernelBaseProxy::GetProcAddress_()(_dll, "xellGetSleepMode");
-            _xellSleep = (PFN_xellSleep) KernelBaseProxy::GetProcAddress_()(_dll, "xellSleep");
-            _xellAddMarkerData = (PFN_xellAddMarkerData) KernelBaseProxy::GetProcAddress_()(_dll, "xellAddMarkerData");
-            _xellGetVersion = (PFN_xellGetVersion) KernelBaseProxy::GetProcAddress_()(_dll, "xellGetVersion");
-            _xellSetLoggingCallback =
-                (PFN_xellSetLoggingCallback) KernelBaseProxy::GetProcAddress_()(_dll, "xellSetLoggingCallback");
+            ScopedSkipDxgiLoadChecks skipDxgiLoadChecks {};
 
-            _xellD3D12CreateContext =
-                (PFN_xellD3D12CreateContext) KernelBaseProxy::GetProcAddress_()(_dll, "xellD3D12CreateContext");
+            if (_dll != nullptr)
+            {
+                _xellDestroyContext =
+                    (PFN_xellDestroyContext) KernelBaseProxy::GetProcAddress_()(_dll, "xellDestroyContext");
+                _xellSetSleepMode = (PFN_xellSetSleepMode) KernelBaseProxy::GetProcAddress_()(_dll, "xellSetSleepMode");
+                _xellGetSleepMode = (PFN_xellGetSleepMode) KernelBaseProxy::GetProcAddress_()(_dll, "xellGetSleepMode");
+                _xellSleep = (PFN_xellSleep) KernelBaseProxy::GetProcAddress_()(_dll, "xellSleep");
+                _xellAddMarkerData =
+                    (PFN_xellAddMarkerData) KernelBaseProxy::GetProcAddress_()(_dll, "xellAddMarkerData");
+                _xellGetVersion = (PFN_xellGetVersion) KernelBaseProxy::GetProcAddress_()(_dll, "xellGetVersion");
+                _xellSetLoggingCallback =
+                    (PFN_xellSetLoggingCallback) KernelBaseProxy::GetProcAddress_()(_dll, "xellSetLoggingCallback");
+
+                _xellD3D12CreateContext =
+                    (PFN_xellD3D12CreateContext) KernelBaseProxy::GetProcAddress_()(_dll, "xellD3D12CreateContext");
+            }
         }
-
-        State::Instance().skipDxgiLoadChecks = true;
 
         bool loadResult = _xellDestroyContext != nullptr;
         LOG_INFO("LoadResult: {}", loadResult);
@@ -280,9 +281,11 @@ class XeLLProxy
         if (_xellContext != nullptr)
             DestroyXeLLContext();
 
-        State::Instance().skipSpoofing = true;
-        auto xellResult = _xellD3D12CreateContext(device, &_xellContext);
-        State::Instance().skipSpoofing = false;
+        xell_result_t xellResult;
+        {
+            ScopedSkipSpoofing skipSpoofing {};
+            xellResult = _xellD3D12CreateContext(device, &_xellContext);
+        }
 
         if (xellResult != XELL_RESULT_SUCCESS)
         {

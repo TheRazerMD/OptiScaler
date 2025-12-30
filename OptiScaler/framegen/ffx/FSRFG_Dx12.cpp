@@ -893,29 +893,28 @@ void FSRFG_Dx12::CreateContext(ID3D12Device* device, FG_Constants& fgConstants)
         createFg.header.pNext = &backendDesc.header;
     }
 
-    State::Instance().skipSpoofing = true;
-    State::Instance().skipHeapCapture = true;
+    {
+        ScopedSkipSpoofing skipSpoofing {};
+        ScopedSkipHeapCapture skipHeapCapture {};
 
-    // Currently 0 is non-ML FG and 1 is ML FG
-    if (Config::Instance()->FfxFGIndex.value_or_default() < 0 ||
-        Config::Instance()->FfxFGIndex.value_or_default() >= State::Instance().ffxFGVersionIds.size())
-        Config::Instance()->FfxFGIndex.set_volatile_value(0);
+        // Currently 0 is non-ML FG and 1 is ML FG
+        if (Config::Instance()->FfxFGIndex.value_or_default() < 0 ||
+            Config::Instance()->FfxFGIndex.value_or_default() >= State::Instance().ffxFGVersionIds.size())
+            Config::Instance()->FfxFGIndex.set_volatile_value(0);
 
-    ffxOverrideVersion override = { 0 };
-    override.header.type = FFX_API_DESC_TYPE_OVERRIDE_VERSION;
-    override.versionId = State::Instance().ffxFGVersionIds[Config::Instance()->FfxFGIndex.value_or_default()];
-    backendDesc.header.pNext = &override.header;
+        ffxOverrideVersion override = { 0 };
+        override.header.type = FFX_API_DESC_TYPE_OVERRIDE_VERSION;
+        override.versionId = State::Instance().ffxFGVersionIds[Config::Instance()->FfxFGIndex.value_or_default()];
+        backendDesc.header.pNext = &override.header;
 
-    ParseVersion(State::Instance().ffxFGVersionNames[Config::Instance()->FfxFGIndex.value_or_default()], &_version);
+        ParseVersion(State::Instance().ffxFGVersionNames[Config::Instance()->FfxFGIndex.value_or_default()], &_version);
 
-    ffxReturnCode_t retCode = FfxApiProxy::D3D12_CreateContext(&_fgContext, &createFg.header, nullptr);
+        ffxReturnCode_t retCode = FfxApiProxy::D3D12_CreateContext(&_fgContext, &createFg.header, nullptr);
 
-    State::Instance().skipHeapCapture = false;
-    State::Instance().skipSpoofing = false;
-    LOG_INFO("D3D12_CreateContext result: {0:X}", retCode);
-
-    _isActive = (retCode == FFX_API_RETURN_OK);
-    _lastDispatchedFrame = 0;
+        LOG_INFO("D3D12_CreateContext result: {:X}", retCode);
+        _isActive = (retCode == FFX_API_RETURN_OK);
+        _lastDispatchedFrame = 0;
+    }
 
     LOG_DEBUG("Create");
 }

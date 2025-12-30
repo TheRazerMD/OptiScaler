@@ -338,16 +338,17 @@ static void RenderImGui_DX12(IDXGISwapChain* pSwapChainPlain)
             desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
             desc.NodeMask = 1;
 
-            State::Instance().skipHeapCapture = true;
+            {
+                ScopedSkipHeapCapture skipHeapCapture {};
+                result = device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&g_pd3dRtvDescHeap));
+            }
 
-            result = device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&g_pd3dRtvDescHeap));
             if (result != S_OK)
             {
                 LOG_ERROR("CreateDescriptorHeap(g_pd3dRtvDescHeap): {0:X}", (unsigned long) result);
                 MenuOverlayBase::HideMenu();
                 CleanupRenderTargetDx12(true);
                 pSwapChain->Release();
-                State::Instance().skipHeapCapture = false;
                 return;
             }
 
@@ -367,9 +368,11 @@ static void RenderImGui_DX12(IDXGISwapChain* pSwapChainPlain)
             desc.NumDescriptors = SRV_HEAP_SIZE;
             desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 
-            result = device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&g_pd3dSrvDescHeap));
+            {
+                ScopedSkipHeapCapture skipHeapCapture {};
+                result = device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&g_pd3dSrvDescHeap));
+            }
 
-            State::Instance().skipHeapCapture = false;
             if (result != S_OK)
             {
                 LOG_ERROR("CreateDescriptorHeap(g_pd3dSrvDescHeap): {0:X}", (unsigned long) result);
@@ -624,15 +627,15 @@ void MenuOverlayDx::Present(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT 
         }
     }
 
-    State::Instance().skipHeapCapture = true;
+    {
+        ScopedSkipHeapCapture skipHeapCapture {};
 
-    // Render menu
-    if (_dx11Device)
-        RenderImGui_DX11(pSwapChain);
-    else if (_dx12Device)
-        RenderImGui_DX12(pSwapChain);
-
-    State::Instance().skipHeapCapture = false;
+        // Render menu
+        if (_dx11Device)
+            RenderImGui_DX11(pSwapChain);
+        else if (_dx12Device)
+            RenderImGui_DX12(pSwapChain);
+    }
 
     // release used objects
     if (cq != nullptr)

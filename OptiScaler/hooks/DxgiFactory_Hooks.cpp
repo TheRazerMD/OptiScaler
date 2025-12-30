@@ -149,12 +149,10 @@ HRESULT DxgiFactoryHooks::CreateSwapChain(IDXGIFactory* realFactory, IUnknown* p
                       pDesc->BufferDesc.Width, pDesc->BufferDesc.Height, (UINT) pDesc->BufferDesc.Format,
                       pDesc->BufferCount, (SIZE_T) pDesc->OutputWindow, pDesc->Windowed, _skipFGSwapChainCreation);
 
-        State::Instance().skipDxgiLoadChecks = true;
-        State::Instance().skipParentWrapping = true;
-        auto res = o_CreateSwapChain(realFactory, pDevice, pDesc, ppSwapChain);
-        State::Instance().skipParentWrapping = false;
-        State::Instance().skipDxgiLoadChecks = false;
+        ScopedSkipDxgiLoadChecks skipDxgiLoadChecks {};
+        ScopedSkipParentWrapping skipParentWrapping {};
 
+        auto res = o_CreateSwapChain(realFactory, pDevice, pDesc, ppSwapChain);
         return res;
     }
 
@@ -162,12 +160,10 @@ HRESULT DxgiFactoryHooks::CreateSwapChain(IDXGIFactory* realFactory, IUnknown* p
     {
         LOG_WARN("pDevice or pDesc is nullptr!");
 
-        State::Instance().skipDxgiLoadChecks = true;
-        State::Instance().skipParentWrapping = true;
-        auto res = o_CreateSwapChain(realFactory, pDevice, pDesc, ppSwapChain);
-        State::Instance().skipParentWrapping = false;
-        State::Instance().skipDxgiLoadChecks = false;
+        ScopedSkipDxgiLoadChecks skipDxgiLoadChecks {};
+        ScopedSkipParentWrapping skipParentWrapping {};
 
+        auto res = o_CreateSwapChain(realFactory, pDevice, pDesc, ppSwapChain);
         return res;
     }
 
@@ -175,12 +171,10 @@ HRESULT DxgiFactoryHooks::CreateSwapChain(IDXGIFactory* realFactory, IUnknown* p
     {
         LOG_WARN("Overlay call!");
 
-        State::Instance().skipDxgiLoadChecks = true;
-        State::Instance().skipParentWrapping = true;
-        auto res = o_CreateSwapChain(realFactory, pDevice, pDesc, ppSwapChain);
-        State::Instance().skipParentWrapping = false;
-        State::Instance().skipDxgiLoadChecks = false;
+        ScopedSkipDxgiLoadChecks skipDxgiLoadChecks {};
+        ScopedSkipParentWrapping skipParentWrapping {};
 
+        auto res = o_CreateSwapChain(realFactory, pDevice, pDesc, ppSwapChain);
         return res;
     }
 
@@ -272,9 +266,8 @@ HRESULT DxgiFactoryHooks::CreateSwapChain(IDXGIFactory* realFactory, IUnknown* p
         // Create FG SwapChain
         if (!_skipFGSwapChainCreation)
         {
-            _skipFGSwapChainCreation = true;
+            ScopedSkipFGSCCreation skipFGSCCreation {};
             FGSCResult = FGHooks::CreateSwapChain(realFactory, real, pDesc, ppSwapChain);
-            _skipFGSwapChainCreation = false;
 
             if (FGSCResult == S_OK)
             {
@@ -303,9 +296,10 @@ HRESULT DxgiFactoryHooks::CreateSwapChain(IDXGIFactory* realFactory, IUnknown* p
                 State::Instance().skipHeapCapture = true;
         }
 
-        State::Instance().skipParentWrapping = true;
-        result = o_CreateSwapChain(realFactory, pDevice, pDesc, ppSwapChain);
-        State::Instance().skipParentWrapping = false;
+        {
+            ScopedSkipParentWrapping skipParentWrapping {};
+            result = o_CreateSwapChain(realFactory, pDevice, pDesc, ppSwapChain);
+        }
 
         if (!_skipFGSwapChainCreation)
         {
@@ -374,12 +368,15 @@ HRESULT DxgiFactoryHooks::CreateSwapChainForHwnd(IDXGIFactory2* realFactory, IUn
     if (State::Instance().vulkanCreatingSC)
     {
         LOG_WARN("Vulkan is creating swapchain!");
-        State::Instance().skipParentWrapping = true;
-        State::Instance().skipDxgiLoadChecks = true;
-        auto result = o_CreateSwapChainForHwnd(realFactory, pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput,
-                                               ppSwapChain);
-        State::Instance().skipDxgiLoadChecks = false;
-        State::Instance().skipParentWrapping = false;
+        HRESULT result;
+
+        {
+            ScopedSkipDxgiLoadChecks skipDxgiLoadChecks {};
+            ScopedSkipParentWrapping skipParentWrapping {};
+
+            result = o_CreateSwapChainForHwnd(realFactory, pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput,
+                                              ppSwapChain);
+        }
 
         if (firstCall)
             _skipFGSwapChainCreation = false;
@@ -390,12 +387,14 @@ HRESULT DxgiFactoryHooks::CreateSwapChainForHwnd(IDXGIFactory2* realFactory, IUn
     if (pDevice == nullptr || pDesc == nullptr)
     {
         LOG_WARN("pDevice or pDesc is nullptr!");
-        State::Instance().skipParentWrapping = true;
-        State::Instance().skipDxgiLoadChecks = true;
-        auto result = o_CreateSwapChainForHwnd(realFactory, pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput,
-                                               ppSwapChain);
-        State::Instance().skipDxgiLoadChecks = false;
-        State::Instance().skipParentWrapping = false;
+        HRESULT result;
+
+        {
+            ScopedSkipDxgiLoadChecks skipDxgiLoadChecks {};
+            ScopedSkipParentWrapping skipParentWrapping {};
+            result = o_CreateSwapChainForHwnd(realFactory, pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput,
+                                              ppSwapChain);
+        }
 
         if (firstCall)
             _skipFGSwapChainCreation = false;
@@ -406,12 +405,14 @@ HRESULT DxgiFactoryHooks::CreateSwapChainForHwnd(IDXGIFactory2* realFactory, IUn
     if (pDesc->Height < 100 || pDesc->Width < 100)
     {
         LOG_WARN("Overlay call!");
-        State::Instance().skipParentWrapping = true;
-        State::Instance().skipDxgiLoadChecks = true;
-        auto result = o_CreateSwapChainForHwnd(realFactory, pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput,
-                                               ppSwapChain);
-        State::Instance().skipDxgiLoadChecks = false;
-        State::Instance().skipParentWrapping = false;
+        HRESULT result;
+
+        {
+            ScopedSkipDxgiLoadChecks skipDxgiLoadChecks {};
+            ScopedSkipParentWrapping skipParentWrapping {};
+            result = o_CreateSwapChainForHwnd(realFactory, pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput,
+                                              ppSwapChain);
+        }
 
         if (firstCall)
             _skipFGSwapChainCreation = false;
@@ -498,10 +499,9 @@ HRESULT DxgiFactoryHooks::CreateSwapChainForHwnd(IDXGIFactory2* realFactory, IUn
         // Create FG SwapChain
         if (!_skipFGSwapChainCreation)
         {
-            _skipFGSwapChainCreation = true;
+            ScopedSkipFGSCCreation skipFGSCCreation {};
             FGSCResult = FGHooks::CreateSwapChainForHwnd(realFactory, real, hWnd, pDesc, pFullscreenDesc,
                                                          pRestrictToOutput, ppSwapChain);
-            _skipFGSwapChainCreation = false;
 
             if (FGSCResult == S_OK)
             {
@@ -531,11 +531,11 @@ HRESULT DxgiFactoryHooks::CreateSwapChainForHwnd(IDXGIFactory2* realFactory, IUn
                 State::Instance().skipHeapCapture = true;
         }
 
-        State::Instance().skipParentWrapping = true;
-        result = o_CreateSwapChainForHwnd(realFactory, pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput,
-                                          ppSwapChain);
-
-        State::Instance().skipParentWrapping = false;
+        {
+            ScopedSkipParentWrapping skipParentWrapping {};
+            result = o_CreateSwapChainForHwnd(realFactory, pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput,
+                                              ppSwapChain);
+        }
 
         if (!_skipFGSwapChainCreation)
         {
@@ -605,28 +605,23 @@ HRESULT DxgiFactoryHooks::CreateSwapChainForCoreWindow(IDXGIFactory2* realFactor
             LOG_DEBUG("Width: {}, Height: {}, Format: {}, Flags: {:X}, Count: {}, SkipWrapping: {}", pDesc->Width,
                       pDesc->Height, (UINT) pDesc->Format, pDesc->Flags, pDesc->BufferCount, _skipFGSwapChainCreation);
 
-        State::Instance().skipDxgiLoadChecks = true;
-        auto res = realFactory->CreateSwapChainForCoreWindow(pDevice, pWindow, pDesc, pRestrictToOutput, ppSwapChain);
-        State::Instance().skipDxgiLoadChecks = false;
-        return res;
+        ScopedSkipDxgiLoadChecks skipDxgiLoadChecks {};
+        return realFactory->CreateSwapChainForCoreWindow(pDevice, pWindow, pDesc, pRestrictToOutput, ppSwapChain);
     }
 
     if (pDevice == nullptr || pDesc == nullptr)
     {
         LOG_WARN("pDevice or pDesc is nullptr!");
-        State::Instance().skipDxgiLoadChecks = true;
-        auto res = realFactory->CreateSwapChainForCoreWindow(pDevice, pWindow, pDesc, pRestrictToOutput, ppSwapChain);
-        State::Instance().skipDxgiLoadChecks = false;
-        return res;
+        ScopedSkipDxgiLoadChecks skipDxgiLoadChecks {};
+        return realFactory->CreateSwapChainForCoreWindow(pDevice, pWindow, pDesc, pRestrictToOutput, ppSwapChain);
     }
 
     if (pDesc->Height < 100 || pDesc->Width < 100)
     {
         LOG_WARN("Overlay call!");
-        State::Instance().skipDxgiLoadChecks = true;
-        auto res = realFactory->CreateSwapChainForCoreWindow(pDevice, pWindow, pDesc, pRestrictToOutput, ppSwapChain);
-        State::Instance().skipDxgiLoadChecks = false;
-        return res;
+
+        ScopedSkipDxgiLoadChecks skipDxgiLoadChecks {};
+        return realFactory->CreateSwapChainForCoreWindow(pDevice, pWindow, pDesc, pRestrictToOutput, ppSwapChain);
     }
 
     LOG_DEBUG("Width: {}, Height: {}, Format: {}, Count: {}, SkipWrapping: {}", pDesc->Width, pDesc->Height,
@@ -658,9 +653,12 @@ HRESULT DxgiFactoryHooks::CreateSwapChainForCoreWindow(IDXGIFactory2* realFactor
         State::Instance().currentCommandQueue = (ID3D12CommandQueue*) real;
     }
 
-    State::Instance().skipDxgiLoadChecks = true;
-    auto result = o_CreateSwapChainForCoreWindow(realFactory, pDevice, pWindow, pDesc, pRestrictToOutput, ppSwapChain);
-    State::Instance().skipDxgiLoadChecks = false;
+    HRESULT result = E_FAIL;
+    {
+        ScopedSkipDxgiLoadChecks skipDxgiLoadChecks {};
+        auto result =
+            o_CreateSwapChainForCoreWindow(realFactory, pDevice, pWindow, pDesc, pRestrictToOutput, ppSwapChain);
+    }
 
     if (result == S_OK)
     {
@@ -711,27 +709,25 @@ HRESULT DxgiFactoryHooks::EnumAdapters(IDXGIFactory* realFactory, UINT Adapter, 
         {
             LOG_DEBUG("Trying to select high performance adapter ({})", Adapter);
 
-            _skipHighPerfCheck = true;
-            State::Instance().skipDxgiLoadChecks = true;
+            {
+                ScopedSkipDxgiLoadChecks skipDxgiLoadChecks {};
+                ScopedSkipHighPerfCheck skipHighPerfCheck {};
 
-            result = o_EnumAdapterByGpuPreference(factory6, Adapter, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
-                                                  __uuidof(IDXGIAdapter1), (IUnknown**) ppAdapter);
-
-            State::Instance().skipDxgiLoadChecks = false;
-            _skipHighPerfCheck = false;
+                result = o_EnumAdapterByGpuPreference(factory6, Adapter, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
+                                                      __uuidof(IDXGIAdapter1), (IUnknown**) ppAdapter);
+            }
 
             if (result != S_OK)
             {
                 LOG_ERROR("Can't get high performance adapter: {:X}, fallback to standard method", Adapter);
-                State::Instance().skipDxgiLoadChecks = true;
+                ScopedSkipDxgiLoadChecks skipDxgiLoadChecks {};
                 result = o_EnumAdapters(realFactory, Adapter, (IUnknown**) ppAdapter);
-                State::Instance().skipDxgiLoadChecks = false;
             }
 
             if (result == S_OK)
             {
                 DXGI_ADAPTER_DESC desc;
-                State::Instance().skipSpoofing = true;
+                ScopedSkipSpoofing skipSpoofing {};
 
                 if ((*ppAdapter)->GetDesc(&desc) == S_OK)
                 {
@@ -742,24 +738,20 @@ HRESULT DxgiFactoryHooks::EnumAdapters(IDXGIFactory* realFactory, UINT Adapter, 
                 {
                     LOG_ERROR("Can't get adapter description!");
                 }
-
-                State::Instance().skipSpoofing = false;
             }
 
             factory6->Release();
         }
         else
         {
-            State::Instance().skipDxgiLoadChecks = true;
+            ScopedSkipDxgiLoadChecks skipDxgiLoadChecks {};
             result = o_EnumAdapters(realFactory, Adapter, (IUnknown**) ppAdapter);
-            State::Instance().skipDxgiLoadChecks = false;
         }
     }
     else
     {
-        State::Instance().skipDxgiLoadChecks = true;
+        ScopedSkipDxgiLoadChecks skipDxgiLoadChecks {};
         result = o_EnumAdapters(realFactory, Adapter, (IUnknown**) ppAdapter);
-        State::Instance().skipDxgiLoadChecks = false;
     }
 
     if (result == S_OK)
@@ -794,27 +786,26 @@ HRESULT DxgiFactoryHooks::EnumAdapters1(IDXGIFactory1* realFactory, UINT Adapter
         {
             LOG_DEBUG("Trying to select high performance adapter ({})", Adapter);
 
-            _skipHighPerfCheck = true;
-            State::Instance().skipDxgiLoadChecks = true;
+            {
+                ScopedSkipDxgiLoadChecks skipDxgiLoadChecks {};
+                ScopedSkipHighPerfCheck skipHighPerfCheck {};
 
-            result = o_EnumAdapterByGpuPreference(factory6, Adapter, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
-                                                  __uuidof(IDXGIAdapter1), (IUnknown**) ppAdapter);
-
-            State::Instance().skipDxgiLoadChecks = false;
-            _skipHighPerfCheck = false;
+                result = o_EnumAdapterByGpuPreference(factory6, Adapter, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
+                                                      __uuidof(IDXGIAdapter1), (IUnknown**) ppAdapter);
+            }
 
             if (result != S_OK)
             {
                 LOG_ERROR("Can't get high performance adapter: {:X}, fallback to standard method", Adapter);
-                State::Instance().skipDxgiLoadChecks = true;
+                ScopedSkipDxgiLoadChecks skipDxgiLoadChecks {};
                 result = o_EnumAdapters1(realFactory, Adapter, (IUnknown**) ppAdapter);
-                State::Instance().skipDxgiLoadChecks = false;
             }
 
             if (result == S_OK)
             {
                 DXGI_ADAPTER_DESC desc;
-                State::Instance().skipSpoofing = true;
+                ScopedSkipSpoofing skipSpoofing {};
+
                 if ((*ppAdapter)->GetDesc(&desc) == S_OK)
                 {
                     std::wstring name(desc.Description);
@@ -824,23 +815,20 @@ HRESULT DxgiFactoryHooks::EnumAdapters1(IDXGIFactory1* realFactory, UINT Adapter
                 {
                     LOG_DEBUG("High performance adapter (Can't get description!) will be used");
                 }
-                State::Instance().skipSpoofing = false;
             }
 
             factory6->Release();
         }
         else
         {
-            State::Instance().skipDxgiLoadChecks = true;
+            ScopedSkipDxgiLoadChecks skipDxgiLoadChecks {};
             result = o_EnumAdapters1(realFactory, Adapter, (IUnknown**) ppAdapter);
-            State::Instance().skipDxgiLoadChecks = false;
         }
     }
     else
     {
-        State::Instance().skipDxgiLoadChecks = true;
+        ScopedSkipDxgiLoadChecks skipDxgiLoadChecks {};
         result = o_EnumAdapters1(realFactory, Adapter, (IUnknown**) ppAdapter);
-        State::Instance().skipDxgiLoadChecks = false;
     }
 
     if (result == S_OK)
@@ -859,11 +847,11 @@ HRESULT DxgiFactoryHooks::EnumAdapters1(IDXGIFactory1* realFactory, UINT Adapter
 HRESULT DxgiFactoryHooks::EnumAdapterByLuid(IDXGIFactory4* realFactory, LUID AdapterLuid, REFIID riid,
                                             void** ppvAdapter)
 {
-    State::Instance().skipDxgiLoadChecks = true;
-
-    auto result = o_EnumAdapterByLuid(realFactory, AdapterLuid, riid, (IUnknown**) ppvAdapter);
-
-    State::Instance().skipDxgiLoadChecks = false;
+    HRESULT result;
+    {
+        ScopedSkipDxgiLoadChecks skipDxgiLoadChecks {};
+        result = o_EnumAdapterByLuid(realFactory, AdapterLuid, riid, (IUnknown**) ppvAdapter);
+    }
 
     if (result == S_OK)
     {
@@ -881,11 +869,12 @@ HRESULT DxgiFactoryHooks::EnumAdapterByLuid(IDXGIFactory4* realFactory, LUID Ada
 HRESULT DxgiFactoryHooks::EnumAdapterByGpuPreference(IDXGIFactory6* realFactory, UINT Adapter,
                                                      DXGI_GPU_PREFERENCE GpuPreference, REFIID riid, void** ppvAdapter)
 {
-    State::Instance().skipDxgiLoadChecks = true;
+    HRESULT result;
 
-    auto result = o_EnumAdapterByGpuPreference(realFactory, Adapter, GpuPreference, riid, (IUnknown**) ppvAdapter);
-
-    State::Instance().skipDxgiLoadChecks = false;
+    {
+        ScopedSkipDxgiLoadChecks skipDxgiLoadChecks {};
+        result = o_EnumAdapterByGpuPreference(realFactory, Adapter, GpuPreference, riid, (IUnknown**) ppvAdapter);
+    }
 
     if (result == S_OK)
     {
