@@ -60,22 +60,24 @@ void FSR4ModelSelection::Hook(HMODULE module, bool unhookOld)
 
     if (unhookOld && (o_getModelBlob || o_createModel))
     {
+        LOG_DEBUG("Unhooking old model selection hooks, o_getModelBlob: {:X}, o_createModel: {:X}",
+                  (uintptr_t) o_getModelBlob, (uintptr_t) o_createModel);
+
         DetourTransactionBegin();
         DetourUpdateThread(GetCurrentThread());
 
         if (o_getModelBlob != nullptr)
-        {
             DetourDetach(&(PVOID&) o_getModelBlob, hkgetModelBlob);
-            o_getModelBlob = nullptr;
-        }
 
         if (o_createModel != nullptr)
-        {
             DetourDetach(&(PVOID&) o_createModel, hkcreateModel);
+
+        if (DetourTransactionCommit() == 0)
+        {
+            LOG_DEBUG("Unhooked old model selection hooks");
+            o_getModelBlob = nullptr;
             o_createModel = nullptr;
         }
-
-        DetourTransactionCommit();
     }
 
     if (o_getModelBlob == nullptr && o_createModel == nullptr)
@@ -85,7 +87,7 @@ void FSR4ModelSelection::Hook(HMODULE module, bool unhookOld)
 
         if (o_getModelBlob)
         {
-            LOG_DEBUG("Hooking model selection");
+            LOG_DEBUG("Hooking model selection o_getModelBlob: {:X}", (uintptr_t) o_getModelBlob);
 
             DetourTransactionBegin();
             DetourUpdateThread(GetCurrentThread());
@@ -104,7 +106,7 @@ void FSR4ModelSelection::Hook(HMODULE module, bool unhookOld)
 
             if (o_createModel)
             {
-                LOG_DEBUG("Hooking model selection");
+                LOG_DEBUG("Hooking model selection, o_createModel: {:X}", (uintptr_t) o_createModel);
 
                 DetourTransactionBegin();
                 DetourUpdateThread(GetCurrentThread());
