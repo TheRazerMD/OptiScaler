@@ -102,12 +102,13 @@ template <class T, HasDefaultValue defaultState = WithDefault> class CustomOptio
     }
 
     constexpr T value_or_default() &&
-        requires(defaultState != NoDefault) {
-            return this->has_value() ? std::move(this->value()) : std::move(_defaultValue);
-        }
+        requires(defaultState != NoDefault)
+    {
+        return this->has_value() ? std::move(this->value()) : std::move(_defaultValue);
+    }
 
-        constexpr std::optional<T> value_for_config(bool forceSave = false)
-            requires(defaultState == WithDefault)
+    constexpr std::optional<T> value_for_config(bool forceSave = false)
+        requires(defaultState == WithDefault)
     {
         if (_volatile)
         {
@@ -435,7 +436,7 @@ class Config
     CustomOptional<bool> FGHudfixDisableSGR { true };
 
     // OptiFG - Resource Tracking
-    CustomOptional<bool> FGAlwaysTrackHeaps { true };
+    CustomOptional<bool> FGAlwaysTrackHeaps { false };
     CustomOptional<bool> FGResourceBlocking { false };
 
     // OptiFG - DLSS-D Depth scale
