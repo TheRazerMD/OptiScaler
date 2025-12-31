@@ -69,6 +69,7 @@ struct QuirkEntry
 
 // exeName has to be lowercase
 static const QuirkEntry quirkTable[] = {
+
     // Red Dead Redemption
     QUIRK_ENTRY("rdr.exe", GameQuirk::SkipFsr3Method, GameQuirk::NoFSRFGFirstSwapchain, GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("playrdr.exe", GameQuirk::SkipFsr3Method, GameQuirk::NoFSRFGFirstSwapchain,
@@ -126,6 +127,7 @@ static const QuirkEntry quirkTable[] = {
                 GameQuirk::DisableDxgiSpoofing),
 
     // Avatar: Frontiers of Pandora
+    // SL spoof enough to unlock DLSSG, blocked spoofing due to broken RT/performance overhead
     QUIRK_ENTRY("afop.exe", GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs, GameQuirk::DisableDxgiSpoofing),
 
     // Forza Motorsport 8
@@ -177,6 +179,11 @@ static const QuirkEntry quirkTable[] = {
     // NoBarriers needed to avoid post-loading crash with DLSS
     QUIRK_ENTRY_UE(avowed, GameQuirk::ForceAutoExposure, GameQuirk::DontUseUnrealBarriers, GameQuirk::DisableFSR2Inputs,
                    GameQuirk::DisableFSR3Inputs),
+
+    // Starfield
+    // SL spoof enough to unlock everything DLSS
+    QUIRK_ENTRY("starfield.exe", GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs,
+                GameQuirk::DisableDxgiSpoofing, GameQuirk::ForceAutoExposure),
 
     // SL spoof enough to unlock everything DLSS/No spoof needed for DLSS inputs
     //
