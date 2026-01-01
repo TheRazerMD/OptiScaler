@@ -3255,6 +3255,14 @@ bool MenuCommon::RenderMenu()
 
                             ShowHelpMarker("Will use more VRAM but some games might need this");
 
+                            ImGui::SameLine(0.0f, 16.0f);
+
+                            bool firstHudless = config->FGOnlyAcceptFirstHudless.value_or_default();
+                            if (ImGui::Checkbox("Only Accept First Hudless", &firstHudless))
+                                config->FGOnlyAcceptFirstHudless = firstHudless;
+
+                            ShowHelpMarker("If source tags more than one hudless only use first one");
+
                             if (bool skipReset = config->FGSkipReset.value_or_default();
                                 ImGui::Checkbox("Skip Reset", &skipReset))
                             {

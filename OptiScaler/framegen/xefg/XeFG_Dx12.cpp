@@ -1026,6 +1026,12 @@ bool XeFG_Dx12::SetResource(Dx12Resource* inputResource)
         {
             return false;
         }
+
+        if (!_noHudless[fIndex] && Config::Instance()->FGOnlyAcceptFirstHudless.value_or_default() &&
+            inputResource->validity != FG_ResourceValidity::UntilPresentFromDispatch)
+        {
+            return false;
+        }
     }
 
     if (type == FG_ResourceType::UIColor)

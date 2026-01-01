@@ -192,7 +192,7 @@ std::optional<std::filesystem::path> Util::NvngxPath()
 
     if (ls == ERROR_SUCCESS)
     {
-        wchar_t regNGXCorePath[260];
+        wchar_t regNGXCorePath[260] {};
         DWORD NGXCorePathSize = 260;
 
         ls = RegQueryValueExW(regNGXCore, L"NGXPath", nullptr, nullptr, (LPBYTE) regNGXCorePath, &NGXCorePathSize);
@@ -272,7 +272,7 @@ HWND Util::GetProcessWindow()
     return hwnd;
 }
 
-inline std::string LogLastError()
+static inline std::string LogLastError()
 {
     DWORD errorCode = GetLastError();
     LPWSTR errorBuffer = nullptr;

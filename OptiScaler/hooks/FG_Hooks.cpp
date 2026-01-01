@@ -18,7 +18,7 @@
 
 #include <d3d12.h>
 
-bool CheckForFGStatus()
+static bool CheckForFGStatus()
 {
     // Need to check overlay menu parameter, goes to places it shouldn't go
     // if (!Config::Instance()->OverlayMenu.value_or_default())

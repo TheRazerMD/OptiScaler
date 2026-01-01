@@ -117,6 +117,7 @@ bool Config::Reload(std::filesystem::path iniPath)
             FGDepthValidNow.set_from_config(readBool("FrameGen", "DepthValidNow"));
             FGVelocityValidNow.set_from_config(readBool("FrameGen", "VelocityValidNow"));
             FGHudlessValidNow.set_from_config(readBool("FrameGen", "HudlessValidNow"));
+            FGOnlyAcceptFirstHudless.set_from_config(readBool("FrameGen", "OnlyAcceptFirstHudless"));
         }
 
         // FSR FG
@@ -712,6 +713,8 @@ bool Config::SaveIni()
                      GetBoolValue(Instance()->FGVelocityValidNow.value_for_config()).c_str());
         ini.SetValue("FrameGen", "HudlessValidNow",
                      GetBoolValue(Instance()->FGHudlessValidNow.value_for_config()).c_str());
+        ini.SetValue("FrameGen", "OnlyAcceptFirstHudless",
+                     GetBoolValue(Instance()->FGOnlyAcceptFirstHudless.value_for_config()).c_str());
     }
 
     // FSR FG output

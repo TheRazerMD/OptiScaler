@@ -402,6 +402,7 @@ class Config
     CustomOptional<bool> FGDepthValidNow { false };
     CustomOptional<bool> FGVelocityValidNow { false };
     CustomOptional<bool> FGHudlessValidNow { false };
+    CustomOptional<bool> FGOnlyAcceptFirstHudless { false };
 
     // OptiFG
     CustomOptional<bool> FGEnabled { false };
