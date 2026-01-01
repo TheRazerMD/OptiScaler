@@ -91,7 +91,7 @@ HRESULT FGHooks::CreateSwapChain(IDXGIFactory* pFactory, IUnknown* pDevice, DXGI
 
     // Create FG swapchain
     auto fg = State::Instance().currentFG;
-    HRESULT scResult = E_FAIL;
+    bool scResult = false;
 
     {
         ScopedSkipDxgiLoadChecks skipDxgiLoadChecks {};
@@ -173,7 +173,7 @@ HRESULT FGHooks::CreateSwapChainForHwnd(IDXGIFactory* pFactory, IUnknown* pDevic
 
     // Create FG swapchain
     auto fg = State::Instance().currentFG;
-    HRESULT scResult = E_FAIL;
+    bool scResult = false;
     {
         ScopedSkipDxgiLoadChecks skipDxgiLoadChecks {};
 
@@ -196,7 +196,7 @@ HRESULT FGHooks::CreateSwapChainForHwnd(IDXGIFactory* pFactory, IUnknown* pDevic
             pDesc->SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
         }
 
-        auto scResult = fg->CreateSwapchain1(pFactory, cq, hWnd, pDesc, pFullscreenDesc, ppSwapChain);
+        scResult = fg->CreateSwapchain1(pFactory, cq, hWnd, pDesc, pFullscreenDesc, ppSwapChain);
 
         if (Config::Instance()->FGDontUseSwapchainBuffers.value_or_default())
             State::Instance().skipHeapCapture = false;
