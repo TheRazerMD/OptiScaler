@@ -28,6 +28,8 @@ void UpscalerInputsDx12::Reset()
 void UpscalerInputsDx12::UpscaleStart(ID3D12GraphicsCommandList* InCmdList, NVSDK_NGX_Parameter* InParameters,
                                       IFeature_Dx12* feature)
 {
+    Hudfix_Dx12::SetSkipStatus(true);
+
     // FSR Camera values
     float cameraNear = 0.0f;
     float cameraFar = 0.0f;
@@ -236,6 +238,8 @@ void UpscalerInputsDx12::UpscaleStart(ID3D12GraphicsCommandList* InCmdList, NVSD
 void UpscalerInputsDx12::UpscaleEnd(ID3D12GraphicsCommandList* InCmdList, NVSDK_NGX_Parameter* InParameters,
                                     IFeature_Dx12* feature)
 {
+    Hudfix_Dx12::SetSkipStatus(false);
+
     auto fg = State::Instance().currentFG;
 
     if (fg == nullptr || State::Instance().activeFgInput != FGInput::Upscaler || _device == nullptr)

@@ -923,16 +923,20 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D12_EvaluateFeature(ID3D12GraphicsCom
     if (!State::Instance().isWorkingAsNvngx)
         UpscalerTimeDx12::UpscaleStart(InCmdList);
 
-    // Run upscaler
-    auto evalResult = deviceContext->feature->Evaluate(InCmdList, InParameters);
+    auto evalResult = false;
 
-    // Record the second timestamp
+    // Run upscaler
+    {
+        ScopedSkipHeapCapture skipHeapCapture {};
+        evalResult = deviceContext->feature->Evaluate(InCmdList, InParameters);
+    }
 
     NVSDK_NGX_Result methodResult = evalResult ? NVSDK_NGX_Result_Success : NVSDK_NGX_Result_Fail;
 
     if (evalResult)
     {
         // Upscaler time calc
+        // Record the second timestamp
         if (!State::Instance().isWorkingAsNvngx)
             UpscalerTimeDx12::UpscaleEnd(InCmdList);
 

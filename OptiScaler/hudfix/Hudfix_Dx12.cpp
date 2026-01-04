@@ -444,6 +444,12 @@ UINT64 Hudfix_Dx12::ActivePresentFrame() { return _fgCounter; }
 
 bool Hudfix_Dx12::IsResourceCheckActive()
 {
+    if (_skipTracking)
+    {
+        // LOG_TRACK("_skipHudlessChecks");
+        return false;
+    }
+
     if (State::Instance().isShuttingDown)
     {
         // LOG_TRACK("State::Instance().isShuttingDown");

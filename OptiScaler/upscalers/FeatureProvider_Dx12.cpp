@@ -16,6 +16,8 @@
 bool FeatureProvider_Dx12::GetFeature(std::string upscalerName, UINT handleId, NVSDK_NGX_Parameter* parameters,
                                       std::unique_ptr<IFeature_Dx12>* feature)
 {
+    ScopedSkipHeapCapture skipHeapCapture {};
+
     do
     {
         if (upscalerName == "xess")

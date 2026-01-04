@@ -73,6 +73,8 @@ class Hudfix_Dx12
     inline static double _targetTime = 0.0;
     inline static double _frameTime = 0.0;
 
+    inline static bool _skipTracking = false;
+
     // Buffer for Format Transfer
     inline static ID3D12Resource* _captureBuffer[BUFFER_COUNT] = { nullptr, nullptr, nullptr, nullptr };
 
@@ -144,4 +146,7 @@ class Hudfix_Dx12
 
     // Reset frame counters
     static void ResetCounters();
+
+    static bool GetSkipStatus() { return _skipTracking; }
+    static void SetSkipStatus(bool status) { _skipTracking = status; }
 };
