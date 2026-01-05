@@ -861,22 +861,22 @@ static ULONG STDMETHODCALLTYPE hkHeapRelease(ID3D12DescriptorHeap* This)
     if (State::Instance().isShuttingDown)
         return o_HeapRelease(This);
 
-    This->AddRef();
-    if (o_HeapRelease(This) <= 1)
-    {
 #ifdef USE_ATOMIC_INDEX
-        UINT count = fgHeapIndex.load(std::memory_order_relaxed);
+    UINT count = fgHeapIndex.load(std::memory_order_relaxed);
 #else
-        UINT count = fgHeapIndex;
+    UINT count = fgHeapIndex;
 #endif
 
-        for (UINT i = 0; i < count; ++i)
+    for (UINT i = 0; i < count; ++i)
+    {
+        auto& up = fgHeaps[i];
+
+        if (up == nullptr || up->heap != This || !up->active)
+            continue;
+
+        This->AddRef();
+        if (o_HeapRelease(This) <= 1)
         {
-            auto& up = fgHeaps[i];
-
-            if (up == nullptr || up->heap != This)
-                continue;
-
             up->active = false;
 
             LOG_INFO("Heap released: {:X}", (size_t) This);
@@ -906,9 +906,9 @@ static ULONG STDMETHODCALLTYPE hkHeapRelease(ID3D12DescriptorHeap* This)
             }
 
             gHeapGeneration.fetch_add(1, std::memory_order_relaxed); // invalidate caches
-
-            break;
         }
+
+        break;
     }
 
     return o_HeapRelease(This);

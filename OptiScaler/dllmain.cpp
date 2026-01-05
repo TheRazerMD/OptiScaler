@@ -670,6 +670,78 @@ static void CheckWorkingMode()
             Config::Instance()->OverlayMenu.set_volatile_value(!State::Instance().isWorkingAsNvngx &&
                                                                Config::Instance()->OverlayMenu.value_or_default());
 
+            // For Agility SDK Upgrade
+            if (Config::Instance()->FsrAgilitySDKUpgrade.value_or_default())
+            {
+                RunAgilityUpgrade(GetDllNameWModule(&dx12NamesW));
+            }
+
+            // Intel Extension Framework
+            if (Config::Instance()->UESpoofIntelAtomics64.value_or_default())
+            {
+                HMODULE igdext = NtdllProxy::LoadLibraryExW_Ldr(L"igdext64.dll", NULL, 0);
+
+                if (igdext == nullptr)
+                {
+                    auto paths = GetDriverStore();
+
+                    for (size_t i = 0; i < paths.size(); i++)
+                    {
+                        auto dllPath = paths[i] / L"igdext64.dll";
+                        LOG_DEBUG("Trying to load: {}", wstring_to_string(dllPath.c_str()));
+                        igdext = NtdllProxy::LoadLibraryExW_Ldr(dllPath.c_str(), NULL, 0);
+
+                        if (igdext != nullptr)
+                        {
+                            LOG_INFO(L"igdext64.dll loaded from {}", dllPath.wstring());
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    LOG_INFO("igdext64.dll loaded from game folder");
+                }
+
+                if (igdext != nullptr)
+                    IGDExtProxy::Init(igdext);
+                else
+                    LOG_ERROR("Failed to load igdext64.dll");
+            }
+
+            // SpecialK
+            if (skModule == nullptr && Config::Instance()->LoadSpecialK.value_or_default())
+            {
+                auto skFile = Util::ExePath().parent_path() / L"SpecialK64.dll";
+                SetEnvironmentVariableW(L"RESHADE_DISABLE_GRAPHICS_HOOK", L"1");
+
+                State::EnableServeOriginal(200);
+                skModule = NtdllProxy::LoadLibraryExW_Ldr(skFile.c_str(), NULL, 0);
+                State::DisableServeOriginal(200);
+
+                LOG_INFO("Loading SpecialK64.dll, result: {0:X}", (UINT64) skModule);
+            }
+
+            // ReShade
+            // Do not load Reshade here is Luma is active and we will create D3D12 device for it
+            // We will load Reshade after D3D12 device creation in that case
+            if (reshadeModule == nullptr && Config::Instance()->LoadReShade.value_or_default() &&
+                (!(State::Instance().gameQuirks & GameQuirk::CreateD3D12DeviceForLuma) ||
+                 Config::Instance()->DontCreateD3D12DeviceForLuma.value_or_default()))
+            {
+                auto rsFile = Util::ExePath().parent_path() / L"ReShade64.dll";
+                SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
+
+                if (skModule != nullptr)
+                    SetEnvironmentVariableW(L"RESHADE_DISABLE_GRAPHICS_HOOK", L"1");
+
+                State::EnableServeOriginal(201);
+                reshadeModule = NtdllProxy::LoadLibraryExW_Ldr(rsFile.c_str(), NULL, 0);
+                State::DisableServeOriginal(201);
+
+                LOG_INFO("Loading ReShade64.dll, result: {0:X}", (size_t) reshadeModule);
+            }
+
             // DXGI
             if (DxgiProxy::Module() == nullptr)
             {
@@ -885,83 +957,11 @@ static void CheckWorkingMode()
                 FfxApiProxy::InitFfxVk(ffxVkModule);
             }
 
-            // SpecialK
-            if (skModule == nullptr && Config::Instance()->LoadSpecialK.value_or_default())
-            {
-                auto skFile = Util::ExePath().parent_path() / L"SpecialK64.dll";
-                SetEnvironmentVariableW(L"RESHADE_DISABLE_GRAPHICS_HOOK", L"1");
-
-                State::EnableServeOriginal(200);
-                skModule = NtdllProxy::LoadLibraryExW_Ldr(skFile.c_str(), NULL, 0);
-                State::DisableServeOriginal(200);
-
-                LOG_INFO("Loading SpecialK64.dll, result: {0:X}", (UINT64) skModule);
-            }
-
-            // ReShade
-            // Do not load Reshade here is Luma is active and we will create D3D12 device for it
-            // We will load Reshade after D3D12 device creation in that case
-            if (reshadeModule == nullptr && Config::Instance()->LoadReShade.value_or_default() &&
-                (!(State::Instance().gameQuirks & GameQuirk::CreateD3D12DeviceForLuma) ||
-                 Config::Instance()->DontCreateD3D12DeviceForLuma.value_or_default()))
-            {
-                auto rsFile = Util::ExePath().parent_path() / L"ReShade64.dll";
-                SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
-
-                if (skModule != nullptr)
-                    SetEnvironmentVariableW(L"RESHADE_DISABLE_GRAPHICS_HOOK", L"1");
-
-                State::EnableServeOriginal(201);
-                reshadeModule = NtdllProxy::LoadLibraryExW_Ldr(rsFile.c_str(), NULL, 0);
-                State::DisableServeOriginal(201);
-
-                LOG_INFO("Loading ReShade64.dll, result: {0:X}", (size_t) reshadeModule);
-            }
-
             // Hook kernel32 methods
             if (!Config::Instance()->EarlyHooking.value_or_default())
             {
                 NtdllHooks::Hook();
                 KernelHooks::Hook();
-            }
-
-            // For Agility SDK Upgrade
-            if (Config::Instance()->FsrAgilitySDKUpgrade.value_or_default())
-            {
-                RunAgilityUpgrade(GetDllNameWModule(&dx12NamesW));
-            }
-
-            // Intel Extension Framework
-            if (Config::Instance()->UESpoofIntelAtomics64.value_or_default())
-            {
-                HMODULE igdext = NtdllProxy::LoadLibraryExW_Ldr(L"igdext64.dll", NULL, 0);
-
-                if (igdext == nullptr)
-                {
-                    auto paths = GetDriverStore();
-
-                    for (size_t i = 0; i < paths.size(); i++)
-                    {
-                        auto dllPath = paths[i] / L"igdext64.dll";
-                        LOG_DEBUG("Trying to load: {}", wstring_to_string(dllPath.c_str()));
-                        igdext = NtdllProxy::LoadLibraryExW_Ldr(dllPath.c_str(), NULL, 0);
-
-                        if (igdext != nullptr)
-                        {
-                            LOG_INFO(L"igdext64.dll loaded from {}", dllPath.wstring());
-                            break;
-                        }
-                    }
-                }
-                else
-                {
-                    LOG_INFO("igdext64.dll loaded from game folder");
-                }
-
-                if (igdext != nullptr)
-                    IGDExtProxy::Init(igdext);
-                else
-                    LOG_ERROR("Failed to load igdext64.dll");
             }
 
             if (Config::Instance()->CheckForUpdate.value_or_default())
