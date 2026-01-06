@@ -32,6 +32,15 @@ class D3d12Proxy
         D3D12_ROOT_SIGNATURE_FLAGS Flags;
     } D3D12_ROOT_SIGNATURE_DESC1_L;
 
+    typedef struct D3D12_ROOT_SIGNATURE_DESC2_L
+    {
+        UINT NumParameters;
+        D3D12_ROOT_PARAMETER1* pParameters;
+        UINT NumStaticSamplers;
+        D3D12_STATIC_SAMPLER_DESC1* pStaticSamplers;
+        D3D12_ROOT_SIGNATURE_FLAGS Flags;
+    } D3D12_ROOT_SIGNATURE_DESC2_L;
+
     typedef struct D3D12_VERSIONED_ROOT_SIGNATURE_DESC_L
     {
         D3D_ROOT_SIGNATURE_VERSION Version;
@@ -39,6 +48,7 @@ class D3d12Proxy
         {
             D3D12_ROOT_SIGNATURE_DESC_L Desc_1_0;
             D3D12_ROOT_SIGNATURE_DESC1_L Desc_1_1;
+            D3D12_ROOT_SIGNATURE_DESC2_L Desc_1_2;
         };
     } D3D12_VERSIONED_ROOT_SIGNATURE_DESC_L;
 
