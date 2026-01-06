@@ -1554,6 +1554,11 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
                 // if (!Config::Instance()->StreamlineSpoofing.has_value())
                 //    Config::Instance()->StreamlineSpoofing.set_volatile_value(false);
             }
+            else
+            {
+                spdlog::info("Not running on Nvidia, disabling DLSS");
+                Config::Instance()->DLSSEnabled.set_volatile_value(false);
+            }
         }
         else
         {
