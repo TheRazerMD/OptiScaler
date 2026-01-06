@@ -2755,10 +2755,11 @@ bool MenuCommon::RenderMenu()
                                 {
                                     ImGui::SameLine(0.0f, 6.0f);
 
-                                    if (bool wm = config->Fsr4EnableWatermark.value_or_default();
-                                        ImGui::Checkbox("Upscaler Watermark", &wm))
+                                    if (bool fsr4wm = config->Fsr4EnableWatermark.value_or_default();
+                                        ImGui::Checkbox("Upscaler Watermark", &fsr4wm))
                                     {
-                                        config->Fsr4EnableWatermark = wm;
+                                        LOG_DEBUG("FSR4 Watermark set to {}", fsr4wm);
+                                        config->Fsr4EnableWatermark = fsr4wm;
                                     }
 
                                     ShowHelpMarker("After changing this option please Save INI\n"
@@ -3379,10 +3380,11 @@ bool MenuCommon::RenderMenu()
 
                         if (state.currentFG->Version().major > 3)
                         {
-                            if (bool wm = config->FSRFGEnableWatermark.value_or_default();
-                                ImGui::Checkbox("Enable Watermark", &wm))
+                            if (bool fgwm = config->FSRFGEnableWatermark.value_or_default();
+                                ImGui::Checkbox("Enable Watermark", &fgwm))
                             {
-                                config->FSRFGEnableWatermark = wm;
+                                LOG_DEBUG("FSRFGEnableWatermark set FGWatermark: {}", fgwm);
+                                config->FSRFGEnableWatermark = fgwm;
                             }
 
                             ShowHelpMarker("After changing this option please Save INI\n"
