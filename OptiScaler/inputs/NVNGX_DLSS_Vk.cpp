@@ -710,7 +710,7 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_VULKAN_CreateFeature1(VkDevice InDevice
     *OutHandle = deviceContext->Handle();
 
     State::Instance().AutoExposure.reset();
-    
+
     {
         ScopedSkipSpoofing skipSpoofing;
         if (deviceContext->Init(vkInstance, vkPD, InDevice, InCmdList, vkGIPA, vkGDPA, InParameters))
