@@ -178,6 +178,12 @@ static HRESULT hkD3D12CreateDevice(IDXGIAdapter* pAdapter, D3D_FEATURE_LEVEL Min
         minLevel = D3D_FEATURE_LEVEL_11_0;
     }
 
+    if (ppDevice == nullptr)
+    {
+        LOG_ERROR("ppDevice is nullptr");
+        return o_D3D12CreateDevice(pAdapter, minLevel, riid, ppDevice);
+    }
+
     HRESULT result;
     if (desc.VendorId == VendorId::Intel)
     {
@@ -576,7 +582,7 @@ static void HookToDevice(ID3D12Device* InDevice)
         DetourTransactionCommit();
     }
 
-    if (State::Instance().activeFgInput != FGInput::Nukems)
+    if (State::Instance().activeFgInput == FGInput::Upscaler)
         ResTrack_Dx12::HookDevice(InDevice);
 }
 
