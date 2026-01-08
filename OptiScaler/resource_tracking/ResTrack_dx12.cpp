@@ -1894,8 +1894,8 @@ void ResTrack_Dx12::HookDevice(ID3D12Device* device)
     o_CopyDescriptorsSimple = (PFN_CopyDescriptorsSimple) pVTable[24];
 
     // Apply the detour
-    // Only needed for Hudfix
-    if (o_CreateDescriptorHeap != nullptr && State::Instance().activeFgInput == FGInput::Upscaler)
+
+    if (o_CreateDescriptorHeap != nullptr)
     {
         DetourTransactionBegin();
         DetourUpdateThread(GetCurrentThread());
@@ -1921,20 +1921,9 @@ void ResTrack_Dx12::HookDevice(ID3D12Device* device)
         DetourTransactionCommit();
     }
 
-    // Only needed for FSR-FG Feature
-    // if (State::Instance().activeFgOutput == FGOutput::FSRFG || State::Instance().activeFgInput == FGInput::Upscaler)
-    //    HookToQueue(device);
-
-    // if (State::Instance().activeFgOutput == FGOutput::FSRFG || State::Instance().activeFgInput == FGInput::Upscaler)
-    //     HookCommandList(device);
-
-    // Only needed for Hudfix
-    if (State::Instance().activeFgInput == FGInput::Upscaler)
-    {
-        HookToQueue(device);
-        HookCommandList(device);
-        HookResource(device);
-    }
+    HookToQueue(device);
+    HookCommandList(device);
+    HookResource(device);
 }
 
 void ResTrack_Dx12::ReleaseHooks()
