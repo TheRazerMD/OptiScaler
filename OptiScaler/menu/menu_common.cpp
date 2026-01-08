@@ -3161,16 +3161,17 @@ bool MenuCommon::RenderMenu()
                         ImGui::Spacing();
                     }
 
+                    if ((state.activeFgOutput == FGOutput::FSRFG || state.activeFgOutput == FGOutput::XeFG) &&
+                        state.activeFgInput != FGInput::NoFG && state.activeFgInput != FGInput::Nukems)
+                    {
+                        ImGui::Checkbox("Show Detected UI", &state.FGHudlessCompare);
+                        ShowHelpMarker("Needs hudless texture to compare with final image.\n"
+                                       "UI elements and ONLY UI elements should have a pink tint!");
+                    }
+
                     if (state.activeFgInput == FGInput::DLSSG || state.activeFgInput == FGInput::FSRFG ||
                         state.activeFgInput == FGInput::FSRFG30)
                     {
-                        if (state.activeFgOutput == FGOutput::FSRFG || state.activeFgOutput == FGOutput::XeFG)
-                        {
-                            ImGui::Checkbox("Show Detected UI", &state.FGHudlessCompare);
-                            ShowHelpMarker("Needs hudless texture to compare with final image.\n"
-                                           "UI elements and ONLY UI elements should have a pink tint!");
-                        }
-
                         ImGui::Spacing();
 
                         if (auto ch = ScopedCollapsingHeader("Advanced FG Settings"); ch.IsHeaderOpen())
