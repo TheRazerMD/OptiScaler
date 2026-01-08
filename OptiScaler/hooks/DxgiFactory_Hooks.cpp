@@ -2,6 +2,8 @@
 
 #include <Config.h>
 
+#include "D3D12_Hooks.h"
+
 #include <spoofing/Dxgi_Spoofing.h>
 #include <wrapped/wrapped_swapchain.h>
 
@@ -258,6 +260,21 @@ HRESULT DxgiFactoryHooks::CreateSwapChain(IDXGIFactory* realFactory, IUnknown* p
     {
         cq->Release();
 
+        if (State::Instance().currentD3D12Device == nullptr)
+        {
+            ID3D12Device* device = nullptr;
+            if (cq->GetDevice(IID_PPV_ARGS(&device)) == S_OK)
+            {
+                if (device != nullptr)
+                {
+                    State::Instance().currentD3D12Device = device;
+                    LOG_INFO("Captured D3D12 device from command queue: {:X}", (UINT64) device);
+                    D3D12Hooks::HookDevice(State::Instance().currentD3D12Device);
+                    device->Release();
+                }
+            }
+        }
+
         if (!Util::CheckForRealObject(__FUNCTION__, cq, &real))
             real = cq;
 
@@ -490,6 +507,28 @@ HRESULT DxgiFactoryHooks::CreateSwapChainForHwnd(IDXGIFactory2* realFactory, IUn
     if (pDevice->QueryInterface(IID_PPV_ARGS(&cq)) == S_OK)
     {
         cq->Release();
+
+        LOG_DEBUG("currentD3D12Device: {:X}", (UINT64) State::Instance().currentD3D12Device);
+        if (State::Instance().currentD3D12Device == nullptr)
+        {
+            LOG_DEBUG("Capturing D3D12 device from command queue");
+            ID3D12Device* device = nullptr;
+            auto capRes = cq->GetDevice(IID_PPV_ARGS(&device));
+            if (SUCCEEDED(capRes))
+            {
+                if (device != nullptr)
+                {
+                    State::Instance().currentD3D12Device = device;
+                    LOG_INFO("Captured D3D12 device from command queue: {:X}", (UINT64) device);
+                    D3D12Hooks::HookDevice(State::Instance().currentD3D12Device);
+                    device->Release();
+                }
+            }
+            else
+            {
+                LOG_DEBUG("Failed to get D3D12 device from command queue: {:X}", (UINT) capRes);
+            }
+        }
 
         if (!Util::CheckForRealObject(__FUNCTION__, cq, &real))
             real = cq;

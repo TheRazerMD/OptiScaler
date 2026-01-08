@@ -14,6 +14,8 @@
 
 #include <upscaler_time/UpscalerTime_Dx12.h>
 
+#include <hooks/D3D12_Hooks.h>
+
 #include <dxgi1_4.h>
 #include <shared_mutex>
 #include "detours/detours.h"
@@ -184,8 +186,8 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D12_Init_Ext(unsigned long long InApp
     }
 
     D3D12Device = InDevice;
-
     State::Instance().currentD3D12Device = InDevice;
+    D3D12Hooks::HookDevice(InDevice);
 
     if (!State::Instance().isWorkingAsNvngx)
     {

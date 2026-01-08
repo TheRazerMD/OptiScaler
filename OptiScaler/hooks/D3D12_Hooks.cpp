@@ -11,7 +11,6 @@
 
 #include <detours/detours.h>
 
-#include <d3d12.h>
 #include <dxgi1_6.h>
 
 #pragma intrinsic(_ReturnAddress)
@@ -43,9 +42,6 @@ typedef HRESULT (*PFN_CreateRootSignature)(ID3D12Device* device, UINT nodeMask, 
 typedef HRESULT (*PFN_D3D12GetInterface)(REFCLSID rclsid, REFIID riid, void** ppvDebug);
 typedef HRESULT (*PFN_CreateDevice)(ID3D12DeviceFactory* pFactory, IUnknown* adapter, D3D_FEATURE_LEVEL FeatureLevel,
                                     REFIID riid, void** ppvDevice);
-
-typedef HRESULT(WINAPI* PFN_D3D12SerializeVersionedRootSignature)(
-    const D3D12_VERSIONED_ROOT_SIGNATURE_DESC* pRootSignature, ID3DBlob** ppBlob, ID3DBlob** ppErrorBlob);
 
 typedef ULONG (*PFN_Release)(IUnknown* This);
 
@@ -1014,3 +1010,5 @@ void D3D12Hooks::Unhook()
 
     DetourTransactionCommit();
 }
+
+void D3D12Hooks::HookDevice(ID3D12Device* device) { HookToDevice(device); }

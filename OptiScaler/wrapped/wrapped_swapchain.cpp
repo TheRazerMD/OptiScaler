@@ -5,6 +5,7 @@
 
 #include <nvapi/fakenvapi.h>
 #include <hooks/Reflex_Hooks.h>
+#include <hooks/D3D12_Hooks.h>
 
 #include <menu/menu_overlay_dx.h>
 
@@ -151,7 +152,9 @@ static HRESULT LocalPresent(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT 
                 LOG_DEBUG("D3D12Device captured");
 
             _dx12Device = true;
+
             State::Instance().currentD3D12Device = device12;
+            D3D12Hooks::HookDevice(device12);
         }
     }
 
