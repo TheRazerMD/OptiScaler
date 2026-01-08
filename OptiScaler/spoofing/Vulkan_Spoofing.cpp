@@ -8,6 +8,9 @@
 
 #include <vulkan/vulkan_core.h>
 
+static std::map<std::string, bool> vkDeviceExtensions;
+static std::map<std::string, bool> vkInstanceExtensions;
+
 // #define VULKAN_DEBUG_LAYER
 
 typedef struct VkDummyProps
@@ -268,16 +271,22 @@ inline static VkResult hkvkCreateInstance(VkInstanceCreateInfo* pCreateInfo, con
         newExtensionList.push_back(pCreateInfo->ppEnabledExtensionNames[i]);
     }
 
-    if (State::Instance().isRunningOnNvidia)
+    if (State::Instance().isRunningOnNvidia && Config::Instance()->DLSSEnabled.value_or_default())
     {
         LOG_INFO("Adding NVNGX Vulkan extensions");
-        newExtensionList.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
-        newExtensionList.push_back(VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME);
-        newExtensionList.push_back(VK_KHR_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION_NAME);
+        if (vkInstanceExtensions.contains(std::string(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)))
+            newExtensionList.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+
+        if (vkInstanceExtensions.contains(std::string(VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME)))
+            newExtensionList.push_back(VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME);
+
+        if (vkInstanceExtensions.contains(std::string(VK_KHR_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION_NAME)))
+            newExtensionList.push_back(VK_KHR_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION_NAME);
     }
 
     LOG_INFO("Adding FFX Vulkan extensions");
-    newExtensionList.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    if (vkInstanceExtensions.contains(std::string(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)))
+        newExtensionList.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
     LOG_DEBUG("Layer count: {}", pCreateInfo->enabledLayerCount);
     for (size_t i = 0; i < pCreateInfo->enabledLayerCount; i++)
@@ -383,29 +392,46 @@ inline static VkResult hkvkCreateDevice(VkPhysicalDevice physicalDevice, VkDevic
     if (State::Instance().isRunningOnNvidia)
     {
         LOG_INFO("Adding NVNGX Vulkan extensions");
-        newExtensionList.push_back(VK_NVX_MULTIVIEW_PER_VIEW_ATTRIBUTES_EXTENSION_NAME);
-        newExtensionList.push_back(VK_NV_LOW_LATENCY_EXTENSION_NAME);
-        newExtensionList.push_back(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
-        newExtensionList.push_back(VK_EXT_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
+        if (vkDeviceExtensions.contains(std::string(VK_NVX_MULTIVIEW_PER_VIEW_ATTRIBUTES_EXTENSION_NAME)))
+            newExtensionList.push_back(VK_NVX_MULTIVIEW_PER_VIEW_ATTRIBUTES_EXTENSION_NAME);
+
+        if (vkDeviceExtensions.contains(std::string(VK_NV_LOW_LATENCY_EXTENSION_NAME)))
+            newExtensionList.push_back(VK_NV_LOW_LATENCY_EXTENSION_NAME);
+
+        if (vkDeviceExtensions.contains(std::string(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME)))
+            newExtensionList.push_back(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
+
+        if (vkDeviceExtensions.contains(std::string(VK_EXT_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME)))
+            newExtensionList.push_back(VK_EXT_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
 
         if (!isPascalOrOlder)
         {
-            newExtensionList.push_back(VK_NVX_BINARY_IMPORT_EXTENSION_NAME);
-            newExtensionList.push_back(VK_NVX_IMAGE_VIEW_HANDLE_EXTENSION_NAME);
+            if (vkDeviceExtensions.contains(std::string(VK_NVX_BINARY_IMPORT_EXTENSION_NAME)))
+                newExtensionList.push_back(VK_NVX_BINARY_IMPORT_EXTENSION_NAME);
+
+            if (vkDeviceExtensions.contains(std::string(VK_NVX_IMAGE_VIEW_HANDLE_EXTENSION_NAME)))
+                newExtensionList.push_back(VK_NVX_IMAGE_VIEW_HANDLE_EXTENSION_NAME);
         }
     }
 
     LOG_INFO("Adding FFX Vulkan extensions");
-    newExtensionList.push_back(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
+    if (vkDeviceExtensions.contains(std::string(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME)))
+        newExtensionList.push_back(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
 
     if (State::Instance().libxessExists)
     {
         LOG_INFO("Adding XeSS Vulkan extensions");
-        newExtensionList.push_back(VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME);
-        newExtensionList.push_back(VK_KHR_SHADER_INTEGER_DOT_PRODUCT_EXTENSION_NAME);
+        if (vkDeviceExtensions.contains(std::string(VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME)))
+            newExtensionList.push_back(VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME);
+
+        if (vkDeviceExtensions.contains(std::string(VK_KHR_SHADER_INTEGER_DOT_PRODUCT_EXTENSION_NAME)))
+            newExtensionList.push_back(VK_KHR_SHADER_INTEGER_DOT_PRODUCT_EXTENSION_NAME);
 
         if (!isPascalOrOlder)
-            newExtensionList.push_back(VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME);
+        {
+            if (vkDeviceExtensions.contains(std::string(VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME)))
+                newExtensionList.push_back(VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME);
+        }
     }
 
     pCreateInfo->enabledExtensionCount = static_cast<uint32_t>(newExtensionList.size());
@@ -489,9 +515,12 @@ inline static VkResult hkvkEnumerateDeviceExtensionProperties(VkPhysicalDevice p
             vkEnumerateDeviceExtensionPropertiesListed = true;
 
             LOG_DEBUG("Extensions returned:");
-            for (size_t i = 0; i < *pPropertyCount; i++)
+            for (uint32_t i = 0; i < *pPropertyCount; i++)
             {
                 LOG_DEBUG("  {}", pProperties[i].extensionName);
+
+                if (i < (*pPropertyCount - 5))
+                    vkDeviceExtensions.insert_or_assign(std::string(pProperties[i].extensionName), true);
             }
         }
         else
@@ -545,6 +574,7 @@ inline static VkResult hkvkEnumerateInstanceExtensionProperties(const char* pLay
             for (size_t i = 0; i < *pPropertyCount; i++)
             {
                 LOG_DEBUG("  {}", pProperties[i].extensionName);
+                vkInstanceExtensions.insert_or_assign(std::string(pProperties[i].extensionName), true);
             }
         }
         else
