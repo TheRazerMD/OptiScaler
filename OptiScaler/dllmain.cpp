@@ -709,39 +709,6 @@ static void CheckWorkingMode()
                     LOG_ERROR("Failed to load igdext64.dll");
             }
 
-            // SpecialK
-            if (skModule == nullptr && Config::Instance()->LoadSpecialK.value_or_default())
-            {
-                auto skFile = Util::ExePath().parent_path() / L"SpecialK64.dll";
-                SetEnvironmentVariableW(L"RESHADE_DISABLE_GRAPHICS_HOOK", L"1");
-
-                State::EnableServeOriginal(200);
-                skModule = NtdllProxy::LoadLibraryExW_Ldr(skFile.c_str(), NULL, 0);
-                State::DisableServeOriginal(200);
-
-                LOG_INFO("Loading SpecialK64.dll, result: {0:X}", (UINT64) skModule);
-            }
-
-            // ReShade
-            // Do not load Reshade here is Luma is active and we will create D3D12 device for it
-            // We will load Reshade after D3D12 device creation in that case
-            if (reshadeModule == nullptr && Config::Instance()->LoadReShade.value_or_default() &&
-                (!(State::Instance().gameQuirks & GameQuirk::CreateD3D12DeviceForLuma) ||
-                 Config::Instance()->DontCreateD3D12DeviceForLuma.value_or_default()))
-            {
-                auto rsFile = Util::ExePath().parent_path() / L"ReShade64.dll";
-                SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
-
-                if (skModule != nullptr)
-                    SetEnvironmentVariableW(L"RESHADE_DISABLE_GRAPHICS_HOOK", L"1");
-
-                State::EnableServeOriginal(201);
-                reshadeModule = NtdllProxy::LoadLibraryExW_Ldr(rsFile.c_str(), NULL, 0);
-                State::DisableServeOriginal(201);
-
-                LOG_INFO("Loading ReShade64.dll, result: {0:X}", (size_t) reshadeModule);
-            }
-
             // DXGI
             if (DxgiProxy::Module() == nullptr)
             {
@@ -964,6 +931,40 @@ static void CheckWorkingMode()
                 KernelHooks::Hook();
             }
 
+            // SpecialK
+            if (skModule == nullptr && Config::Instance()->LoadSpecialK.value_or_default())
+            {
+                auto skFile = Util::ExePath().parent_path() / L"SpecialK64.dll";
+                SetEnvironmentVariableW(L"RESHADE_DISABLE_GRAPHICS_HOOK", L"1");
+
+                State::EnableServeOriginal(200);
+                skModule = NtdllProxy::LoadLibraryExW_Ldr(skFile.c_str(), NULL, 0);
+                State::DisableServeOriginal(200);
+
+                LOG_INFO("Loading SpecialK64.dll, result: {0:X}", (UINT64) skModule);
+            }
+
+            // ReShade
+            // Do not load Reshade here is Luma is active and we will create D3D12 device for it
+            // We will load Reshade after D3D12 device creation in that case
+            if (reshadeModule == nullptr && Config::Instance()->LoadReShade.value_or_default() &&
+                (!(State::Instance().gameQuirks & GameQuirk::CreateD3D12DeviceForLuma) ||
+                 Config::Instance()->DontCreateD3D12DeviceForLuma.value_or_default()))
+            {
+                auto rsFile = Util::ExePath().parent_path() / L"ReShade64.dll";
+                SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
+
+                if (skModule != nullptr)
+                    SetEnvironmentVariableW(L"RESHADE_DISABLE_GRAPHICS_HOOK", L"1");
+
+                State::EnableServeOriginal(201);
+                reshadeModule = NtdllProxy::LoadLibraryExW_Ldr(rsFile.c_str(), NULL, 0);
+                State::DisableServeOriginal(201);
+
+                LOG_INFO("Loading ReShade64.dll, result: {0:X}", (size_t) reshadeModule);
+            }
+
+            // Version check
             if (Config::Instance()->CheckForUpdate.value_or_default())
                 VersionCheck::Start();
         }
@@ -1134,10 +1135,10 @@ static void printQuirks(flag_set<GameQuirk>& quirks)
         state->detectedQuirks.push_back("Skipping D3D11 feature level elevation, native FSR3.1 will be disabled!");
     }
 
-    if (quirks & GameQuirk::UseNtDllHooks)
+    if (quirks & GameQuirk::DontUseNtDllHooks)
     {
-        spdlog::info("Quirk: Using NTdll hooks instead of kernel ones");
-        state->detectedQuirks.push_back("Using NTdll hooks instead of kernel ones");
+        spdlog::info("Quirk: NOT using kernel hooks instead of NTdll ones");
+        state->detectedQuirks.push_back("NOT using kernel hooks instead of NTdll ones");
     }
 
     if (quirks & GameQuirk::UseFSR2PatternMatching)
@@ -1265,8 +1266,8 @@ static void CheckQuirks()
     if (quirks & GameQuirk::DisableVsyncOverride && !Config::Instance()->OverrideVsync.has_value())
         Config::Instance()->OverrideVsync.set_volatile_value(false);
 
-    if (quirks & GameQuirk::UseNtDllHooks && !Config::Instance()->UseNtdllHooks.has_value())
-        Config::Instance()->UseNtdllHooks.set_volatile_value(true);
+    if (quirks & GameQuirk::DontUseNtDllHooks && !Config::Instance()->UseNtdllHooks.has_value())
+        Config::Instance()->UseNtdllHooks.set_volatile_value(false);
 
     if (quirks & GameQuirk::UseFSR2PatternMatching && !Config::Instance()->Fsr2Pattern.has_value())
         Config::Instance()->Fsr2Pattern.set_volatile_value(true);
@@ -1552,6 +1553,11 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
                 // StreamlineSpoofing is more selective on Nvidia now
                 // if (!Config::Instance()->StreamlineSpoofing.has_value())
                 //    Config::Instance()->StreamlineSpoofing.set_volatile_value(false);
+            }
+            else
+            {
+                spdlog::info("Not running on Nvidia, disabling DLSS");
+                Config::Instance()->DLSSEnabled.set_volatile_value(false);
             }
         }
         else
