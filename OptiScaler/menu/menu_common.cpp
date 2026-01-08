@@ -3151,19 +3151,6 @@ bool MenuCommon::RenderMenu()
                         fgInputOverridden = false;
                     }
 
-                    if (state.activeFgOutput == FGOutput::FSRFG || state.activeFgOutput == FGOutput::XeFG)
-                    {
-                        ImGui::Checkbox("Show Detected UI", &state.FGHudlessCompare);
-                        ShowHelpMarker("Needs hudless texture to compare with final image.\n"
-                                       "UI elements and ONLY UI elements should have a pink tint!");
-                    }
-
-                    // if (state.activeFgInput != config->FGInput.value_or_default())
-                    //{
-                    //     state.activeFgInput = config->FGInput.value_or_default();
-                    //     state.FGchanged = true; // Formats might be different so reconfigure
-                    // }
-
                     state.fgSettingsChanged = state.activeFgOutput != config->FGOutput.value_or_default() ||
                                               state.activeFgInput != config->FGInput.value_or_default();
 
@@ -3177,120 +3164,137 @@ bool MenuCommon::RenderMenu()
                     if (state.activeFgInput == FGInput::DLSSG || state.activeFgInput == FGInput::FSRFG ||
                         state.activeFgInput == FGInput::FSRFG30)
                     {
-                        auto fgOutput = reinterpret_cast<IFGFeature_Dx12*>(state.currentFG);
-                        if (fgOutput)
+                        if (state.activeFgOutput == FGOutput::FSRFG || state.activeFgOutput == FGOutput::XeFG)
                         {
-                            ImGui::BeginDisabled(!fgOutput->IsActive());
+                            ImGui::Checkbox("Show Detected UI", &state.FGHudlessCompare);
+                            ShowHelpMarker("Needs hudless texture to compare with final image.\n"
+                                           "UI elements and ONLY UI elements should have a pink tint!");
+                        }
 
-                            const auto isUsingUIAny = fgOutput->IsUsingUIAny();
-                            const auto isUsingHudlessAny = fgOutput->IsUsingHudlessAny();
+                        ImGui::Spacing();
 
-                            bool disableUI = config->FGDisableUI.value_or_default();
-                            ImGui::BeginDisabled(!isUsingUIAny && !disableUI);
+                        if (auto ch = ScopedCollapsingHeader("Advanced FG Settings"); ch.IsHeaderOpen())
+                        {
+                            ScopedIndent indent {};
+                            ImGui::Spacing();
 
-                            if (ImGui::Checkbox("Disable UI texture", &disableUI))
+                            auto fgOutput = reinterpret_cast<IFGFeature_Dx12*>(state.currentFG);
+                            if (fgOutput)
                             {
-                                config->FGDisableUI = disableUI;
-                                fgOutput->UpdateTarget();
+                                ImGui::BeginDisabled(!fgOutput->IsActive());
+
+                                const auto isUsingUIAny = fgOutput->IsUsingUIAny();
+                                const auto isUsingHudlessAny = fgOutput->IsUsingHudlessAny();
+
+                                bool disableUI = config->FGDisableUI.value_or_default();
+                                ImGui::BeginDisabled(!isUsingUIAny && !disableUI);
+
+                                if (ImGui::Checkbox("Disable UI texture", &disableUI))
+                                {
+                                    config->FGDisableUI = disableUI;
+                                    fgOutput->UpdateTarget();
+                                }
+
+                                ShowHelpMarker("For when the game sends a UI texture but you want to disable it");
+
+                                ImGui::EndDisabled();
+
+                                ImGui::SameLine(0.0f, 16.0f);
+
+                                bool disableHudless = config->FGDisableHudless.value_or_default();
+                                ImGui::BeginDisabled(!isUsingHudlessAny && !disableHudless);
+
+                                if (ImGui::Checkbox("Disable hudless", &disableHudless))
+                                {
+                                    config->FGDisableHudless = disableHudless;
+                                }
+
+                                ShowHelpMarker("For when the game sends hudless but you want to disable it");
+
+                                ImGui::EndDisabled();
+
+                                ImGui::BeginDisabled(!isUsingUIAny /*|| !isUsingHudlessAny*/);
+
+                                if (bool drawUIOverFG = config->FGDrawUIOverFG.value_or_default();
+                                    ImGui::Checkbox("Draw UI over FG", &drawUIOverFG))
+                                {
+                                    config->FGDrawUIOverFG = drawUIOverFG;
+                                }
+
+                                ImGui::EndDisabled();
+
+                                ImGui::SameLine(0.0f, 16.0f);
+
+                                ImGui::BeginDisabled(!isUsingUIAny);
+
+                                if (bool uiPremultipliedAlpha = config->FGUIPremultipliedAlpha.value_or_default();
+                                    ImGui::Checkbox("UI Premult. alpha", &uiPremultipliedAlpha))
+                                {
+                                    config->FGUIPremultipliedAlpha = uiPremultipliedAlpha;
+                                }
+
+                                ImGui::EndDisabled();
+
+                                bool depthValidNow = config->FGDepthValidNow.value_or_default();
+                                if (ImGui::Checkbox("Set Depth as ValidNow", &depthValidNow))
+                                    config->FGDepthValidNow = depthValidNow;
+
+                                ShowHelpMarker("Will use more VRAM but Uniscaler needs this\n"
+                                               "Maybe some other games might need too");
+
+                                ImGui::SameLine(0.0f, 16.0f);
+
+                                bool velocityValidNow = config->FGVelocityValidNow.value_or_default();
+                                if (ImGui::Checkbox("Set Velocity as ValidNow", &velocityValidNow))
+                                    config->FGVelocityValidNow = velocityValidNow;
+
+                                ShowHelpMarker("Will use more VRAM but Uniscaler needs this\n"
+                                               "Maybe some other games might need too");
+
+                                bool hudlessValidNow = config->FGHudlessValidNow.value_or_default();
+                                if (ImGui::Checkbox("Set Hudless as ValidNow", &hudlessValidNow))
+                                    config->FGHudlessValidNow = hudlessValidNow;
+
+                                ShowHelpMarker("Will use more VRAM but some games might need this");
+
+                                ImGui::SameLine(0.0f, 16.0f);
+
+                                bool firstHudless = config->FGOnlyAcceptFirstHudless.value_or_default();
+                                if (ImGui::Checkbox("Only Accept First Hudless", &firstHudless))
+                                    config->FGOnlyAcceptFirstHudless = firstHudless;
+
+                                ShowHelpMarker("If source tags more than one hudless only use first one");
+
+                                if (bool skipReset = config->FGSkipReset.value_or_default();
+                                    ImGui::Checkbox("Skip Reset", &skipReset))
+                                {
+                                    config->FGSkipReset = skipReset;
+                                }
+
+                                ShowHelpMarker("Don't use reset signals from FG Inputs");
+
+                                ImGui::EndDisabled();
+
+                                ImGui::SameLine(0.0f, 16.0f);
+
+                                ImGui::PushItemWidth(95.0f * config->MenuScale.value_or_default());
+
+                                auto frameAhead = config->FGAllowedFrameAhead.value_or_default();
+                                if (ImGui::InputInt("Allowed Frame Ahead", &frameAhead, 1, 1) && frameAhead > 0 &&
+                                    frameAhead < 4)
+                                {
+                                    config->FGAllowedFrameAhead = frameAhead;
+                                }
+
+                                ShowHelpMarker("Number of frames the FG is allowed to be ahead of the game\n"
+                                               "Might prevent FG on/off switching but also might cause issues");
+
+                                ImGui::PopItemWidth();
                             }
-
-                            ShowHelpMarker("For when the game sends a UI texture but you want to disable it");
-
-                            ImGui::EndDisabled();
-
-                            ImGui::SameLine(0.0f, 16.0f);
-
-                            bool disableHudless = config->FGDisableHudless.value_or_default();
-                            ImGui::BeginDisabled(!isUsingHudlessAny && !disableHudless);
-
-                            if (ImGui::Checkbox("Disable hudless", &disableHudless))
-                            {
-                                config->FGDisableHudless = disableHudless;
-                            }
-
-                            ShowHelpMarker("For when the game sends hudless but you want to disable it");
-
-                            ImGui::EndDisabled();
-
-                            ImGui::BeginDisabled(!isUsingUIAny /*|| !isUsingHudlessAny*/);
-
-                            if (bool drawUIOverFG = config->FGDrawUIOverFG.value_or_default();
-                                ImGui::Checkbox("Draw UI over FG", &drawUIOverFG))
-                            {
-                                config->FGDrawUIOverFG = drawUIOverFG;
-                            }
-
-                            ImGui::EndDisabled();
-
-                            ImGui::SameLine(0.0f, 16.0f);
-
-                            ImGui::BeginDisabled(!isUsingUIAny);
-
-                            if (bool uiPremultipliedAlpha = config->FGUIPremultipliedAlpha.value_or_default();
-                                ImGui::Checkbox("UI Premult. alpha", &uiPremultipliedAlpha))
-                            {
-                                config->FGUIPremultipliedAlpha = uiPremultipliedAlpha;
-                            }
-
-                            ImGui::EndDisabled();
-
-                            bool depthValidNow = config->FGDepthValidNow.value_or_default();
-                            if (ImGui::Checkbox("Set Depth as ValidNow", &depthValidNow))
-                                config->FGDepthValidNow = depthValidNow;
-
-                            ShowHelpMarker("Will use more VRAM but Uniscaler needs this\n"
-                                           "Maybe some other games might need too");
-
-                            ImGui::SameLine(0.0f, 16.0f);
-
-                            bool velocityValidNow = config->FGVelocityValidNow.value_or_default();
-                            if (ImGui::Checkbox("Set Velocity as ValidNow", &velocityValidNow))
-                                config->FGVelocityValidNow = velocityValidNow;
-
-                            ShowHelpMarker("Will use more VRAM but Uniscaler needs this\n"
-                                           "Maybe some other games might need too");
-
-                            bool hudlessValidNow = config->FGHudlessValidNow.value_or_default();
-                            if (ImGui::Checkbox("Set Hudless as ValidNow", &hudlessValidNow))
-                                config->FGHudlessValidNow = hudlessValidNow;
-
-                            ShowHelpMarker("Will use more VRAM but some games might need this");
-
-                            ImGui::SameLine(0.0f, 16.0f);
-
-                            bool firstHudless = config->FGOnlyAcceptFirstHudless.value_or_default();
-                            if (ImGui::Checkbox("Only Accept First Hudless", &firstHudless))
-                                config->FGOnlyAcceptFirstHudless = firstHudless;
-
-                            ShowHelpMarker("If source tags more than one hudless only use first one");
-
-                            if (bool skipReset = config->FGSkipReset.value_or_default();
-                                ImGui::Checkbox("Skip Reset", &skipReset))
-                            {
-                                config->FGSkipReset = skipReset;
-                            }
-
-                            ShowHelpMarker("Don't use reset signals from FG Inputs");
-
-                            ImGui::EndDisabled();
-
-                            ImGui::SameLine(0.0f, 16.0f);
-
-                            ImGui::PushItemWidth(95.0f * config->MenuScale.value_or_default());
-
-                            auto frameAhead = config->FGAllowedFrameAhead.value_or_default();
-                            if (ImGui::InputInt("Allowed Frame Ahead", &frameAhead, 1, 1) && frameAhead > 0 &&
-                                frameAhead < 4)
-                            {
-                                config->FGAllowedFrameAhead = frameAhead;
-                            }
-
-                            ShowHelpMarker("Number of frames the FG is allowed to be ahead of the game\n"
-                                           "Might prevent FG on/off switching but also might cause issues");
-
-                            ImGui::PopItemWidth();
                         }
                     }
+
+                    ImGui::Spacing();
                 }
 
                 // FSR FG controls
