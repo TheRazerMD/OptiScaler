@@ -167,8 +167,12 @@ bool FeatureProvider_Vk::ChangeFeature(std::string upscalerName, VkInstance inst
     if (contextData->changeBackendCounter == 3)
     {
         // next frame create context
-        auto initResult =
-            contextData->feature->Init(instance, pd, device, cmdBuffer, gipa, gdpa, contextData->createParams);
+        auto initResult = false;
+        {
+            ScopedSkipSpoofing skipSpoofing;
+            initResult =
+                contextData->feature->Init(instance, pd, device, cmdBuffer, gipa, gdpa, contextData->createParams);
+        }
 
         contextData->changeBackendCounter = 0;
 

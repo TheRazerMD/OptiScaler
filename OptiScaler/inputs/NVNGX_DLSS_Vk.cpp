@@ -710,14 +710,17 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_VULKAN_CreateFeature1(VkDevice InDevice
     *OutHandle = deviceContext->Handle();
 
     State::Instance().AutoExposure.reset();
-
-    if (deviceContext->Init(vkInstance, vkPD, InDevice, InCmdList, vkGIPA, vkGDPA, InParameters))
+    
     {
-        State::Instance().currentFeature = deviceContext;
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        evalCounter = 0;
+        ScopedSkipSpoofing skipSpoofing;
+        if (deviceContext->Init(vkInstance, vkPD, InDevice, InCmdList, vkGIPA, vkGDPA, InParameters))
+        {
+            State::Instance().currentFeature = deviceContext;
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            evalCounter = 0;
 
-        return NVSDK_NGX_Result_Success;
+            return NVSDK_NGX_Result_Success;
+        }
     }
 
     LOG_ERROR("CreateFeature failed");

@@ -476,61 +476,65 @@ inline static VkResult hkvkEnumerateDeviceExtensionProperties(VkPhysicalDevice p
         return result;
     }
 
-    // Count query, modify and add 5 to final count
-    if (pProperties == nullptr && pPropertyCount != nullptr && count == 0)
+    if (!State::Instance().skipSpoofing)
     {
-        *pPropertyCount += 5;
-        vkEnumerateDeviceExtensionPropertiesCount = *pPropertyCount;
-        LOG_TRACE("vkEnumerateDeviceExtensionProperties count: {}", *pPropertyCount);
-        return result;
-    }
-
-    // If this is request of our modified count query (count == vkEnumerateDeviceExtensionPropertiesCount)
-    if (pProperties != nullptr && pPropertyCount != nullptr && *pPropertyCount > 0 &&
-        count == vkEnumerateDeviceExtensionPropertiesCount)
-    {
-        // Set back modified extension count
-        *pPropertyCount = count;
-
-        // And fill extension info at the end
-        VkExtensionProperties bi { VK_NVX_BINARY_IMPORT_EXTENSION_NAME, VK_NVX_BINARY_IMPORT_SPEC_VERSION };
-        memcpy(&pProperties[*pPropertyCount - 1], &bi, sizeof(VkExtensionProperties));
-
-        VkExtensionProperties ivh { VK_NVX_IMAGE_VIEW_HANDLE_EXTENSION_NAME, VK_NVX_IMAGE_VIEW_HANDLE_SPEC_VERSION };
-        memcpy(&pProperties[*pPropertyCount - 2], &ivh, sizeof(VkExtensionProperties));
-
-        VkExtensionProperties mpva { VK_NVX_MULTIVIEW_PER_VIEW_ATTRIBUTES_EXTENSION_NAME,
-                                     VK_NVX_MULTIVIEW_PER_VIEW_ATTRIBUTES_SPEC_VERSION };
-        memcpy(&pProperties[*pPropertyCount - 3], &mpva, sizeof(VkExtensionProperties));
-
-        VkExtensionProperties ll { VK_NV_LOW_LATENCY_EXTENSION_NAME, VK_NV_LOW_LATENCY_SPEC_VERSION };
-        memcpy(&pProperties[*pPropertyCount - 4], &ll, sizeof(VkExtensionProperties));
-
-        VkExtensionProperties bda { VK_EXT_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
-                                    VK_EXT_BUFFER_DEVICE_ADDRESS_SPEC_VERSION };
-        memcpy(&pProperties[*pPropertyCount - 5], &bda, sizeof(VkExtensionProperties));
-
-        if (!vkEnumerateDeviceExtensionPropertiesListed)
+        // Count query, modify and add 5 to final count
+        if (pProperties == nullptr && pPropertyCount != nullptr && count == 0)
         {
-            vkEnumerateDeviceExtensionPropertiesListed = true;
+            *pPropertyCount += 5;
+            vkEnumerateDeviceExtensionPropertiesCount = *pPropertyCount;
+            LOG_TRACE("vkEnumerateDeviceExtensionProperties count: {}", *pPropertyCount);
+            return result;
+        }
 
-            LOG_DEBUG("Extensions returned:");
-            for (uint32_t i = 0; i < *pPropertyCount; i++)
+        // If this is request of our modified count query (count == vkEnumerateDeviceExtensionPropertiesCount)
+        if (pProperties != nullptr && pPropertyCount != nullptr && *pPropertyCount > 0 &&
+            count == vkEnumerateDeviceExtensionPropertiesCount)
+        {
+            // Set back modified extension count
+            *pPropertyCount = count;
+
+            // And fill extension info at the end
+            VkExtensionProperties bi { VK_NVX_BINARY_IMPORT_EXTENSION_NAME, VK_NVX_BINARY_IMPORT_SPEC_VERSION };
+            memcpy(&pProperties[*pPropertyCount - 1], &bi, sizeof(VkExtensionProperties));
+
+            VkExtensionProperties ivh { VK_NVX_IMAGE_VIEW_HANDLE_EXTENSION_NAME,
+                                        VK_NVX_IMAGE_VIEW_HANDLE_SPEC_VERSION };
+            memcpy(&pProperties[*pPropertyCount - 2], &ivh, sizeof(VkExtensionProperties));
+
+            VkExtensionProperties mpva { VK_NVX_MULTIVIEW_PER_VIEW_ATTRIBUTES_EXTENSION_NAME,
+                                         VK_NVX_MULTIVIEW_PER_VIEW_ATTRIBUTES_SPEC_VERSION };
+            memcpy(&pProperties[*pPropertyCount - 3], &mpva, sizeof(VkExtensionProperties));
+
+            VkExtensionProperties ll { VK_NV_LOW_LATENCY_EXTENSION_NAME, VK_NV_LOW_LATENCY_SPEC_VERSION };
+            memcpy(&pProperties[*pPropertyCount - 4], &ll, sizeof(VkExtensionProperties));
+
+            VkExtensionProperties bda { VK_EXT_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
+                                        VK_EXT_BUFFER_DEVICE_ADDRESS_SPEC_VERSION };
+            memcpy(&pProperties[*pPropertyCount - 5], &bda, sizeof(VkExtensionProperties));
+
+            if (!vkEnumerateDeviceExtensionPropertiesListed)
             {
-                LOG_DEBUG("  {}", pProperties[i].extensionName);
+                vkEnumerateDeviceExtensionPropertiesListed = true;
 
-                if (i < (*pPropertyCount - 5))
-                    vkDeviceExtensions.insert_or_assign(std::string(pProperties[i].extensionName), true);
+                LOG_DEBUG("Extensions returned:");
+                for (uint32_t i = 0; i < *pPropertyCount; i++)
+                {
+                    LOG_DEBUG("  {}", pProperties[i].extensionName);
+
+                    if (i < (*pPropertyCount - 5))
+                        vkDeviceExtensions.insert_or_assign(std::string(pProperties[i].extensionName), true);
+                }
+            }
+            else
+            {
+                LOG_DEBUG("Modified extension list returned");
             }
         }
         else
         {
-            LOG_DEBUG("Modified extension list returned");
+            LOG_DEBUG("Not adding any extensions!");
         }
-    }
-    else
-    {
-        LOG_DEBUG("Not adding any extensions!");
     }
 
     LOG_FUNC_RESULT(result);
@@ -556,30 +560,33 @@ inline static VkResult hkvkEnumerateInstanceExtensionProperties(const char* pLay
         return result;
     }
 
-    if (pLayerName == nullptr && pProperties == nullptr && count == 0)
+    if (!State::Instance().skipSpoofing)
     {
-        LOG_TRACE("hkvkEnumerateDeviceExtensionProperties({0}) count: {1}", pLayerName,
-                  vkEnumerateDeviceExtensionPropertiesCount);
-
-        return result;
-    }
-
-    if (pPropertyCount != nullptr && pProperties != nullptr)
-    {
-        if (!vkEnumerateInstanceExtensionPropertiesListed)
+        if (pLayerName == nullptr && pProperties == nullptr && count == 0)
         {
-            vkEnumerateInstanceExtensionPropertiesListed = true;
+            LOG_TRACE("hkvkEnumerateDeviceExtensionProperties({0}) count: {1}", pLayerName,
+                      vkEnumerateDeviceExtensionPropertiesCount);
 
-            LOG_DEBUG("Extensions returned:");
-            for (size_t i = 0; i < *pPropertyCount; i++)
-            {
-                LOG_DEBUG("  {}", pProperties[i].extensionName);
-                vkInstanceExtensions.insert_or_assign(std::string(pProperties[i].extensionName), true);
-            }
+            return result;
         }
-        else
+
+        if (pPropertyCount != nullptr && pProperties != nullptr)
         {
-            LOG_DEBUG("Modified extension list returned");
+            if (!vkEnumerateInstanceExtensionPropertiesListed)
+            {
+                vkEnumerateInstanceExtensionPropertiesListed = true;
+
+                LOG_DEBUG("Extensions returned:");
+                for (size_t i = 0; i < *pPropertyCount; i++)
+                {
+                    LOG_DEBUG("  {}", pProperties[i].extensionName);
+                    vkInstanceExtensions.insert_or_assign(std::string(pProperties[i].extensionName), true);
+                }
+            }
+            else
+            {
+                LOG_DEBUG("Modified extension list returned");
+            }
         }
     }
 
