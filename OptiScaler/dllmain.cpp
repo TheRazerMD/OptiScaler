@@ -1167,8 +1167,8 @@ static void printQuirks(flag_set<GameQuirk>& quirks)
 
     if (quirks & GameQuirk::DontUseNtDllHooks)
     {
-        spdlog::info("Quirk: NOT using kernel hooks instead of NTdll ones");
-        state->detectedQuirks.push_back("NOT using kernel hooks instead of NTdll ones");
+        spdlog::info("Quirk: Using kernel hooks instead of NTdll ones");
+        state->detectedQuirks.push_back("Using kernel hooks instead of NTdll ones");
     }
 
     if (quirks & GameQuirk::UseFSR2PatternMatching)
