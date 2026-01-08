@@ -342,6 +342,16 @@ HMODULE LibraryLoadHooks::LoadLibraryCheckW(std::wstring libName, LPCWSTR lpLibF
         return module;
     }
 
+    if (CheckDllNameW(&libName, &dx12agilityNamesW))
+    {
+        auto module = NtdllProxy::LoadLibraryExW_Ldr(libName.c_str(), NULL, 0);
+
+        if (module != nullptr)
+            D3D12Hooks::HookAgility(module);
+
+        return module;
+    }
+
     if (CheckDllNameW(&libName, &vkNamesW))
     {
         auto module = NtdllProxy::LoadLibraryExW_Ldr(libName.c_str(), NULL, 0);

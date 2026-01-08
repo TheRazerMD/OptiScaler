@@ -670,12 +670,6 @@ static void CheckWorkingMode()
             Config::Instance()->OverlayMenu.set_volatile_value(!State::Instance().isWorkingAsNvngx &&
                                                                Config::Instance()->OverlayMenu.value_or_default());
 
-            // For Agility SDK Upgrade
-            if (Config::Instance()->FsrAgilitySDKUpgrade.value_or_default())
-            {
-                RunAgilityUpgrade(GetDllNameWModule(&dx12NamesW));
-            }
-
             // Intel Extension Framework
             if (Config::Instance()->UESpoofIntelAtomics64.value_or_default())
             {
@@ -757,6 +751,36 @@ static void CheckWorkingMode()
                 LOG_DEBUG("Loading d3d12.dll manually");
                 D3d12Proxy::Init();
                 D3D12Hooks::Hook();
+            }
+
+            d3d12AgilityModule = GetDllNameWModule(&dx12agilityNamesW);
+            if (d3d12AgilityModule != nullptr)
+            {
+                LOG_DEBUG("D3D12Core.dll already in memory");
+                D3D12Hooks::HookAgility(d3d12AgilityModule);
+            }
+
+            if (d3d12AgilityModule == nullptr && State::Instance().gameQuirks & GameQuirk::LoadD3D12Manually)
+            {
+                auto path = Util::ExePath().parent_path() / L"D3D12" / L"D3D12Core.dll";
+                d3d12AgilityModule = NtdllProxy::LoadLibraryExW_Ldr(path.c_str(), NULL, 0);
+
+                if (d3d12AgilityModule == nullptr && Config::Instance()->FsrAgilitySDKUpgrade.value_or_default())
+                {
+                    path = Util::ExePath().parent_path() / L"D3D12_Optiscaler" / L"D3D12Core.dll";
+                    d3d12AgilityModule = NtdllProxy::LoadLibraryExW_Ldr(path.c_str(), NULL, 0);
+                }
+
+                if (d3d12AgilityModule == nullptr)
+                {
+                    d3d12AgilityModule = NtdllProxy::LoadLibraryExW_Ldr(L"D3D12Core.dll", NULL, 0);
+                }
+
+                if (d3d12AgilityModule != nullptr)
+                {
+                    LOG_DEBUG("D3D12Core.dll loaded");
+                    D3D12Hooks::HookAgility(d3d12AgilityModule);
+                }
             }
 
             // DirectX 11
@@ -929,6 +953,12 @@ static void CheckWorkingMode()
             {
                 NtdllHooks::Hook();
                 KernelHooks::Hook();
+            }
+
+            // For Agility SDK Upgrade
+            if (Config::Instance()->FsrAgilitySDKUpgrade.value_or_default())
+            {
+                RunAgilityUpgrade(GetDllNameWModule(&dx12NamesW));
             }
 
             // SpecialK

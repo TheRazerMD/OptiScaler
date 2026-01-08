@@ -61,6 +61,7 @@ inline HMODULE skModule = nullptr;
 inline HMODULE reshadeModule = nullptr;
 inline HMODULE vulkanModule = nullptr;
 inline HMODULE d3d11Module = nullptr;
+inline HMODULE d3d12AgilityModule = nullptr;
 inline HMODULE slInterposerModule = nullptr;
 inline DWORD processId;
 

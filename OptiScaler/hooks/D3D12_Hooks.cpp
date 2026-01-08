@@ -7,6 +7,7 @@
 
 #include <proxies/D3D12_Proxy.h>
 #include <proxies/IGDExt_Proxy.h>
+#include <proxies/KernelBase_Proxy.h>
 
 #include <detours/detours.h>
 
@@ -39,9 +40,9 @@ typedef D3D12_RESOURCE_ALLOCATION_INFO (*PFN_GetResourceAllocationInfo)(ID3D12De
 typedef HRESULT (*PFN_CreateRootSignature)(ID3D12Device* device, UINT nodeMask, const void* pBlobWithRootSignature,
                                            SIZE_T blobLengthInBytes, REFIID riid, void** ppvRootSignature);
 
-typedef HRESULT(WINAPI* PFN_D3D12CreateRootSignatureDeserializer)(LPCVOID pSrcData, SIZE_T SrcDataSizeInBytes,
-                                                                  REFIID pRootSignatureDeserializerInterface,
-                                                                  void** ppRootSignatureDeserializer);
+typedef HRESULT (*PFN_D3D12GetInterface)(REFCLSID rclsid, REFIID riid, void** ppvDebug);
+typedef HRESULT (*PFN_CreateDevice)(ID3D12DeviceFactory* pFactory, IUnknown* adapter, D3D_FEATURE_LEVEL FeatureLevel,
+                                    REFIID riid, void** ppvDevice);
 
 typedef HRESULT(WINAPI* PFN_D3D12SerializeVersionedRootSignature)(
     const D3D12_VERSIONED_ROOT_SIGNATURE_DESC* pRootSignature, ID3DBlob** ppBlob, ID3DBlob** ppErrorBlob);
@@ -54,12 +55,15 @@ static PFN_CreateCommittedResource o_CreateCommittedResource = nullptr;
 static PFN_CreatePlacedResource o_CreatePlacedResource = nullptr;
 static PFN_GetResourceAllocationInfo o_GetResourceAllocationInfo = nullptr;
 static PFN_CreateRootSignature o_CreateRootSignature = nullptr;
+static PFN_D3D12GetInterface o_D3D12GetInterface = nullptr;
+static PFN_CreateDevice o_CreateDevice = nullptr;
 
 static D3d12Proxy::PFN_D3D12CreateDevice o_D3D12CreateDevice = nullptr;
 static D3d12Proxy::PFN_D3D12SerializeRootSignature o_D3D12SerializeRootSignature = nullptr;
 static D3d12Proxy::PFN_D3D12SerializeVersionedRootSignature o_D3D12SerializeVersionedRootSignature = nullptr;
 static PFN_Release o_D3D12DeviceRelease = nullptr;
 
+static bool _creatingD3D12Device = false;
 static bool _d3d12Captured = false;
 static LUID _lastAdapterLuid = {};
 
@@ -272,10 +276,14 @@ static HRESULT hkD3D12CreateDevice(IDXGIAdapter* pAdapter, D3D_FEATURE_LEVEL Min
     if (ppDevice == nullptr)
     {
         LOG_ERROR("ppDevice is nullptr");
-        return o_D3D12CreateDevice(pAdapter, minLevel, riid, ppDevice);
+        _creatingD3D12Device = true;
+        auto result = o_D3D12CreateDevice(pAdapter, minLevel, riid, ppDevice);
+        _creatingD3D12Device = false;
+        return result;
     }
 
     HRESULT result;
+    _creatingD3D12Device = true;
     if (desc.VendorId == VendorId::Intel)
     {
         ScopedSkipSpoofing skipSpoofing {};
@@ -284,6 +292,140 @@ static HRESULT hkD3D12CreateDevice(IDXGIAdapter* pAdapter, D3D_FEATURE_LEVEL Min
     else
     {
         result = o_D3D12CreateDevice(pAdapter, minLevel, riid, ppDevice);
+    }
+    _creatingD3D12Device = false;
+
+    LOG_DEBUG("o_D3D12CreateDevice result: {:X}", (UINT) result);
+
+    if (result == S_OK && ppDevice != nullptr && MinimumFeatureLevel != D3D_FEATURE_LEVEL_1_0_CORE)
+    {
+        LOG_DEBUG("Device captured: {0:X}", (size_t) *ppDevice);
+        State::Instance().currentD3D12Device = (ID3D12Device*) *ppDevice;
+
+        if (szName.size() > 0)
+            State::Instance().DeviceAdapterNames[*ppDevice] = wstring_to_string(szName);
+
+        if (desc.VendorId == VendorId::Intel && Config::Instance()->UESpoofIntelAtomics64.value_or_default())
+        {
+            IGDExtProxy::EnableAtomicSupport(State::Instance().currentD3D12Device);
+            _intelD3D12Device = State::Instance().currentD3D12Device;
+            _intelD3D12DeviceRefTarget = _intelD3D12Device->AddRef();
+
+            if (o_D3D12DeviceRelease == nullptr)
+                _intelD3D12Device->Release();
+            else
+                o_D3D12DeviceRelease(_intelD3D12Device);
+        }
+
+        // For WuWa, might cause issues with other games
+        // if (_lastAdapterLuid.HighPart != desc.AdapterLuid.HighPart ||
+        //    _lastAdapterLuid.LowPart != desc.AdapterLuid.LowPart)
+        // {
+        //    ResTrack_Dx12::ReleaseHooks();
+        // }
+
+        // _lastAdapterLuid = desc.AdapterLuid;
+
+        HookToDevice(State::Instance().currentD3D12Device);
+        _d3d12Captured = true;
+
+        State::Instance().d3d12Devices.push_back((ID3D12Device*) *ppDevice);
+
+#ifdef ENABLE_DEBUG_LAYER_DX12
+        if (infoQueue != nullptr)
+            infoQueue->Release();
+
+        if (infoQueue1 != nullptr)
+            infoQueue1->Release();
+
+        if (State::Instance().currentD3D12Device->QueryInterface(IID_PPV_ARGS(&infoQueue)) == S_OK)
+        {
+            LOG_DEBUG("infoQueue accuired");
+
+            infoQueue->ClearRetrievalFilter();
+            infoQueue->SetMuteDebugOutput(false);
+
+            HRESULT res;
+            res = infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
+            // res = infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
+            // res = infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, TRUE);
+
+            if (infoQueue->QueryInterface(IID_PPV_ARGS(&infoQueue1)) == S_OK && infoQueue1 != nullptr)
+            {
+                LOG_DEBUG("infoQueue1 accuired, registering MessageCallback");
+                res = infoQueue1->RegisterMessageCallback(D3D12DebugCallback, D3D12_MESSAGE_CALLBACK_IGNORE_FILTERS,
+                                                          NULL, NULL);
+            }
+        }
+#endif
+    }
+
+    LOG_DEBUG("final result: {:X}", (UINT) result);
+    return result;
+}
+
+static HRESULT hkCreateDevice(ID3D12DeviceFactory* pFactory, IDXGIAdapter* pAdapter,
+                              D3D_FEATURE_LEVEL MinimumFeatureLevel, REFIID riid, void** ppDevice)
+{
+    LOG_DEBUG("Adapter: {:X}, Level: {:X}, Caller: {}", (size_t) pAdapter, (UINT) MinimumFeatureLevel,
+              Util::WhoIsTheCaller(_ReturnAddress()));
+
+    if (_creatingD3D12Device)
+    {
+        LOG_DEBUG("Calling from hkD3D12CreateDevice, calling original CreateDevice");
+        return o_CreateDevice(pFactory, pAdapter, MinimumFeatureLevel, riid, ppDevice);
+    }
+
+#ifdef ENABLE_DEBUG_LAYER_DX12
+    LOG_WARN("Debug layers active!");
+    if (debugController == nullptr && D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)) == S_OK)
+    {
+        debugController->EnableDebugLayer();
+
+#ifdef ENABLE_GPU_VALIDATION
+        LOG_WARN("GPU Based Validation active!");
+        debugController->SetEnableGPUBasedValidation(TRUE);
+#endif
+
+        debugController->Release();
+    }
+#endif
+
+    DXGI_ADAPTER_DESC desc {};
+    std::wstring szName;
+    if (pAdapter != nullptr && MinimumFeatureLevel != D3D_FEATURE_LEVEL_1_0_CORE)
+    {
+        ScopedSkipSpoofing skipSpoofing {};
+
+        if (pAdapter->GetDesc(&desc) == S_OK)
+        {
+            szName = desc.Description;
+            LOG_INFO("Adapter Desc: {}", wstring_to_string(szName));
+        }
+    }
+
+    auto minLevel = MinimumFeatureLevel;
+    if (Config::Instance()->SpoofFeatureLevel.value_or_default() && MinimumFeatureLevel != D3D_FEATURE_LEVEL_1_0_CORE)
+    {
+        LOG_INFO("Forcing feature level 0xb000 for new device");
+        minLevel = D3D_FEATURE_LEVEL_11_0;
+    }
+
+    if (ppDevice == nullptr)
+    {
+        LOG_ERROR("ppDevice is nullptr");
+        return o_CreateDevice(pFactory, pAdapter, minLevel, riid, ppDevice);
+    }
+
+    HRESULT result;
+    if (desc.VendorId == VendorId::Intel)
+    {
+        ScopedSkipSpoofing skipSpoofing {};
+        result = o_CreateDevice(pFactory, pAdapter, minLevel, riid, ppDevice);
+    }
+    else
+    {
+        result = o_CreateDevice(pFactory, pAdapter, minLevel, riid, ppDevice);
     }
 
     LOG_DEBUG("o_D3D12CreateDevice result: {:X}", (UINT) result);
@@ -668,6 +810,35 @@ static HRESULT hkCreateRootSignature(ID3D12Device* device, UINT nodeMask, const 
     return result;
 }
 
+static HRESULT hkD3D12GetInterface(REFCLSID rclsid, REFIID riid, void** ppvDebug)
+{
+    LOG_DEBUG("D3D12GetInterface called: {:X}, {:X}, Caller: {}", (size_t) &rclsid, (size_t) &riid,
+              Util::WhoIsTheCaller(_ReturnAddress()));
+
+    auto result = o_D3D12GetInterface(rclsid, riid, ppvDebug);
+
+    if (rclsid == CLSID_D3D12DeviceFactory && o_CreateDevice == nullptr)
+    {
+        auto deviceFactory = (ID3D12DeviceFactory*) *ppvDebug;
+
+        PVOID* pVTable = *(PVOID**) deviceFactory;
+
+        o_CreateDevice = (PFN_CreateDevice) pVTable[9];
+
+        if (o_CreateDevice != nullptr)
+        {
+            LOG_DEBUG("Detouring ID3D12DeviceFactory::CreateDevice");
+
+            DetourTransactionBegin();
+            DetourUpdateThread(GetCurrentThread());
+            DetourAttach(&(PVOID&) o_CreateDevice, hkCreateDevice);
+            DetourTransactionCommit();
+        }
+    }
+
+    return result;
+}
+
 static void HookToDevice(ID3D12Device* InDevice)
 {
     if (o_CreateSampler != nullptr || InDevice == nullptr)
@@ -777,6 +948,24 @@ void D3D12Hooks::Hook()
     o_D3D12SerializeRootSignature = D3d12Proxy::Hook_D3D12SerializeRootSignature(hkD3D12SerializeRootSignature);
     o_D3D12SerializeVersionedRootSignature =
         D3d12Proxy::Hook_D3D12SerializeVersionedRootSignature(hkD3D12SerializeVersionedRootSignature);
+}
+
+void D3D12Hooks::HookAgility(HMODULE module)
+{
+    if (module == nullptr || o_D3D12GetInterface != nullptr)
+        return;
+
+    LOG_DEBUG("Hooking D3D12GetInterface from D3D12 Agility SDK");
+
+    o_D3D12GetInterface = (PFN_D3D12GetInterface) KernelBaseProxy::GetProcAddress_()(module, "D3D12GetInterface");
+
+    if (o_D3D12GetInterface != nullptr)
+    {
+        DetourTransactionBegin();
+        DetourUpdateThread(GetCurrentThread());
+        DetourAttach(&(PVOID&) o_D3D12GetInterface, hkD3D12GetInterface);
+        DetourTransactionCommit();
+    }
 }
 
 void D3D12Hooks::Unhook()

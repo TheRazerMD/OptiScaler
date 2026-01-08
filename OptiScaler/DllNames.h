@@ -174,6 +174,7 @@ inline std::vector<std::string> skipDxgiWrappingNames = { "eosovh-win32-shipping
 
 DEFINE_NAME_VECTORS(dx11, "d3d11");
 DEFINE_NAME_VECTORS(dx12, "d3d12");
+DEFINE_NAME_VECTORS(dx12agility, "d3d12core");
 DEFINE_NAME_VECTORS(dxgi, "dxgi");
 DEFINE_NAME_VECTORS(vk, "vulkan-1", "winevulkan");
 
