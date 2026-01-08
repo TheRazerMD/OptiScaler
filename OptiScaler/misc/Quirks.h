@@ -24,7 +24,7 @@ enum class GameQuirk : uint64_t
     DontUseUnrealBarriers,
     SkipFirst10Frames,
     DisableVsyncOverride,
-    UseNtDllHooks,
+    DontUseNtDllHooks,
     UseFSR2PatternMatching,
     AlwaysCaptureFSRFGSwapchain,
     AllowedFrameAhead2,
@@ -139,8 +139,10 @@ static const QuirkEntry quirkTable[] = {
 
     // Death Stranding and Directors Cut
     // no spoof needed for DLSS inputs
-    QUIRK_ENTRY("ds.exe", GameQuirk::DisableDxgiSpoofing, GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs,
-                GameQuirk::UseNtDllHooks),
+    QUIRK_ENTRY("ds.exe", GameQuirk::DisableDxgiSpoofing, GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs),
+
+    // Duet Night Abyss
+    QUIRK_ENTRY("em-win64-shipping.exe", GameQuirk::DontUseNtDllHooks),
 
     // The Callisto Protocol
     // FSR2 only, no spoof needed

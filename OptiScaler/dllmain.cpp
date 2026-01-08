@@ -1135,10 +1135,10 @@ static void printQuirks(flag_set<GameQuirk>& quirks)
         state->detectedQuirks.push_back("Skipping D3D11 feature level elevation, native FSR3.1 will be disabled!");
     }
 
-    if (quirks & GameQuirk::UseNtDllHooks)
+    if (quirks & GameQuirk::DontUseNtDllHooks)
     {
-        spdlog::info("Quirk: Using NTdll hooks instead of kernel ones");
-        state->detectedQuirks.push_back("Using NTdll hooks instead of kernel ones");
+        spdlog::info("Quirk: NOT using kernel hooks instead of NTdll ones");
+        state->detectedQuirks.push_back("NOT using kernel hooks instead of NTdll ones");
     }
 
     if (quirks & GameQuirk::UseFSR2PatternMatching)
@@ -1266,8 +1266,8 @@ static void CheckQuirks()
     if (quirks & GameQuirk::DisableVsyncOverride && !Config::Instance()->OverrideVsync.has_value())
         Config::Instance()->OverrideVsync.set_volatile_value(false);
 
-    if (quirks & GameQuirk::UseNtDllHooks && !Config::Instance()->UseNtdllHooks.has_value())
-        Config::Instance()->UseNtdllHooks.set_volatile_value(true);
+    if (quirks & GameQuirk::DontUseNtDllHooks && !Config::Instance()->UseNtdllHooks.has_value())
+        Config::Instance()->UseNtdllHooks.set_volatile_value(false);
 
     if (quirks & GameQuirk::UseFSR2PatternMatching && !Config::Instance()->Fsr2Pattern.has_value())
         Config::Instance()->Fsr2Pattern.set_volatile_value(true);
