@@ -2346,6 +2346,8 @@ bool MenuCommon::RenderMenu()
                         ImGui::Text("D3D11 %s| %s %d.%d.%d", state.isRunningOnDXVK ? "(DXVK) " : "",
                                     state.currentFeature->Name().c_str(), state.currentFeature->Version().major,
                                     state.currentFeature->Version().minor, state.currentFeature->Version().patch);
+                        ImGui::SameLine(0.0f, 6.0f);
+                        ImGui::Text("| Input: %s", state.currentInputApiName.c_str());
 
                         ImGui::SameLine(0.0f, 6.0f);
                         spoofingText = config->DxgiSpoofing.value_or_default() ? "On" : "Off";

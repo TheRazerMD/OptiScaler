@@ -626,6 +626,9 @@
     <ClInclude Include="shaders\format_transfer\precompile\FT_Shader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="inputs\FSR2_Dx11.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Config.cpp">
@@ -993,6 +996,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="shaders\Shader_Dx12.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="inputs\FSR2_Dx11.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

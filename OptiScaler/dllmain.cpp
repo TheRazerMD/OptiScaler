@@ -20,6 +20,7 @@
 #include <proxies/IGDExt_Proxy.h>
 #include <proxies/FfxApi_Proxy.h>
 
+#include "inputs/FSR2_Dx11.h"
 #include "inputs/FSR2_Dx12.h"
 #include "inputs/FSR3_Dx12.h"
 #include "inputs/FG/FSR3_Dx12_FG.h"
@@ -1694,7 +1695,10 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 
             spdlog::info("");
 
-            HookFSR2ExeInputs();
+            if (Config::Instance()->UseFsr2Dx11Inputs.value_or_default())
+                HookFSR2Dx11ExeInputs();
+            else
+                HookFSR2ExeInputs();
         }
 
         if (Config::Instance()->EnableFsr3Inputs.value_or_default())

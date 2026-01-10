@@ -482,6 +482,7 @@ class Config
     CustomOptional<bool> EnableDlssInputs { true };
     CustomOptional<bool> EnableXeSSInputs { true };
     CustomOptional<bool> UseFsr2Inputs { true };
+    CustomOptional<bool> UseFsr2Dx11Inputs { false };
     CustomOptional<bool> Fsr2Pattern { false };
     CustomOptional<bool> UseFsr3Inputs { true };
     CustomOptional<bool> Fsr3Pattern { false };

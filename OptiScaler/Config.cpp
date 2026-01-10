@@ -546,6 +546,7 @@ bool Config::Reload(std::filesystem::path iniPath)
 
             EnableFsr2Inputs.set_from_config(readBool("Inputs", "EnableFsr2Inputs"));
             UseFsr2Inputs.set_from_config(readBool("Inputs", "UseFsr2Inputs"));
+            UseFsr2Dx11Inputs.set_from_config(readBool("Inputs", "UseFsr2Dx11Inputs"));
             Fsr2Pattern.set_from_config(readBool("Inputs", "Fsr2Pattern"));
 
             EnableFsr3Inputs.set_from_config(readBool("Inputs", "EnableFsr3Inputs"));
@@ -1178,6 +1179,8 @@ bool Config::SaveIni()
         ini.SetValue("Inputs", "EnableXeSSInputs",
                      GetBoolValue(Instance()->EnableXeSSInputs.value_for_config()).c_str());
         ini.SetValue("Inputs", "UseFsr2Inputs", GetBoolValue(Instance()->UseFsr2Inputs.value_for_config()).c_str());
+        ini.SetValue("Inputs", "UseFsr2Dx11Inputs",
+                     GetBoolValue(Instance()->UseFsr2Dx11Inputs.value_for_config()).c_str());
         ini.SetValue("Inputs", "Fsr2Pattern", GetBoolValue(Instance()->Fsr2Pattern.value_for_config()).c_str());
         ini.SetValue("Inputs", "UseFsr3Inputs", GetBoolValue(Instance()->UseFsr3Inputs.value_for_config()).c_str());
         ini.SetValue("Inputs", "Fsr3Pattern", GetBoolValue(Instance()->Fsr3Pattern.value_for_config()).c_str());
