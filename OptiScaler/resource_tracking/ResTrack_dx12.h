@@ -143,7 +143,7 @@ struct HeapInfo
     bool active = true;
 
     HeapInfo(ID3D12DescriptorHeap* heap, SIZE_T cpuStart, SIZE_T cpuEnd, SIZE_T gpuStart, SIZE_T gpuEnd,
-             UINT numResources, UINT increment, UINT type, UINT mutexIndex)
+             UINT numResources, UINT increment, UINT type)
         : cpuStart(cpuStart), cpuEnd(cpuEnd), gpuStart(gpuStart), gpuEnd(gpuEnd), numDescriptors(numResources),
           increment(increment), info(new ResourceInfo[numResources]), type(type), heap(heap)
     {

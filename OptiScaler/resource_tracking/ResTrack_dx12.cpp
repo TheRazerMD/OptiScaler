@@ -119,15 +119,7 @@ static SpinLock _heapCreationMutex;
 static std::mutex _heapCreationMutex;
 #endif
 
-// #define USE_ATOMIC_INDEX
-
-#ifdef USE_ATOMIC_INDEX
-static std::atomic<UINT> fgHeapIndex { 0 };
-#else
-static UINT fgHeapIndex = 0;
-#endif
-
-static std::unique_ptr<HeapInfo> fgHeaps[1000] = {};
+static std::vector<std::unique_ptr<HeapInfo>> fgHeaps;
 
 static std::set<void*> _notFoundCmdLists;
 static std::unordered_map<FG_ResourceType, void*> _resCmdList[BUFFER_COUNT];
@@ -268,13 +260,8 @@ void ResTrack_Dx12::ResourceBarrier(ID3D12GraphicsCommandList* InCommandList, ID
 
 SIZE_T ResTrack_Dx12::GetGPUHandle(ID3D12Device* This, SIZE_T cpuHandle, D3D12_DESCRIPTOR_HEAP_TYPE type)
 {
-#ifdef USE_ATOMIC_INDEX
-    UINT count = fgHeapIndex.load(std::memory_order_relaxed);
-#else
-    UINT count = fgHeapIndex;
-#endif
-
-    for (UINT i = 0; i < count; i++)
+    size_t count = fgHeaps.size();
+    for (size_t i = 0; i < count; i++)
     {
         auto val = fgHeaps[i].get();
         if (val->active && val->cpuStart <= cpuHandle && val->cpuEnd > cpuHandle && val->gpuStart != 0)
@@ -293,13 +280,8 @@ SIZE_T ResTrack_Dx12::GetGPUHandle(ID3D12Device* This, SIZE_T cpuHandle, D3D12_D
 
 SIZE_T ResTrack_Dx12::GetCPUHandle(ID3D12Device* This, SIZE_T gpuHandle, D3D12_DESCRIPTOR_HEAP_TYPE type)
 {
-#ifdef USE_ATOMIC_INDEX
-    UINT count = fgHeapIndex.load(std::memory_order_relaxed);
-#else
-    UINT count = fgHeapIndex;
-#endif
-
-    for (UINT i = 0; i < count; i++)
+    size_t count = fgHeaps.size();
+    for (size_t i = 0; i < count; i++)
     {
         auto val = fgHeaps[i].get();
         if (val->active && val->gpuStart <= gpuHandle && val->gpuEnd > gpuHandle && val->cpuStart != 0)
@@ -328,17 +310,12 @@ HeapInfo* ResTrack_Dx12::GetHeapByCpuHandleCBV(SIZE_T cpuHandle)
             return heapInfo;
     }
 
-#ifdef USE_ATOMIC_INDEX
-    UINT count = fgHeapIndex.load(std::memory_order_relaxed);
-#else
-    UINT count = fgHeapIndex;
-#endif
-
-    for (UINT i = 0; i < count; i++)
+    size_t count = fgHeaps.size();
+    for (size_t i = 0; i < count; i++)
     {
         if (fgHeaps[i]->active && fgHeaps[i]->cpuStart <= cpuHandle && fgHeaps[i]->cpuEnd > cpuHandle)
         {
-            cacheCBV.index = i;
+            cacheCBV.index = static_cast<int>(i);
             cacheCBV.genSeen = currentGen;
             return fgHeaps[i].get();
         }
@@ -360,17 +337,12 @@ HeapInfo* ResTrack_Dx12::GetHeapByCpuHandleRTV(SIZE_T cpuHandle)
             return heapInfo;
     }
 
-#ifdef USE_ATOMIC_INDEX
-    UINT count = fgHeapIndex.load(std::memory_order_relaxed);
-#else
-    UINT count = fgHeapIndex;
-#endif
-
-    for (UINT i = 0; i < count; i++)
+    size_t count = fgHeaps.size();
+    for (size_t i = 0; i < count; i++)
     {
         if (fgHeaps[i]->active && fgHeaps[i]->cpuStart <= cpuHandle && fgHeaps[i]->cpuEnd > cpuHandle)
         {
-            cacheRTV.index = i;
+            cacheRTV.index = static_cast<int>(i);
             cacheRTV.genSeen = currentGen;
             return fgHeaps[i].get();
         }
@@ -392,17 +364,12 @@ HeapInfo* ResTrack_Dx12::GetHeapByCpuHandleSRV(SIZE_T cpuHandle)
             return heapInfo;
     }
 
-#ifdef USE_ATOMIC_INDEX
-    UINT count = fgHeapIndex.load(std::memory_order_relaxed);
-#else
-    UINT count = fgHeapIndex;
-#endif
-
-    for (UINT i = 0; i < count; i++)
+    size_t count = fgHeaps.size();
+    for (size_t i = 0; i < count; i++)
     {
         if (fgHeaps[i]->active && fgHeaps[i]->cpuStart <= cpuHandle && fgHeaps[i]->cpuEnd > cpuHandle)
         {
-            cacheSRV.index = i;
+            cacheSRV.index = static_cast<int>(i);
             cacheSRV.genSeen = currentGen;
             return fgHeaps[i].get();
         }
@@ -424,17 +391,12 @@ HeapInfo* ResTrack_Dx12::GetHeapByCpuHandleUAV(SIZE_T cpuHandle)
             return heapInfo;
     }
 
-#ifdef USE_ATOMIC_INDEX
-    UINT count = fgHeapIndex.load(std::memory_order_relaxed);
-#else
-    UINT count = fgHeapIndex;
-#endif
-
-    for (UINT i = 0; i < count; i++)
+    size_t count = fgHeaps.size();
+    for (size_t i = 0; i < count; i++)
     {
         if (fgHeaps[i]->active && fgHeaps[i]->cpuStart <= cpuHandle && fgHeaps[i]->cpuEnd > cpuHandle)
         {
-            cacheUAV.index = i;
+            cacheUAV.index = static_cast<int>(i);
             cacheUAV.genSeen = currentGen;
             return fgHeaps[i].get();
         }
@@ -458,17 +420,12 @@ HeapInfo* ResTrack_Dx12::GetHeapByCpuHandle(SIZE_T cpuHandle)
         }
     }
 
-#ifdef USE_ATOMIC_INDEX
-    UINT count = fgHeapIndex.load(std::memory_order_relaxed);
-#else
-    UINT count = fgHeapIndex;
-#endif
-
-    for (UINT i = 0; i < count; i++)
+    size_t count = fgHeaps.size();
+    for (size_t i = 0; i < count; i++)
     {
         if (fgHeaps[i]->active && fgHeaps[i]->cpuStart <= cpuHandle && fgHeaps[i]->cpuEnd > cpuHandle)
         {
-            cache.index = i;
+            cache.index = static_cast<int>(i);
             cache.genSeen = currentGen;
             return fgHeaps[i].get();
         }
@@ -492,17 +449,12 @@ HeapInfo* ResTrack_Dx12::GetHeapByGpuHandleGR(SIZE_T gpuHandle)
         }
     }
 
-#ifdef USE_ATOMIC_INDEX
-    UINT count = fgHeapIndex.load(std::memory_order_relaxed);
-#else
-    UINT count = fgHeapIndex;
-#endif
-
-    for (UINT i = 0; i < count; i++)
+    size_t count = fgHeaps.size();
+    for (size_t i = 0; i < count; i++)
     {
         if (fgHeaps[i]->active && fgHeaps[i]->gpuStart <= gpuHandle && fgHeaps[i]->gpuEnd > gpuHandle)
         {
-            cacheGR.index = i;
+            cacheGR.index = static_cast<int>(i);
             cacheGR.genSeen = currentGen;
             return fgHeaps[i].get();
         }
@@ -529,17 +481,12 @@ HeapInfo* ResTrack_Dx12::GetHeapByGpuHandleCR(SIZE_T gpuHandle)
         }
     }
 
-#ifdef USE_ATOMIC_INDEX
-    UINT count = fgHeapIndex.load(std::memory_order_relaxed);
-#else
-    UINT count = fgHeapIndex;
-#endif
-
-    for (UINT i = 0; i < count; i++)
+    size_t count = fgHeaps.size();
+    for (size_t i = 0; i < count; i++)
     {
         if (fgHeaps[i]->active && fgHeaps[i]->gpuStart <= gpuHandle && fgHeaps[i]->gpuEnd > gpuHandle)
         {
-            cacheCR.index = i;
+            cacheCR.index = static_cast<int>(i);
             cacheCR.genSeen = currentGen;
             return fgHeaps[i].get();
         }
@@ -861,13 +808,8 @@ static ULONG STDMETHODCALLTYPE hkHeapRelease(ID3D12DescriptorHeap* This)
     if (State::Instance().isShuttingDown)
         return o_HeapRelease(This);
 
-#ifdef USE_ATOMIC_INDEX
-    UINT count = fgHeapIndex.load(std::memory_order_relaxed);
-#else
-    UINT count = fgHeapIndex;
-#endif
-
-    for (UINT i = 0; i < count; ++i)
+    size_t count = fgHeaps.size();
+    for (size_t i = 0; i < count; i++)
     {
         auto& up = fgHeaps[i];
 
@@ -877,6 +819,12 @@ static ULONG STDMETHODCALLTYPE hkHeapRelease(ID3D12DescriptorHeap* This)
         This->AddRef();
         if (o_HeapRelease(This) <= 1)
         {
+#ifdef USE_SPINLOCK_MUTEX_FOR_HEAP_CREATION
+            std::lock_guard<SpinLock> lock(_heapCreationMutex);
+#else
+            std::lock_guard<std::mutex> lock(_heapCreationMutex);
+#endif
+
             up->active = false;
 
             LOG_INFO("Heap released: {:X}", (size_t) This);
@@ -904,6 +852,8 @@ static ULONG STDMETHODCALLTYPE hkHeapRelease(ID3D12DescriptorHeap* This)
                     slot.lastUsedFrame = 0;
                 }
             }
+
+            up.reset();
 
             gHeapGeneration.fetch_add(1, std::memory_order_relaxed); // invalidate caches
         }
@@ -954,11 +904,34 @@ HRESULT ResTrack_Dx12::hkCreateDescriptorHeap(ID3D12Device* This, D3D12_DESCRIPT
 #else
             std::lock_guard<std::mutex> lock(_heapCreationMutex);
 #endif
+            size_t count = fgHeaps.size();
+            bool foundEmpty = false;
+            for (size_t i = 0; i < count; i++)
+            {
+                if (fgHeaps[i] == nullptr)
+                {
+                    fgHeaps[i] = std::make_unique<HeapInfo>(heap, cpuStart, cpuEnd, gpuStart, gpuEnd, numDescriptors,
+                                                            increment, type);
 
-            fgHeaps[fgHeapIndex] = std::make_unique<HeapInfo>(heap, cpuStart, cpuEnd, gpuStart, gpuEnd, numDescriptors,
-                                                              increment, type, fgHeapIndex);
-            fgHeapIndex++;
-            gHeapGeneration.fetch_add(1, std::memory_order_relaxed);
+                    gHeapGeneration.fetch_add(1, std::memory_order_relaxed);
+                    foundEmpty = true;
+                    LOG_DEBUG("Reusing empty heap slot: {}", i);
+                    break;
+                }
+            }
+
+            if (!foundEmpty)
+            {
+                // Reallocate vector if needed
+                if (fgHeaps.capacity() == fgHeaps.size())
+                    fgHeaps.reserve(fgHeaps.size() + 65536);
+
+                fgHeaps.push_back(std::make_unique<HeapInfo>(heap, cpuStart, cpuEnd, gpuStart, gpuEnd, numDescriptors,
+                                                             increment, type));
+
+                gHeapGeneration.fetch_add(1, std::memory_order_relaxed);
+                LOG_DEBUG("Adding new heap slot: {}", fgHeaps.size() - 1);
+            }
         }
     }
     else
@@ -1872,6 +1845,7 @@ void ResTrack_Dx12::HookDevice(ID3D12Device* device)
         return;
 
     _trackedResources.reserve(1024);
+    fgHeaps.reserve(65536);
 
     LOG_FUNC();
 
