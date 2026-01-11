@@ -157,7 +157,23 @@ class State
 
     // DLSS
     bool dlssPresetsOverriddenExternally = false;
+    bool dlssPresetsOverridenByOpti = false;
+    uint32_t dlssRenderPresetDLAA = 0;
+    uint32_t dlssRenderPresetUltraQuality = 0;
+    uint32_t dlssRenderPresetQuality = 0;
+    uint32_t dlssRenderPresetBalanced = 0;
+    uint32_t dlssRenderPresetPerformance = 0;
+    uint32_t dlssRenderPresetUltraPerformance = 0;
+
+    // DLSSD
     bool dlssdPresetsOverriddenExternally = false;
+    bool dlssdPresetsOverridenByOpti = false;
+    uint32_t dlssdRenderPresetDLAA = 0;
+    uint32_t dlssdRenderPresetUltraQuality = 0;
+    uint32_t dlssdRenderPresetQuality = 0;
+    uint32_t dlssdRenderPresetBalanced = 0;
+    uint32_t dlssdRenderPresetPerformance = 0;
+    uint32_t dlssdRenderPresetUltraPerformance = 0;
 
     // Spoofing
     bool skipSpoofing = false;

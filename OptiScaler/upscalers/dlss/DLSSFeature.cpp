@@ -112,6 +112,31 @@ void DLSSFeature::ProcessInitParams(NVSDK_NGX_Parameter* InParameters)
 
     if (Config::Instance()->RenderPresetOverride.value_or_default())
     {
+        if (!State::Instance().dlssPresetsOverridenByOpti)
+        {
+            InParameters->Get(NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_DLAA,
+                              &State::Instance().dlssRenderPresetDLAA);
+            InParameters->Get(NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraQuality,
+                              &State::Instance().dlssRenderPresetUltraQuality);
+            InParameters->Get(NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Quality,
+                              &State::Instance().dlssRenderPresetQuality);
+            InParameters->Get(NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Balanced,
+                              &State::Instance().dlssRenderPresetBalanced);
+            InParameters->Get(NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Performance,
+                              &State::Instance().dlssRenderPresetPerformance);
+            InParameters->Get(NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraPerformance,
+                              &State::Instance().dlssRenderPresetUltraPerformance);
+
+            LOG_DEBUG("Original Preset_DLAA {}", State::Instance().dlssRenderPresetDLAA);
+            LOG_DEBUG("Original Preset_UltraQuality {}", State::Instance().dlssRenderPresetUltraQuality);
+            LOG_DEBUG("Original Preset_Quality {}", State::Instance().dlssRenderPresetQuality);
+            LOG_DEBUG("Original Preset_Balanced {}", State::Instance().dlssRenderPresetBalanced);
+            LOG_DEBUG("Original Preset_Performance {}", State::Instance().dlssRenderPresetPerformance);
+            LOG_DEBUG("Original Preset_UltraPerformance {}", State::Instance().dlssRenderPresetUltraPerformance);
+        }
+
+        State::Instance().dlssPresetsOverridenByOpti = true;
+
         uint32_t RenderPresetDLAA = 0;
         uint32_t RenderPresetUltraQuality = 0;
         uint32_t RenderPresetQuality = 0;
@@ -156,6 +181,54 @@ void DLSSFeature::ProcessInitParams(NVSDK_NGX_Parameter* InParameters)
         InParameters->Set(NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Balanced, RenderPresetBalanced);
         InParameters->Set(NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Performance, RenderPresetPerformance);
         InParameters->Set(NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraPerformance, RenderPresetUltraPerformance);
+    }
+    else
+    {
+        if (State::Instance().dlssPresetsOverridenByOpti)
+        {
+            LOG_DEBUG("Restoring Preset_DLAA {}", State::Instance().dlssRenderPresetDLAA);
+            LOG_DEBUG("Restoring Preset_UltraQuality {}", State::Instance().dlssRenderPresetUltraQuality);
+            LOG_DEBUG("Restoring Preset_Quality {}", State::Instance().dlssRenderPresetQuality);
+            LOG_DEBUG("Restoring Preset_Balanced {}", State::Instance().dlssRenderPresetBalanced);
+            LOG_DEBUG("Restoring Preset_Performance {}", State::Instance().dlssRenderPresetPerformance);
+            LOG_DEBUG("Restoring Preset_UltraPerformance {}", State::Instance().dlssRenderPresetUltraPerformance);
+
+            InParameters->Set(NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_DLAA, State::Instance().dlssRenderPresetDLAA);
+            InParameters->Set(NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraQuality,
+                              State::Instance().dlssRenderPresetUltraQuality);
+            InParameters->Set(NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Quality,
+                              State::Instance().dlssRenderPresetQuality);
+            InParameters->Set(NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Balanced,
+                              State::Instance().dlssRenderPresetBalanced);
+            InParameters->Set(NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Performance,
+                              State::Instance().dlssRenderPresetPerformance);
+            InParameters->Set(NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraPerformance,
+                              State::Instance().dlssRenderPresetUltraPerformance);
+        }
+        else
+        {
+            InParameters->Get(NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_DLAA,
+                              &State::Instance().dlssRenderPresetDLAA);
+            InParameters->Get(NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraQuality,
+                              &State::Instance().dlssRenderPresetUltraQuality);
+            InParameters->Get(NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Quality,
+                              &State::Instance().dlssRenderPresetQuality);
+            InParameters->Get(NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Balanced,
+                              &State::Instance().dlssRenderPresetBalanced);
+            InParameters->Get(NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_Performance,
+                              &State::Instance().dlssRenderPresetPerformance);
+            InParameters->Get(NVSDK_NGX_Parameter_DLSS_Hint_Render_Preset_UltraPerformance,
+                              &State::Instance().dlssRenderPresetUltraPerformance);
+
+            LOG_DEBUG("Original Preset_DLAA {}", State::Instance().dlssRenderPresetDLAA);
+            LOG_DEBUG("Original Preset_UltraQuality {}", State::Instance().dlssRenderPresetUltraQuality);
+            LOG_DEBUG("Original Preset_Quality {}", State::Instance().dlssRenderPresetQuality);
+            LOG_DEBUG("Original Preset_Balanced {}", State::Instance().dlssRenderPresetBalanced);
+            LOG_DEBUG("Original Preset_Performance {}", State::Instance().dlssRenderPresetPerformance);
+            LOG_DEBUG("Original Preset_UltraPerformance {}", State::Instance().dlssRenderPresetUltraPerformance);
+        }
+
+        State::Instance().dlssPresetsOverridenByOpti = false;
     }
 
     UINT perfQ = NVSDK_NGX_PerfQuality_Value_Balanced;

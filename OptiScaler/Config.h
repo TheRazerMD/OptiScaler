@@ -220,6 +220,16 @@ class Config
     CustomOptional<uint32_t> RenderPresetPerformance { 0 };
     CustomOptional<uint32_t> RenderPresetUltraPerformance { 0 };
 
+    // DLSSD
+    CustomOptional<bool> DLSSDRenderPresetOverride { false };
+    CustomOptional<uint32_t> DLSSDRenderPresetForAll { 0 };
+    CustomOptional<uint32_t> DLSSDRenderPresetDLAA { 0 };
+    CustomOptional<uint32_t> DLSSDRenderPresetUltraQuality { 0 };
+    CustomOptional<uint32_t> DLSSDRenderPresetQuality { 0 };
+    CustomOptional<uint32_t> DLSSDRenderPresetBalanced { 0 };
+    CustomOptional<uint32_t> DLSSDRenderPresetPerformance { 0 };
+    CustomOptional<uint32_t> DLSSDRenderPresetUltraPerformance { 0 };
+
     // Nukems
     CustomOptional<bool> MakeDepthCopy { false };
 

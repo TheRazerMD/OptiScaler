@@ -1230,8 +1230,8 @@ template <HasDefaultValue B> void MenuCommon::AddDLSSRenderPreset(std::string na
         "Unused",
         "Transformers",
         "Transformers 2",
-        "Unused",
-        "Unused",
+        "2nd Gen Transformers",
+        "2nd Gen Transformers 2",
         "Unused",
         "Unused",
 
@@ -1250,36 +1250,18 @@ template <HasDefaultValue B> void MenuCommon::AddDLSSRenderPreset(std::string na
 
 template <HasDefaultValue B> void MenuCommon::AddDLSSDRenderPreset(std::string name, CustomOptional<uint32_t, B>* value)
 {
-    const char* presets[] = { "DEFAULT",  "PRESET A", "PRESET B", "PRESET C", "PRESET D", "PRESET E",
-                              "PRESET F", "PRESET G", "PRESET H", "PRESET I", "PRESET J", "PRESET K",
-                              "PRESET L", "PRESET M", "PRESET N", "PRESET O", "Latest" };
-    const std::string presetsDesc[] = { "Whatever the game uses",
-                                        "CNN 1",
-                                        "CNN 2",
-                                        "CNN 3",
-                                        "Transformers",
-                                        "Transformers 2",
-                                        "Unused",
-                                        "Unused",
-
-                                        "Unused",
-                                        "Unused",
-                                        "Unused",
-                                        "Unused",
-                                        "Unused",
-                                        "Unused",
-                                        "Unused",
-                                        "Unused",
-
-                                        "Latest supported by the dll" };
+    const char* presets[] = { "DEFAULT", "PRESET A", "PRESET B", "PRESET C", "PRESET D", "PRESET E" };
+    const std::string presetsDesc[] = {
+        "Whatever the game uses", "Removed", "Removed", "Removed", "Default", "Preset E"
+    };
 
     if (value->value_or_default() == 0x00FFFFFF)
-        *value = 16;
+        *value = 6;
 
     PopulateCombo(name, value, presets, presetsDesc, std::size(presets));
 
     // Value for latest preset
-    if (value->value_or_default() == 16)
+    if (value->value_or_default() == 6)
         *value = 0x00FFFFFF;
 }
 
@@ -2866,21 +2848,43 @@ bool MenuCommon::RenderMenu()
                             ImGui::Spacing();
                         }
 
-                        if (bool pOverride = config->RenderPresetOverride.value_or_default();
-                            ImGui::Checkbox("Render Presets Override", &pOverride))
-                            config->RenderPresetOverride = pOverride;
-                        ShowHelpMarker("Each render preset has it strengths and weaknesses\n"
-                                       "Override to potentially improve image quality");
-
-                        ImGui::BeginDisabled(!config->RenderPresetOverride.value_or_default() || overridden);
-
-                        ImGui::PushItemWidth(135.0f * config->MenuScale.value_or_default());
                         if (usesDlssd)
-                            AddDLSSDRenderPreset("Override Preset", &config->RenderPresetForAll);
+                        {
+                            if (bool pOverride = config->DLSSDRenderPresetOverride.value_or_default();
+                                ImGui::Checkbox("Render Presets Override", &pOverride))
+                                config->DLSSDRenderPresetOverride = pOverride;
+
+                            ShowHelpMarker("Each render preset has it strengths and weaknesses\n"
+                                           "Override to potentially improve image quality\n"
+                                           "Press apply after enable/disable");
+
+                            ImGui::BeginDisabled(!config->DLSSDRenderPresetOverride.value_or_default() || overridden);
+                            ImGui::PushItemWidth(135.0f * config->MenuScale.value_or_default());
+
+                            AddDLSSDRenderPreset("Override Preset", &config->DLSSDRenderPresetForAll);
+
+                            ImGui::PopItemWidth();
+                            ImGui::EndDisabled();
+                        }
                         else
+                        {
+                            if (bool pOverride = config->RenderPresetOverride.value_or_default();
+                                ImGui::Checkbox("Render Presets Override", &pOverride))
+                                config->RenderPresetOverride = pOverride;
+
+                            ShowHelpMarker("Each render preset has it strengths and weaknesses\n"
+                                           "Override to potentially improve image quality\n"
+                                           "Press apply after enable/disable");
+
+                            ImGui::BeginDisabled(!config->RenderPresetOverride.value_or_default() || overridden);
+
+                            ImGui::PushItemWidth(135.0f * config->MenuScale.value_or_default());
+
                             AddDLSSRenderPreset("Override Preset", &config->RenderPresetForAll);
 
-                        ImGui::PopItemWidth();
+                            ImGui::PopItemWidth();
+                            ImGui::EndDisabled();
+                        }
 
                         ImGui::SameLine(0.0f, 6.0f);
 
@@ -2893,8 +2897,6 @@ bool MenuCommon::RenderMenu()
 
                             MARK_ALL_BACKENDS_CHANGED();
                         }
-
-                        ImGui::EndDisabled();
 
                         ImGui::Spacing();
 
@@ -2919,12 +2921,12 @@ bool MenuCommon::RenderMenu()
 
                             if (usesDlssd)
                             {
-                                AddDLSSDRenderPreset("DLAA Preset", &config->RenderPresetDLAA);
-                                AddDLSSDRenderPreset("UltraQ Preset", &config->RenderPresetUltraQuality);
-                                AddDLSSDRenderPreset("Quality Preset", &config->RenderPresetQuality);
-                                AddDLSSDRenderPreset("Balanced Preset", &config->RenderPresetBalanced);
-                                AddDLSSDRenderPreset("Perf Preset", &config->RenderPresetPerformance);
-                                AddDLSSDRenderPreset("UltraP Preset", &config->RenderPresetUltraPerformance);
+                                AddDLSSDRenderPreset("DLAA Preset", &config->DLSSDRenderPresetDLAA);
+                                AddDLSSDRenderPreset("UltraQ Preset", &config->DLSSDRenderPresetUltraQuality);
+                                AddDLSSDRenderPreset("Quality Preset", &config->DLSSDRenderPresetQuality);
+                                AddDLSSDRenderPreset("Balanced Preset", &config->DLSSDRenderPresetBalanced);
+                                AddDLSSDRenderPreset("Perf Preset", &config->DLSSDRenderPresetPerformance);
+                                AddDLSSDRenderPreset("UltraP Preset", &config->DLSSDRenderPresetUltraPerformance);
                             }
                             else
                             {

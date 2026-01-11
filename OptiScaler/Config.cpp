@@ -288,6 +288,41 @@ bool Config::Reload(std::filesystem::path iniPath)
                 setting.has_value() && setting >= 0 && (setting < presetCount || setting == 0x00FFFFFF))
                 RenderPresetUltraPerformance.set_from_config(setting);
         }
+        // DLSSD
+        {
+            // Don't enable again if set false because of no nvngx found
+            DLSSDRenderPresetOverride.set_from_config(readBool("DLSSD", "RenderPresetOverride"));
+
+            constexpr size_t presetCount = 6;
+
+            if (auto setting = readInt("DLSSD", "RenderPresetForAll");
+                setting.has_value() && setting >= 0 && (setting < presetCount || setting == 0x00FFFFFF))
+                DLSSDRenderPresetForAll.set_from_config(setting);
+
+            if (auto setting = readInt("DLSSD", "RenderPresetDLAA");
+                setting.has_value() && setting >= 0 && (setting < presetCount || setting == 0x00FFFFFF))
+                DLSSDRenderPresetDLAA.set_from_config(setting);
+
+            if (auto setting = readInt("DLSSD", "RenderPresetUltraQuality");
+                setting.has_value() && setting >= 0 && (setting < presetCount || setting == 0x00FFFFFF))
+                DLSSDRenderPresetUltraQuality.set_from_config(setting);
+
+            if (auto setting = readInt("DLSSD", "RenderPresetQuality");
+                setting.has_value() && setting >= 0 && (setting < presetCount || setting == 0x00FFFFFF))
+                DLSSDRenderPresetQuality.set_from_config(setting);
+
+            if (auto setting = readInt("DLSSD", "RenderPresetBalanced");
+                setting.has_value() && setting >= 0 && (setting < presetCount || setting == 0x00FFFFFF))
+                DLSSDRenderPresetBalanced.set_from_config(setting);
+
+            if (auto setting = readInt("DLSSD", "RenderPresetPerformance");
+                setting.has_value() && setting >= 0 && (setting < presetCount || setting == 0x00FFFFFF))
+                DLSSDRenderPresetPerformance.set_from_config(setting);
+
+            if (auto setting = readInt("DLSSD", "RenderPresetUltraPerformance");
+                setting.has_value() && setting >= 0 && (setting < presetCount || setting == 0x00FFFFFF))
+                DLSSDRenderPresetUltraPerformance.set_from_config(setting);
+        }
 
         // Nukems
         {
@@ -917,6 +952,26 @@ bool Config::SaveIni()
                      GetIntValue(Instance()->RenderPresetUltraPerformance.value_for_config()).c_str());
         ini.SetValue("DLSS", "UseGenericAppIdWithDlss",
                      GetBoolValue(Instance()->UseGenericAppIdWithDlss.value_for_config()).c_str());
+    }
+
+    // DLSSD
+    {
+        ini.SetValue("DLSSD", "RenderPresetOverride",
+                     GetBoolValue(Instance()->DLSSDRenderPresetOverride.value_for_config()).c_str());
+        ini.SetValue("DLSSD", "RenderPresetForAll",
+                     GetIntValue(Instance()->DLSSDRenderPresetForAll.value_for_config()).c_str());
+        ini.SetValue("DLSSD", "RenderPresetDLAA",
+                     GetIntValue(Instance()->DLSSDRenderPresetDLAA.value_for_config()).c_str());
+        ini.SetValue("DLSSD", "RenderPresetUltraQuality",
+                     GetIntValue(Instance()->DLSSDRenderPresetUltraQuality.value_for_config()).c_str());
+        ini.SetValue("DLSSD", "RenderPresetQuality",
+                     GetIntValue(Instance()->DLSSDRenderPresetQuality.value_for_config()).c_str());
+        ini.SetValue("DLSSD", "RenderPresetBalanced",
+                     GetIntValue(Instance()->DLSSDRenderPresetBalanced.value_for_config()).c_str());
+        ini.SetValue("DLSSD", "RenderPresetPerformance",
+                     GetIntValue(Instance()->DLSSDRenderPresetPerformance.value_for_config()).c_str());
+        ini.SetValue("DLSSD", "RenderPresetUltraPerformance",
+                     GetIntValue(Instance()->DLSSDRenderPresetUltraPerformance.value_for_config()).c_str());
     }
 
     // Nukems
