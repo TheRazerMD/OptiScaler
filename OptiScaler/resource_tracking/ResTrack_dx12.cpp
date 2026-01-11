@@ -109,7 +109,12 @@ static PFN_OMSetRenderTargets o_OMSetRenderTargets = nullptr;
 static PFN_SetGraphicsRootDescriptorTable o_SetGraphicsRootDescriptorTable = nullptr;
 static PFN_SetComputeRootDescriptorTable o_SetComputeRootDescriptorTable = nullptr;
 
-// heaps
+static std::mutex _hudlessTrackMutex;
+static ankerl::unordered_dense::map<ID3D12GraphicsCommandList*,
+                                    ankerl::unordered_dense::map<ID3D12Resource*, ResourceInfo>>
+    fgPossibleHudless[BUFFER_COUNT];
+
+// heaps section
 
 // #define USE_SPINLOCK_MUTEX_FOR_HEAP_CREATION
 
@@ -1190,10 +1195,26 @@ void ResTrack_Dx12::hkSetGraphicsRootDescriptorTable(ID3D12GraphicsCommandList* 
         }
 
         auto fIndex = Hudfix_Dx12::ActivePresentFrame() % BUFFER_COUNT;
-        size_t shardIdx = GetShardIndex(This);
-        auto& shard = _hudlessShards[fIndex][shardIdx];
 
+        if (!_useShards)
         {
+            std::lock_guard<std::mutex> lock(_hudlessTrackMutex);
+
+            if (!fgPossibleHudless[fIndex].contains(This))
+            {
+                ankerl::unordered_dense::map<ID3D12Resource*, ResourceInfo> newMap;
+                newMap.reserve(32);
+                fgPossibleHudless[fIndex].insert_or_assign(This, newMap);
+            }
+
+            LOG_TRACK("AddRef Resource: {:X}, Desc: {:X}", (size_t) capturedBuffer->buffer, BaseDescriptor.ptr);
+            fgPossibleHudless[fIndex][This].insert_or_assign(capturedBuffer->buffer, *capturedBuffer);
+        }
+        else
+        {
+            size_t shardIdx = GetShardIndex(This);
+            auto& shard = _hudlessShards[fIndex][shardIdx];
+
 #ifdef USE_SPINLOCK_MUTEX
             std::lock_guard<SpinLock> lock(shard.mutex);
 #else
@@ -1293,10 +1314,27 @@ void ResTrack_Dx12::hkOMSetRenderTargets(ID3D12GraphicsCommandList* This, UINT N
             }
 
             auto fIndex = Hudfix_Dx12::ActivePresentFrame() % BUFFER_COUNT;
-            size_t shardIdx = GetShardIndex(This);
-            auto& shard = _hudlessShards[fIndex][shardIdx];
 
+            if (!_useShards)
             {
+                std::lock_guard<std::mutex> lock(_hudlessTrackMutex);
+
+                if (!fgPossibleHudless[fIndex].contains(This))
+                {
+                    ankerl::unordered_dense::map<ID3D12Resource*, ResourceInfo> newMap;
+                    newMap.reserve(32);
+                    fgPossibleHudless[fIndex].insert_or_assign(This, newMap);
+                }
+
+                // add found resource
+                LOG_TRACK("AddRef Resource: {:X}, Desc: {:X}", (size_t) capturedBuffer->buffer, handle.ptr);
+                fgPossibleHudless[fIndex][This].insert_or_assign(capturedBuffer->buffer, *capturedBuffer);
+            }
+            else
+            {
+                size_t shardIdx = GetShardIndex(This);
+                auto& shard = _hudlessShards[fIndex][shardIdx];
+
 #ifdef USE_SPINLOCK_MUTEX
                 std::lock_guard<SpinLock> lock(shard.mutex);
 #else
@@ -1382,10 +1420,27 @@ void ResTrack_Dx12::hkSetComputeRootDescriptorTable(ID3D12GraphicsCommandList* T
         }
 
         auto fIndex = Hudfix_Dx12::ActivePresentFrame() % BUFFER_COUNT;
-        size_t shardIdx = GetShardIndex(This);
-        auto& shard = _hudlessShards[fIndex][shardIdx];
 
+        if (!_useShards)
         {
+            std::lock_guard<std::mutex> lock(_hudlessTrackMutex);
+
+            if (!fgPossibleHudless[fIndex].contains(This))
+            {
+                ankerl::unordered_dense::map<ID3D12Resource*, ResourceInfo> newMap;
+                newMap.reserve(32);
+                fgPossibleHudless[fIndex].insert_or_assign(This, newMap);
+            }
+
+            // add found resource
+            LOG_TRACK("AddRef Resource: {:X}, Desc: {:X}", (size_t) capturedBuffer->buffer, handle.ptr);
+            fgPossibleHudless[fIndex][This].insert_or_assign(capturedBuffer->buffer, *capturedBuffer);
+        }
+        else
+        {
+            size_t shardIdx = GetShardIndex(This);
+            auto& shard = _hudlessShards[fIndex][shardIdx];
+
 #ifdef USE_SPINLOCK_MUTEX
             std::lock_guard<SpinLock> lock(shard.mutex);
 #else
@@ -1429,18 +1484,61 @@ void ResTrack_Dx12::hkDrawInstanced(ID3D12GraphicsCommandList* This, UINT Vertex
     LOG_TRACK("CmdList: {:X}", (size_t) This);
 
     auto fIndex = Hudfix_Dx12::ActivePresentFrame() % BUFFER_COUNT;
-    size_t shardIdx = GetShardIndex(This);
-    auto& shard = _hudlessShards[fIndex][shardIdx];
 
+    if (!_useShards)
     {
-#ifdef USE_SPINLOCK_MUTEX
-        std::lock_guard<SpinLock> lock(shard.mutex);
-#else
-        std::lock_guard<std::mutex> lock(shard.mutex);
-#endif
+        if (This == MenuOverlayDx::MenuCommandList() && fgPossibleHudless[fIndex].contains(This))
+        {
+            std::lock_guard<std::mutex> lock(_hudlessTrackMutex);
+            fgPossibleHudless[fIndex][This].clear();
+            return;
+        }
+
+        if (fgPossibleHudless[fIndex].size() == 0 || !fgPossibleHudless[fIndex].contains(This))
+        {
+            LOG_DEBUG_ONLY("Early exit");
+            return;
+        }
+
+        std::lock_guard<std::mutex> lock(_hudlessTrackMutex);
+        auto val0 = fgPossibleHudless[fIndex][This];
+
+        do
+        {
+            // if this command list does not have entries skip
+            if (val0.size() == 0)
+                break;
+
+            if (Config::Instance()->FGHudfixDisableDI.value_or_default())
+                break;
+
+            for (auto& [key, val] : val0)
+            {
+                std::lock_guard<std::mutex> lock(_drawMutex);
+
+                val.captureInfo |= CaptureInfo::DrawInstanced;
+
+                if (Hudfix_Dx12::CheckForHudless(This, &val, val.state))
+                    break;
+            }
+
+        } while (false);
+
+        fgPossibleHudless[fIndex][This].clear();
+    }
+    else
+    {
+        size_t shardIdx = GetShardIndex(This);
+        auto& shard = _hudlessShards[fIndex][shardIdx];
 
         if (This == MenuOverlayDx::MenuCommandList() && shard.map.contains(This))
         {
+#ifdef USE_SPINLOCK_MUTEX
+            std::lock_guard<SpinLock> lock(shard.mutex);
+#else
+            std::lock_guard<std::mutex> lock(shard.mutex);
+#endif
+
             shard.map[This].clear();
             return;
         }
@@ -1451,6 +1549,12 @@ void ResTrack_Dx12::hkDrawInstanced(ID3D12GraphicsCommandList* This, UINT Vertex
             LOG_DEBUG_ONLY("Early exit");
             return;
         }
+
+#ifdef USE_SPINLOCK_MUTEX
+        std::lock_guard<SpinLock> lock(shard.mutex);
+#else
+        std::lock_guard<std::mutex> lock(shard.mutex);
+#endif
 
         auto val0 = shard.map[This];
 
@@ -1495,18 +1599,63 @@ void ResTrack_Dx12::hkDrawIndexedInstanced(ID3D12GraphicsCommandList* This, UINT
     LOG_TRACK("CmdList: {:X}", (size_t) This);
 
     auto fIndex = Hudfix_Dx12::ActivePresentFrame() % BUFFER_COUNT;
-    size_t shardIdx = GetShardIndex(This);
-    auto& shard = _hudlessShards[fIndex][shardIdx];
 
+    if (!_useShards)
     {
-#ifdef USE_SPINLOCK_MUTEX
-        std::lock_guard<SpinLock> lock(shard.mutex);
-#else
-        std::lock_guard<std::mutex> lock(shard.mutex);
-#endif
+        if (This == MenuOverlayDx::MenuCommandList() && fgPossibleHudless[fIndex].contains(This))
+        {
+            std::lock_guard<std::mutex> lock(_hudlessTrackMutex);
+            fgPossibleHudless[fIndex][This].clear();
+            return;
+        }
+
+        // if can't find output skip
+        if (fgPossibleHudless[fIndex].size() == 0 || !fgPossibleHudless[fIndex].contains(This))
+        {
+            LOG_DEBUG_ONLY("Early exit");
+            return;
+        }
+
+        std::lock_guard<std::mutex> lock(_hudlessTrackMutex);
+        auto val0 = fgPossibleHudless[fIndex][This];
+
+        do
+        {
+            // if this command list does not have entries skip
+            if (val0.size() == 0)
+                break;
+
+            if (Config::Instance()->FGHudfixDisableDII.value_or_default())
+                break;
+
+            for (auto& [key, val] : val0)
+            {
+                // LOG_DEBUG("Waiting _drawMutex {:X}", (size_t)val.buffer);
+                std::lock_guard<std::mutex> lock(_drawMutex);
+
+                val.captureInfo |= CaptureInfo::DrawIndexedInstanced;
+
+                if (Hudfix_Dx12::CheckForHudless(This, &val, val.state))
+                    break;
+            }
+
+        } while (false);
+
+        fgPossibleHudless[fIndex][This].clear();
+    }
+    else
+    {
+        size_t shardIdx = GetShardIndex(This);
+        auto& shard = _hudlessShards[fIndex][shardIdx];
 
         if (This == MenuOverlayDx::MenuCommandList() && shard.map.contains(This))
         {
+#ifdef USE_SPINLOCK_MUTEX
+            std::lock_guard<SpinLock> lock(shard.mutex);
+#else
+            std::lock_guard<std::mutex> lock(shard.mutex);
+#endif
+
             shard.map[This].clear();
             return;
         }
@@ -1517,6 +1666,12 @@ void ResTrack_Dx12::hkDrawIndexedInstanced(ID3D12GraphicsCommandList* This, UINT
             LOG_DEBUG_ONLY("Early exit");
             return;
         }
+
+#ifdef USE_SPINLOCK_MUTEX
+        std::lock_guard<SpinLock> lock(shard.mutex);
+#else
+        std::lock_guard<std::mutex> lock(shard.mutex);
+#endif
 
         auto val0 = shard.map[This];
 
@@ -1633,18 +1788,63 @@ void ResTrack_Dx12::hkDispatch(ID3D12GraphicsCommandList* This, UINT ThreadGroup
     LOG_TRACK("CmdList: {:X}", (size_t) This);
 
     auto fIndex = Hudfix_Dx12::ActivePresentFrame() % BUFFER_COUNT;
-    size_t shardIdx = GetShardIndex(This);
-    auto& shard = _hudlessShards[fIndex][shardIdx];
 
+    if (!_useShards)
     {
-#ifdef USE_SPINLOCK_MUTEX
-        std::lock_guard<SpinLock> lock(shard.mutex);
-#else
-        std::lock_guard<std::mutex> lock(shard.mutex);
-#endif
+        if (This == MenuOverlayDx::MenuCommandList() && fgPossibleHudless[fIndex].contains(This))
+        {
+            std::lock_guard<std::mutex> lock(_hudlessTrackMutex);
+            fgPossibleHudless[fIndex][This].clear();
+            return;
+        }
+
+        // if can't find output skip
+        if (fgPossibleHudless[fIndex].size() == 0 || !fgPossibleHudless[fIndex].contains(This))
+        {
+            LOG_DEBUG_ONLY("Early exit");
+            return;
+        }
+
+        std::lock_guard<std::mutex> lock(_hudlessTrackMutex);
+        auto val0 = fgPossibleHudless[fIndex][This];
+
+        do
+        {
+            // if this command list does not have entries skip
+            if (val0.size() == 0)
+                break;
+
+            if (Config::Instance()->FGHudfixDisableDispatch.value_or_default())
+                break;
+
+            for (auto& [key, val] : val0)
+            {
+                // LOG_DEBUG("Waiting _drawMutex {:X}", (size_t)val.buffer);
+                std::lock_guard<std::mutex> lock(_drawMutex);
+
+                val.captureInfo |= CaptureInfo::Dispatch;
+                if (Hudfix_Dx12::CheckForHudless(This, &val, val.state))
+                {
+                    break;
+                }
+            }
+        } while (false);
+
+        fgPossibleHudless[fIndex][This].clear();
+    }
+    else
+    {
+        size_t shardIdx = GetShardIndex(This);
+        auto& shard = _hudlessShards[fIndex][shardIdx];
 
         if (This == MenuOverlayDx::MenuCommandList() && shard.map.contains(This))
         {
+#ifdef USE_SPINLOCK_MUTEX
+            std::lock_guard<SpinLock> lock(shard.mutex);
+#else
+            std::lock_guard<std::mutex> lock(shard.mutex);
+#endif
+
             shard.map[This].clear();
             return;
         }
@@ -1655,6 +1855,12 @@ void ResTrack_Dx12::hkDispatch(ID3D12GraphicsCommandList* This, UINT ThreadGroup
             LOG_DEBUG_ONLY("Early exit");
             return;
         }
+
+#ifdef USE_SPINLOCK_MUTEX
+        std::lock_guard<SpinLock> lock(shard.mutex);
+#else
+        std::lock_guard<std::mutex> lock(shard.mutex);
+#endif
 
         auto val0 = shard.map[This];
 
@@ -1844,6 +2050,7 @@ void ResTrack_Dx12::HookDevice(ID3D12Device* device)
     if (device == nullptr)
         return;
 
+    _useShards = Config::Instance()->FGUseShards.value_or_default();
     _trackedResources.reserve(1024);
     fgHeaps.reserve(65536);
 
@@ -1984,17 +2191,25 @@ void ResTrack_Dx12::ClearPossibleHudless()
 
     auto hfIndex = Hudfix_Dx12::ActivePresentFrame() % BUFFER_COUNT;
 
-    for (size_t i = 0; i < SHARD_COUNT; i++)
+    if (!_useShards)
     {
-        auto& shard = _hudlessShards[hfIndex][i];
+        std::lock_guard<std::mutex> lock(_hudlessTrackMutex);
+        fgPossibleHudless[hfIndex].clear();
+    }
+    else
+    {
+        for (size_t i = 0; i < SHARD_COUNT; i++)
+        {
+            auto& shard = _hudlessShards[hfIndex][i];
 
 #ifdef USE_SPINLOCK_MUTEX
-        std::lock_guard<SpinLock> lock(shard.mutex);
+            std::lock_guard<SpinLock> lock(shard.mutex);
 #else
-        std::lock_guard<std::mutex> lock(shard.mutex);
+            std::lock_guard<std::mutex> lock(shard.mutex);
 #endif
 
-        shard.map.clear();
+            shard.map.clear();
+        }
     }
 
     std::lock_guard<std::mutex> lock2(_resourceCommandListMutex);

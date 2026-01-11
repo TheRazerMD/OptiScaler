@@ -36,7 +36,7 @@ static void TestResource(ResourceInfo* info)
 
 #ifdef USE_SPINLOCK_MUTEX
 
-#define USE_PERF_SPINLOCK
+// #define USE_PERF_SPINLOCK
 
 #ifdef __cpp_lib_hardware_interference_size
 constexpr size_t CACHE_LINE_SIZE = std::hardware_destructive_interference_size;
@@ -337,6 +337,7 @@ class ResTrack_Dx12
   private:
     inline static bool _presentDone = true;
     inline static std::mutex _drawMutex;
+    inline static bool _useShards = false;
 
     inline static std::mutex _resourceCommandListMutex;
     inline static std::unordered_map<FG_ResourceType, ID3D12GraphicsCommandList*> _resourceCommandList[BUFFER_COUNT];
@@ -424,13 +425,8 @@ class ResTrack_Dx12
 
     static void FillResourceInfo(ID3D12Resource* resource, ResourceInfo* info);
 
-// Sharding
-#ifdef USE_SPINLOCK_MUTEX
+    // Sharding
     inline static constexpr size_t SHARD_COUNT = 16;
-#else
-    inline static constexpr size_t SHARD_COUNT = 16;
-#endif
-
     inline static CommandListShard _hudlessShards[BUFFER_COUNT][SHARD_COUNT];
 
     inline static size_t GetShardIndex(ID3D12GraphicsCommandList* ptr)

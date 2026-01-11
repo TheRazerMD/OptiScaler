@@ -438,6 +438,7 @@ class Config
     // OptiFG - Resource Tracking
     CustomOptional<bool> FGAlwaysTrackHeaps { false };
     CustomOptional<bool> FGResourceBlocking { false };
+    CustomOptional<bool> FGUseShards { false };
 
     // OptiFG - DLSS-D Depth scale
     CustomOptional<bool> FGEnableDepthScale { false };
