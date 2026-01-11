@@ -1,5 +1,40 @@
 #!/usr/bin/env bash
 
+show_help() {
+    echo ""
+    echo "Usage: $0 [OPTIONS]"
+    echo ""
+    echo "Options:"
+    echo "  --filename=<string>        Set target filename for OptiScaler.dll. Options are:"
+    echo "                            - dxgi.dll"
+    echo "                            - winmm.dll"
+    echo "                            - version.dll"
+    echo "                            - dbghelp.dll"
+    echo "                            - d3d12.dll"
+    echo "                            - wininet.dll"
+    echo "                            - winhttp.dll"
+    echo "                            - OptiScaler.asi"
+    echo ""
+    echo "  --overwrite=<y|n>       Overwrite existing file (y/n)"
+    echo "  --using_nvidia=<y|n>    Using Nvidia GPU (y/n)"
+    echo "  --using_dlss=<y|n>      Use DLSS inputs/spoofing (y/n)"
+    echo "  -h, --help              Show this help message"
+    echo ""
+    echo "Example:"
+    echo "  $0 --filename=dxgi.dll --overwrite=y --using_nvidia=n --using_dlss=y"
+    echo ""
+    exit 0
+}
+
+for arg in "$@"; do
+    case "$arg" in
+        -h|--help) show_help ;;
+        --filename=*) selected_filename="${arg#*=}" ;;
+        --overwrite=*) overwrite_choice="${arg#*=}" ;;
+        --using_nvidia=*) using_nvidia="${arg#*=}" ;;
+        --using_dlss=*) using_dlss="${arg#*=}" ;;
+    esac
+done
 clear
 
 echo " ::::::::  :::::::::  ::::::::::: :::::::::::  ::::::::   ::::::::      :::     :::        :::::::::: :::::::::  "
@@ -34,8 +69,8 @@ if [ ! -f "OptiScaler.dll" ]; then
     exit 1
 fi
 
-# Unreal Engine detection
-if [ -d "$SCRIPT_DIR/Engine" ]; then
+# Unreal Engine detection (skip for headless)
+if [ -d "$SCRIPT_DIR/Engine" ] && [ -z "$selected_filename" ]; then
     echo "Found Engine folder, if this is an Unreal Engine game then please extract OptiScaler to #CODENAME#/Binaries/Win64"
     echo ""
 
@@ -54,6 +89,19 @@ if [ -d "$SCRIPT_DIR/Engine" ]; then
 fi
 
 select_filename() {
+    # Skip if filename already set and valid
+    if [ -n "$selected_filename" ]; then
+        case "$selected_filename" in
+            dxgi.dll|winmm.dll|version.dll|dbghelp.dll|d3d12.dll|wininet.dll|winhttp.dll|OptiScaler.asi)
+                return
+                ;;
+            *)
+                echo "Invalid filename: $selected_filename"
+                exit 1
+                ;;
+        esac
+    fi
+    
     while true; do
         echo ""
         echo "Choose a filename for OptiScaler (default is dxgi.dll):"
@@ -106,6 +154,15 @@ select_filename() {
             echo ""
             echo "WARNING: $selected_filename already exists in the current folder."
             echo ""
+            
+            if [ -n "$overwrite_choice" ]; then
+                if [[ "$overwrite_choice" =~ ^(yes|y)$ ]]; then
+                    break
+                else
+                    echo "File exists and overwrite_choice=$overwrite_choice, exiting."
+                    exit 1
+                fi
+            fi
 
             while true; do
                 read -p "Do you want to overwrite it? [y/n]: " overwrite_choice
@@ -138,7 +195,7 @@ if command -v nvidia-smi >/dev/null 2>&1; then
     fi
 fi
 
-while true; do
+while [ -z "$using_nvidia" ]; do
     echo ""
     if [ "$NVIDIA_DETECTED" = true ]; then
         default_value="y"
@@ -152,7 +209,7 @@ while true; do
     using_nvidia=${using_nvidia:-$default_value}
     
     if [[ "$using_nvidia" =~ ^(no|n)$ ]]; then
-        while true; do
+        while [ -z "$using_dlss" ]; do
             echo ""
             read -r -p "Will you try to use DLSS inputs? (enables spoofing, required for DLSS FG, Reflex->AL2) [Y/n]: " using_dlss
 
@@ -208,6 +265,24 @@ create_uninstaller() {
     cat > "remove_optiscaler.sh" << 'EOF'
 #!/usr/bin/env bash
 
+show_help() {
+    echo ""
+    echo "Usage: $0 [OPTIONS]"
+    echo ""
+    echo "Options:"
+    echo "  --remove=<y|n>    Confirm removal (y/n)"
+    echo "  -h, --help        Show this help message"
+    echo ""
+    exit 0
+}
+
+for arg in "$@"; do
+    case "$arg" in
+        -h|--help) show_help ;;
+        --remove=*) remove_choice="${arg#*=}" ;;
+    esac
+done
+
 clear
 echo " ::::::::  :::::::::  ::::::::::: :::::::::::  ::::::::   ::::::::      :::     :::        :::::::::: :::::::::  "
 echo ":+:    :+: :+:    :+:     :+:         :+:     :+:    :+: :+:    :+:   :+: :+:   :+:        :+:        :+:    :+: "
@@ -220,7 +295,9 @@ echo ""
 echo "Coping is strong with this one..."
 echo ""
 
-read -p "Do you want to remove OptiScaler? [y/n]: " remove_choice
+if [ -z "$remove_choice" ]; then
+    read -p "Do you want to remove OptiScaler? [y/n]: " remove_choice
+fi
 
 if [ "$remove_choice" = "y" ] || [ "$remove_choice" = "Y" ]; then
     echo ""
@@ -253,7 +330,9 @@ else
     echo ""
 fi
 
-read -p "Press Enter to exit..."
+if [ $# -eq 0 ]; then
+    read -p "Press Enter to exit..."
+fi
 EOF
 
     # Replace the placeholder with the actual selected filename
@@ -291,7 +370,9 @@ echo "Remember: Insert key opens OptiScaler overlay, Page Up/Down for performanc
 echo ""
 
 # Cleanup - remove setup script
-read -p "Press Enter to exit..."
+if [ $# -eq 0 ]; then
+    read -p "Press Enter to exit..."
+fi
 
 rm -f "$0"
 
