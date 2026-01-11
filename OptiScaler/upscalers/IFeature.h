@@ -5,6 +5,7 @@
 #include <nvsdk_ngx_defs.h>
 
 #include <unordered_set>
+#include <Util.h>
 
 #define DLSS_MOD_ID_OFFSET 1000000
 
@@ -121,6 +122,5 @@ class IFeature
 
     IFeature(unsigned int InHandleId, NVSDK_NGX_Parameter* InParameters) { SetHandle(InHandleId); }
 
-    virtual void Shutdown() = 0;
     virtual ~IFeature() {}
 };

@@ -11,7 +11,8 @@ class DLSSDFeatureDx11 : public DLSSDFeature, public IFeature_Dx11
     bool Init(ID3D11Device* InDevice, ID3D11DeviceContext* InContext, NVSDK_NGX_Parameter* InParameters) override;
     bool Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_NGX_Parameter* InParameters) override;
 
-    static void Shutdown(ID3D11Device* InDevice);
+    feature_version Version() override { return DLSSDFeature::Version(); }
+    std::string Name() const override { return DLSSDFeature::Name(); }
 
     DLSSDFeatureDx11(unsigned int InHandleId, NVSDK_NGX_Parameter* InParameters);
     ~DLSSDFeatureDx11();

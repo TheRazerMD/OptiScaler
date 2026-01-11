@@ -20,12 +20,15 @@ class FSR31FeatureDx12 : public FSR31Feature, public IFeature_Dx12
               NVSDK_NGX_Parameter* InParameters) override;
     bool Evaluate(ID3D12GraphicsCommandList* InCommandList, NVSDK_NGX_Parameter* InParameters) override;
 
+    feature_version Version() override { return FSR31Feature::Version(); }
+    std::string Name() const override { return FSR31Feature::Name(); }
+
     ~FSR31FeatureDx12()
     {
         if (State::Instance().isShuttingDown)
             return;
 
         if (_context != nullptr)
-            FfxApiProxy::D3D12_DestroyContext()(&_context, NULL);
+            FfxApiProxy::D3D12_DestroyContext(&_context, NULL);
     }
 };

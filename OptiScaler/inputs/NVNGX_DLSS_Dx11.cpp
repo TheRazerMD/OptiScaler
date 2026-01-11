@@ -3,21 +3,14 @@
 #include "Config.h"
 #include "Util.h"
 
+#include <upscalers/IFeature_Dx11.h>
+#include <upscalers/FeatureProvider_Dx11.h>
+
+#include "NVNGX_DLSS.h"
 #include "NVNGX_Parameter.h"
 #include "proxies/NVNGX_Proxy.h"
-#include "NVNGX_DLSS.h"
 
-#include "upscalers/dlss/DLSSFeature_Dx11.h"
-#include "upscalers/dlssd/DLSSDFeature_Dx11.h"
-#include "upscalers/fsr2/FSR2Feature_Dx11.h"
-#include "upscalers/fsr2/FSR2Feature_Dx11On12.h"
-#include "upscalers/fsr2_212/FSR2Feature_Dx11On12_212.h"
-#include "upscalers/fsr31/FSR31Feature_Dx11.h"
-#include "upscalers/fsr31/FSR31Feature_Dx11On12.h"
-#include "upscalers/xess/XeSSFeature_Dx11.h"
-#include "upscalers/xess/XeSSFeature_Dx11on12.h"
-
-#include "hooks/HooksDx.h"
+#include <upscaler_time/UpscalerTime_Dx11.h>
 
 #include <ankerl/unordered_dense.h>
 
@@ -86,25 +79,10 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D11_Init_Ext(unsigned long long InApp
     if (InDevice)
         D3D11Device = InDevice;
 
-    State::Instance().api = DX11;
     State::Instance().currentD3D11Device = InDevice;
-
-    // Create Disjoint Query
-    D3D11_QUERY_DESC disjointQueryDesc = {};
-    disjointQueryDesc.Query = D3D11_QUERY_TIMESTAMP_DISJOINT;
-
-    // Create Timestamp Queries
-    D3D11_QUERY_DESC timestampQueryDesc = {};
-    timestampQueryDesc.Query = D3D11_QUERY_TIMESTAMP;
-
-    for (int i = 0; i < HooksDx::QUERY_BUFFER_COUNT; i++)
-    {
-        InDevice->CreateQuery(&disjointQueryDesc, &HooksDx::disjointQueries[i]);
-        InDevice->CreateQuery(&timestampQueryDesc, &HooksDx::startQueries[i]);
-        InDevice->CreateQuery(&timestampQueryDesc, &HooksDx::endQueries[i]);
-    }
-
     State::Instance().NvngxDx11Inited = true;
+
+    UpscalerTimeDx11::Init(InDevice);
 
     return NVSDK_NGX_Result_Success;
 }
@@ -222,8 +200,6 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D11_Shutdown()
     D3D11Device = nullptr;
     State::Instance().currentFeature = nullptr;
 
-    DLSSFeatureDx11::Shutdown(D3D11Device);
-
     if (Config::Instance()->DLSSEnabled.value_or_default() && NVNGXProxy::IsDx11Inited() &&
         NVNGXProxy::D3D11_Shutdown() != nullptr)
     {
@@ -233,7 +209,7 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D11_Shutdown()
 
     // Unhooking and cleaning stuff causing issues during shutdown.
     // Disabled for now to check if it cause any issues
-    // HooksDx::UnHookDx();
+    // HooksDx::UnHook();
 
     shutdown = false;
     State::Instance().NvngxDx11Inited = false;
@@ -263,6 +239,9 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D11_GetParameters(NVSDK_NGX_Parameter
 {
     LOG_FUNC();
 
+    if (OutParameters == nullptr)
+        return NVSDK_NGX_Result_FAIL_InvalidParameter;
+
     if (Config::Instance()->DLSSEnabled.value_or_default() && NVNGXProxy::NVNGXModule() != nullptr &&
         NVNGXProxy::D3D11_GetParameters() != nullptr)
     {
@@ -286,6 +265,9 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D11_GetParameters(NVSDK_NGX_Parameter
 NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D11_GetCapabilityParameters(NVSDK_NGX_Parameter** OutParameters)
 {
     LOG_FUNC();
+
+    if (OutParameters == nullptr)
+        return NVSDK_NGX_Result_FAIL_InvalidParameter;
 
     if (Config::Instance()->DLSSEnabled.value_or_default() && NVNGXProxy::NVNGXModule() != nullptr &&
         NVNGXProxy::IsDx11Inited() && NVNGXProxy::D3D11_GetCapabilityParameters() != nullptr)
@@ -337,7 +319,7 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D11_PopulateParameters_Impl(NVSDK_NGX
     LOG_FUNC();
 
     if (InParameters == nullptr)
-        return NVSDK_NGX_Result_Fail;
+        return NVSDK_NGX_Result_FAIL_InvalidParameter;
 
     InitNGXParameters(InParameters);
 
@@ -407,131 +389,39 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D11_CreateFeature(ID3D11DeviceContext
 
     if (InFeatureID == NVSDK_NGX_Feature_SuperSampling)
     {
-        std::string defaultUpscaler = "fsr22";
+        std::string upscalerChoice = "fsr22"; // Default FSR 2.2.1
 
         // If original NVNGX available use DLSS as base upscaler
-        if (NVNGXProxy::IsDx11Inited())
-            defaultUpscaler = "dlss";
+        if (Config::Instance()->DLSSEnabled.value_or_default() && NVNGXProxy::IsDx11Inited())
+            upscalerChoice = "dlss";
 
-        if (Config::Instance()->Dx11Upscaler.value_or(defaultUpscaler) == "xess")
+        if (Config::Instance()->Dx11Upscaler.has_value())
+            upscalerChoice = Config::Instance()->Dx11Upscaler.value();
+
+        LOG_INFO("Creating new {} feature", upscalerChoice);
+
+        Dx11Contexts[handleId] = {};
+
+        if (!FeatureProvider_Dx11::GetFeature(upscalerChoice, handleId, InParameters, &Dx11Contexts[handleId].feature))
         {
-            Dx11Contexts[handleId].feature = std::make_unique<XeSSFeature_Dx11>(handleId, InParameters);
-
-            if (!Dx11Contexts[handleId].feature->ModuleLoaded())
-            {
-                LOG_ERROR("can't create new XeSS feature, Fallback to FSR2.2!");
-
-                Dx11Contexts[handleId].feature.reset();
-                Dx11Contexts[handleId].feature = nullptr;
-
-                Config::Instance()->Dx11Upscaler = "fsr22";
-            }
-            else
-            {
-                LOG_INFO("creating new XeSS feature");
-            }
+            LOG_ERROR("Can't create {} feature", upscalerChoice);
+            return NVSDK_NGX_Result_Fail;
         }
-
-        if (Config::Instance()->Dx11Upscaler.value_or(defaultUpscaler) == "xess_12")
-        {
-            Dx11Contexts[handleId].feature = std::make_unique<XeSSFeatureDx11on12>(handleId, InParameters);
-
-            if (!Dx11Contexts[handleId].feature->ModuleLoaded())
-            {
-                LOG_ERROR("can't create new XeSS with Dx12 feature, Fallback to FSR2.2!");
-
-                Dx11Contexts[handleId].feature.reset();
-                Dx11Contexts[handleId].feature = nullptr;
-
-                Config::Instance()->Dx11Upscaler = "fsr22";
-            }
-            else
-            {
-                LOG_INFO("creating new XeSS with Dx12 feature");
-            }
-        }
-
-        if (Config::Instance()->Dx11Upscaler.value_or(defaultUpscaler) == "dlss")
-        {
-            if (Config::Instance()->DLSSEnabled.value_or_default())
-            {
-                Dx11Contexts[handleId].feature = std::make_unique<DLSSFeatureDx11>(handleId, InParameters);
-
-                if (!Dx11Contexts[handleId].feature->ModuleLoaded())
-                {
-                    LOG_ERROR("can't create new DLSS feature, Fallback to FSR2.2!");
-
-                    Dx11Contexts[handleId].feature.reset();
-                    Dx11Contexts[handleId].feature = nullptr;
-                    // auto it = std::find_if(Dx11Contexts.begin(), Dx11Contexts.end(), [&handleId](const auto& p) {
-                    // return p.first == handleId; }); Dx11Contexts.erase(it);
-
-                    Config::Instance()->Dx11Upscaler = "fsr22";
-                }
-                else
-                {
-                    LOG_INFO("creating new DLSS feature");
-                }
-            }
-            else
-            {
-                Config::Instance()->Dx11Upscaler.reset();
-            }
-        }
-
-        if (Config::Instance()->Dx11Upscaler.value_or(defaultUpscaler) == "fsr31_12")
-        {
-            Dx11Contexts[handleId].feature = std::make_unique<FSR31FeatureDx11on12>(handleId, InParameters);
-
-            if (!Dx11Contexts[handleId].feature->ModuleLoaded())
-            {
-                LOG_ERROR("can't create new FSR 3.1 feature, Fallback to FSR2.2!");
-
-                Dx11Contexts[handleId].feature.reset();
-                Dx11Contexts[handleId].feature = nullptr;
-                // auto it = std::find_if(Dx11Contexts.begin(), Dx11Contexts.end(), [&handleId](const auto& p) { return
-                // p.first == handleId; }); Dx11Contexts.erase(it);
-
-                Config::Instance()->Dx11Upscaler = "fsr22";
-            }
-            else
-            {
-                LOG_INFO("creating new FSR 3.1 feature");
-            }
-        }
-
-        if (Config::Instance()->Dx11Upscaler.value_or(defaultUpscaler) == "fsr22_12")
-        {
-            LOG_INFO("creating new FSR 2.2.1 with Dx12 feature");
-            Dx11Contexts[handleId].feature = std::make_unique<FSR2FeatureDx11on12>(handleId, InParameters);
-        }
-        else if (Config::Instance()->Dx11Upscaler.value_or(defaultUpscaler) == "fsr21_12")
-        {
-            LOG_INFO("creating new FSR 2.1.2 with Dx12 feature");
-            Dx11Contexts[handleId].feature = std::make_unique<FSR2FeatureDx11on12_212>(handleId, InParameters);
-        }
-        else if (Config::Instance()->Dx11Upscaler.value_or(defaultUpscaler) == "fsr22")
-        {
-            LOG_INFO("creating new native FSR 2.2.1 feature");
-            Dx11Contexts[handleId].feature = std::make_unique<FSR2FeatureDx11>(handleId, InParameters);
-        }
-        else if (Config::Instance()->Dx11Upscaler.value_or(defaultUpscaler) == "fsr31")
-        {
-            LOG_INFO("creating new native FSR 3.1.0 feature");
-            Dx11Contexts[handleId].feature = std::make_unique<FSR31FeatureDx11>(handleId, InParameters);
-        }
-        // else if (Config::Instance()->Dx11Upscaler.value_or(defaultUpscaler) == "fsr304")
-        //{
-        //     LOG_INFO("creating new native FSR 3.1.0 feature");
-        //     Dx11Contexts[handleId].feature = std::make_unique<FSR31FeatureDx11>(handleId, InParameters);
-        // }
     }
-    else
+    else if (InFeatureID == NVSDK_NGX_Feature_RayReconstruction)
     {
-        LOG_INFO("creating new DLSSD feature");
-        Dx11Contexts[handleId].feature = std::make_unique<DLSSDFeatureDx11>(handleId, InParameters);
+        LOG_INFO("Creating new DLSSD feature");
+
+        Dx11Contexts[handleId] = {};
+
+        if (!FeatureProvider_Dx11::GetFeature("dlssd", handleId, InParameters, &Dx11Contexts[handleId].feature))
+        {
+            LOG_ERROR("Can't create DLSSD feature");
+            return NVSDK_NGX_Result_Fail;
+        }
     }
 
+    State::Instance().api = DX11;
     auto deviceContext = Dx11Contexts[handleId].feature.get();
     *OutHandle = deviceContext->Handle();
 
@@ -599,10 +489,7 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D11_ReleaseFeature(NVSDK_NGX_Handle* 
         }
 
         if (deviceContext == State::Instance().currentFeature)
-        {
-            deviceContext->Shutdown();
             State::Instance().currentFeature = nullptr;
-        }
 
         Dx11Contexts[handleId].feature.reset();
         auto it = std::find_if(Dx11Contexts.begin(), Dx11Contexts.end(),
@@ -695,218 +582,21 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D11_EvaluateFeature(ID3D11DeviceConte
     if (Config::Instance()->SkipFirstFrames.has_value() && evalCounter < Config::Instance()->SkipFirstFrames.value())
         return NVSDK_NGX_Result_Success;
 
-    // DLSS Enabler check
-    int deAvail;
-    if (InParameters->Get("DLSSEnabler.Available", &deAvail) == NVSDK_NGX_Result_Success)
-    {
-        if (State::Instance().enablerAvailable != (deAvail > 0))
-            LOG_INFO("DLSSEnabler.Available: {0}", deAvail);
-
-        State::Instance().enablerAvailable = (deAvail > 0);
-    }
-
     if (InCallback)
         LOG_INFO("callback exist");
 
     IFeature_Dx11* deviceContext = nullptr;
+    auto activeContext = &Dx11Contexts[handleId];
 
     if (State::Instance().changeBackend[handleId])
     {
-        if (State::Instance().newBackend == "" ||
-            (!Config::Instance()->DLSSEnabled.value_or_default() && State::Instance().newBackend == "dlss"))
-            State::Instance().newBackend = Config::Instance()->Dx11Upscaler.value_or_default();
+        FeatureProvider_Dx11::ChangeFeature(State::Instance().newBackend, D3D11Device, InDevCtx, handleId, InParameters,
+                                            activeContext);
 
-        Dx11Contexts[handleId].changeBackendCounter++;
-
-        // first release everything
-        if (Dx11Contexts[handleId].changeBackendCounter == 1)
-        {
-            if (Dx11Contexts.contains(handleId) && Dx11Contexts[handleId].feature != nullptr)
-            {
-                LOG_INFO("changing backend to {0}", State::Instance().newBackend);
-
-                auto dc = Dx11Contexts[handleId].feature.get();
-
-                if (State::Instance().newBackend != "dlssd" && State::Instance().newBackend != "dlss")
-                    Dx11Contexts[handleId].createParams = GetNGXParameters("OptiDx11");
-                else
-                    Dx11Contexts[handleId].createParams = InParameters;
-
-                Dx11Contexts[handleId].createParams->Set(NVSDK_NGX_Parameter_DLSS_Feature_Create_Flags,
-                                                         dc->GetFeatureFlags());
-                Dx11Contexts[handleId].createParams->Set(NVSDK_NGX_Parameter_Width, dc->RenderWidth());
-                Dx11Contexts[handleId].createParams->Set(NVSDK_NGX_Parameter_Height, dc->RenderHeight());
-                Dx11Contexts[handleId].createParams->Set(NVSDK_NGX_Parameter_OutWidth, dc->DisplayWidth());
-                Dx11Contexts[handleId].createParams->Set(NVSDK_NGX_Parameter_OutHeight, dc->DisplayHeight());
-                Dx11Contexts[handleId].createParams->Set(NVSDK_NGX_Parameter_PerfQualityValue, dc->PerfQualityValue());
-
-                LOG_TRACE("sleeping before reset of current feature for 1000ms");
-                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-
-                Dx11Contexts[handleId].feature.reset();
-                Dx11Contexts[handleId].feature = nullptr;
-                // auto it = std::find_if(Dx11Contexts.begin(), Dx11Contexts.end(), [&handleId](const auto& p) { return
-                // p.first == handleId; }); Dx11Contexts.erase(it);
-
-                State::Instance().currentFeature = nullptr;
-            }
-            else
-            {
-                LOG_ERROR("can't find handle {0} in Dx11Contexts!", handleId);
-
-                State::Instance().newBackend = "";
-                State::Instance().changeBackend[handleId] = false;
-
-                if (Dx11Contexts[handleId].createParams != nullptr)
-                {
-                    free(Dx11Contexts[handleId].createParams);
-                    Dx11Contexts[handleId].createParams = nullptr;
-                }
-
-                Dx11Contexts[handleId].changeBackendCounter = 0;
-            }
-
-            return NVSDK_NGX_Result_Success;
-        }
-
-        if (Dx11Contexts[handleId].changeBackendCounter == 2)
-        {
-            // next frame prepare stuff
-            if (State::Instance().newBackend == "xess")
-            {
-                Config::Instance()->Dx11Upscaler = "xess";
-                LOG_INFO("creating new XeSS feature");
-                Dx11Contexts[handleId].feature =
-                    std::make_unique<XeSSFeature_Dx11>(handleId, Dx11Contexts[handleId].createParams);
-            }
-            else if (State::Instance().newBackend == "xess_12")
-            {
-                Config::Instance()->Dx11Upscaler = "xess_12";
-                LOG_INFO("creating new XeSS with Dx12 feature");
-                Dx11Contexts[handleId].feature =
-                    std::make_unique<XeSSFeatureDx11on12>(handleId, Dx11Contexts[handleId].createParams);
-            }
-            else if (State::Instance().newBackend == "dlss")
-            {
-                Config::Instance()->Dx11Upscaler = "dlss";
-                LOG_INFO("creating new DLSS feature");
-                Dx11Contexts[handleId].feature =
-                    std::make_unique<DLSSFeatureDx11>(handleId, Dx11Contexts[handleId].createParams);
-            }
-            else if (State::Instance().newBackend == "dlssd")
-            {
-                LOG_INFO("creating new DLSSD feature");
-                Dx11Contexts[handleId].feature = std::make_unique<DLSSDFeatureDx11>(handleId, InParameters);
-            }
-            else if (State::Instance().newBackend == "fsr21_12")
-            {
-                Config::Instance()->Dx11Upscaler = "fsr21_12";
-                LOG_INFO("creating new FSR 2.1.2 with Dx12 feature");
-                Dx11Contexts[handleId].feature =
-                    std::make_unique<FSR2FeatureDx11on12_212>(handleId, Dx11Contexts[handleId].createParams);
-            }
-            else if (State::Instance().newBackend == "fsr31_12")
-            {
-                Config::Instance()->Dx11Upscaler = "fsr31_12";
-                LOG_INFO("creating new FSR 3.1 with Dx12 feature");
-                Dx11Contexts[handleId].feature =
-                    std::make_unique<FSR31FeatureDx11on12>(handleId, Dx11Contexts[handleId].createParams);
-            }
-            else if (State::Instance().newBackend == "fsr22_12")
-            {
-                Config::Instance()->Dx11Upscaler = "fsr22_12";
-                LOG_INFO("creating new FSR 2.2.1 with Dx12 feature");
-                Dx11Contexts[handleId].feature =
-                    std::make_unique<FSR2FeatureDx11on12>(handleId, Dx11Contexts[handleId].createParams);
-            }
-            else if (State::Instance().newBackend == "fsr22")
-            {
-                Config::Instance()->Dx11Upscaler = "fsr22";
-                LOG_INFO("creating new native FSR 2.2.1 feature");
-                Dx11Contexts[handleId].feature =
-                    std::make_unique<FSR2FeatureDx11>(handleId, Dx11Contexts[handleId].createParams);
-            }
-            else if (State::Instance().newBackend == "fsr31")
-            {
-                Config::Instance()->Dx11Upscaler = "fsr31";
-                LOG_INFO("creating new native FSR 3.1.0 feature");
-                Dx11Contexts[handleId].feature =
-                    std::make_unique<FSR31FeatureDx11>(handleId, Dx11Contexts[handleId].createParams);
-            }
-            // else if (State::Instance().newBackend == "fsr304")
-            //{
-            //     Config::Instance()->Dx11Upscaler = "fsr31";
-            //     LOG_INFO("creating new native FSR 3.1.0 feature");
-            //     Dx11Contexts[handleId].feature = std::make_unique<FSR31FeatureDx11>(handleId,
-            //     Dx11Contexts[handleId].createParams);
-            // }
-
-            if (Config::Instance()->Dx11DelayedInit.value_or_default() && State::Instance().newBackend != "fsr22" &&
-                State::Instance().newBackend != "dlss" && State::Instance().newBackend != "dlssd")
-            {
-                LOG_TRACE("sleeping after new creation of new feature for 1000ms");
-                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-            }
-
-            return NVSDK_NGX_Result_Success;
-        }
-
-        if (Dx11Contexts[handleId].changeBackendCounter == 3)
-        {
-            // then init and continue
-            auto initResult =
-                Dx11Contexts[handleId].feature->Init(D3D11Device, InDevCtx, Dx11Contexts[handleId].createParams);
-
-            if (Config::Instance()->Dx11DelayedInit.value_or_default())
-            {
-                LOG_TRACE("sleeping after new Init of new feature for 1000ms");
-                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-            }
-
-            Dx11Contexts[handleId].changeBackendCounter = 0;
-
-            if (!initResult || !Dx11Contexts[handleId].feature->ModuleLoaded())
-            {
-                LOG_ERROR("init failed with {0} feature", State::Instance().newBackend);
-
-                if (State::Instance().newBackend != "dlssd")
-                {
-                    State::Instance().newBackend = "fsr22";
-                    State::Instance().changeBackend[handleId] = true;
-                }
-                else
-                {
-                    State::Instance().newBackend = "";
-                    State::Instance().changeBackend[handleId] = false;
-                    return NVSDK_NGX_Result_Fail;
-                }
-            }
-            else
-            {
-                LOG_INFO("init successful for {0}, upscaler changed", State::Instance().newBackend);
-
-                State::Instance().newBackend = "";
-                State::Instance().changeBackend[handleId] = false;
-                evalCounter = 0;
-            }
-
-            // if opti nvparam release it
-            int optiParam = 0;
-            if (Dx11Contexts[handleId].createParams->Get("OptiScaler", &optiParam) == NVSDK_NGX_Result_Success &&
-                optiParam == 1)
-            {
-                free(Dx11Contexts[handleId].createParams);
-                Dx11Contexts[handleId].createParams = nullptr;
-            }
-        }
-
-        // if initial feature can't be inited
-        State::Instance().currentFeature = Dx11Contexts[handleId].feature.get();
+        evalCounter = 0;
 
         return NVSDK_NGX_Result_Success;
     }
-
-    auto activeContext = &Dx11Contexts[handleId];
 
     if (activeContext->feature == nullptr) // prevent source api name flicker when dlssg is active
     {
@@ -937,14 +627,7 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D11_EvaluateFeature(ID3D11DeviceConte
         return NVSDK_NGX_Result_Success;
     }
 
-    // In the render loop:
-    HooksDx::previousFrameIndex =
-        (HooksDx::currentFrameIndex + HooksDx::QUERY_BUFFER_COUNT - 2) % HooksDx::QUERY_BUFFER_COUNT;
-    int nextFrameIndex = HooksDx::currentFrameIndex;
-
-    // Record the queries in the current frame
-    InDevCtx->Begin(HooksDx::disjointQueries[nextFrameIndex]);
-    InDevCtx->End(HooksDx::startQueries[nextFrameIndex]);
+    UpscalerTimeDx11::UpscaleStart(InDevCtx);
 
     if (!deviceContext->Evaluate(InDevCtx, InParameters) && !deviceContext->IsInited() &&
         (deviceContext->Name() == "XeSS" || deviceContext->Name() == "DLSS" || deviceContext->Name() == "FSR3 w/Dx12"))
@@ -953,10 +636,7 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D11_EvaluateFeature(ID3D11DeviceConte
         State::Instance().changeBackend[handleId] = true;
     }
 
-    InDevCtx->End(HooksDx::endQueries[nextFrameIndex]);
-    InDevCtx->End(HooksDx::disjointQueries[nextFrameIndex]);
-
-    HooksDx::dx11UpscaleTrig[nextFrameIndex] = true;
+    UpscalerTimeDx11::UpscaleEnd(InDevCtx);
 
     return NVSDK_NGX_Result_Success;
 }

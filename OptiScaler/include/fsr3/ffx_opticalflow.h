@@ -91,9 +91,9 @@ extern "C"
     typedef struct FfxOpticalflowContextDescription
     {
 
-        FfxInterface backendInterface; ///< A set of pointers to the backend implementation for FidelityFX SDK
+        Fsr3::FfxInterface backendInterface; ///< A set of pointers to the backend implementation for FidelityFX SDK
         uint32_t flags;                ///< A collection of <c><i>FfxOpticalflowInitializationFlagBits</i></c>.
-        FfxDimensions2D resolution;
+        Fsr3::FfxDimensions2D resolution;
     } FfxOpticalflowContextDescription;
 
     /// A structure encapsulating the parameters for dispatching the various passes
@@ -102,20 +102,20 @@ extern "C"
     /// @ingroup ffxOpticalflow
     typedef struct FfxOpticalflowDispatchDescription
     {
-        FfxCommandList commandList;    ///< The <c><i>FfxCommandList</i></c> to record rendering commands into.
-        FfxResource color;             ///< A <c><i>FfxResource</i></c> containing the input color buffer
-        FfxResource opticalFlowVector; ///< A <c><i>FfxResource</i></c> containing the output motion buffer
-        FfxResource opticalFlowSCD; ///< A <c><i>FfxResource</i></c> containing the output scene change detection buffer
+        Fsr3::FfxCommandList commandList;    ///< The <c><i>FfxCommandList</i></c> to record rendering commands into.
+        Fsr3::FfxResource color;             ///< A <c><i>FfxResource</i></c> containing the input color buffer
+        Fsr3::FfxResource opticalFlowVector; ///< A <c><i>FfxResource</i></c> containing the output motion buffer
+        Fsr3::FfxResource opticalFlowSCD; ///< A <c><i>FfxResource</i></c> containing the output scene change detection buffer
         bool reset; ///< A boolean value which when set to true, indicates the camera has moved discontinuously.
         int backbufferTransferFunction;
-        FfxFloatCoords2D minMaxLuminance;
+        Fsr3::FfxFloatCoords2D minMaxLuminance;
     } FfxOpticalflowDispatchDescription;
 
     typedef struct FfxOpticalflowSharedResourceDescriptions
     {
 
-        FfxCreateResourceDescription opticalFlowVector;
-        FfxCreateResourceDescription opticalFlowSCD;
+        Fsr3::FfxCreateResourceDescription opticalFlowVector;
+        Fsr3::FfxCreateResourceDescription opticalFlowSCD;
 
     } FfxOpticalflowSharedResourceDescriptions;
 
@@ -183,14 +183,16 @@ extern "C"
     /// FFX_ERROR_BACKEND_API_ERROR         The operation failed because of an error returned from the backend.
     ///
     /// @ingroup ffxOpticalflow
-    FFX_API FfxErrorCode ffxOpticalflowContextCreate(FfxOpticalflowContext* context,
-                                                     FfxOpticalflowContextDescription* contextDescription);
+    FFX_API Fsr3::FfxErrorCode ffxOpticalflowContextCreate(FfxOpticalflowContext* context,
+                                                           FfxOpticalflowContextDescription* contextDescription);
 
-    FFX_API FfxErrorCode ffxOpticalflowGetSharedResourceDescriptions(
-        FfxOpticalflowContext* context, FfxOpticalflowSharedResourceDescriptions* SharedResources);
+    FFX_API Fsr3::FfxErrorCode
+    ffxOpticalflowGetSharedResourceDescriptions(FfxOpticalflowContext* context,
+                                                FfxOpticalflowSharedResourceDescriptions* SharedResources);
 
-    FFX_API FfxErrorCode ffxOpticalflowContextDispatch(FfxOpticalflowContext* context,
-                                                       const FfxOpticalflowDispatchDescription* dispatchDescription);
+    FFX_API Fsr3::FfxErrorCode
+    ffxOpticalflowContextDispatch(FfxOpticalflowContext* context,
+                                  const FfxOpticalflowDispatchDescription* dispatchDescription);
 
     /// Destroy the FidelityFX OpticalFlow context.
     ///
@@ -203,7 +205,7 @@ extern "C"
     /// <c><i>NULL</i></c>.
     ///
     /// @ingroup ffxOpticalflow
-    FFX_API FfxErrorCode ffxOpticalflowContextDestroy(FfxOpticalflowContext* context);
+    FFX_API Fsr3::FfxErrorCode ffxOpticalflowContextDestroy(FfxOpticalflowContext* context);
 
 #if defined(__cplusplus)
 }

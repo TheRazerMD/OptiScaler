@@ -98,6 +98,17 @@ bool IFeature::SetInitParameters(NVSDK_NGX_Parameter* InParameters)
         LOG_INFO("Init Flag JitteredMV: {}", _initFlags.JitteredMV);
         LOG_INFO("Init Flag LowResMV: {}", _initFlags.LowResMV);
         LOG_INFO("Init Flag SharpenEnabled: {}", _initFlags.SharpenEnabled);
+
+        if (State::Instance().activeFgInput == FGInput::Upscaler)
+        {
+            Config::Instance()->FGXeFGDepthInverted = _initFlags.DepthInverted;
+            Config::Instance()->FGXeFGJitteredMV = _initFlags.JitteredMV;
+            Config::Instance()->FGXeFGHighResMV = !_initFlags.LowResMV;
+            LOG_DEBUG("XeFG DepthInverted: {}", Config::Instance()->FGXeFGDepthInverted.value_or_default());
+            LOG_DEBUG("XeFG JitteredMV: {}", Config::Instance()->FGXeFGJitteredMV.value_or_default());
+            LOG_DEBUG("XeFG HighResMV: {}", Config::Instance()->FGXeFGHighResMV.value_or_default());
+            Config::Instance()->SaveXeFG();
+        }
     }
 
     if (InParameters->Get(NVSDK_NGX_Parameter_OutWidth, &outWidth) == NVSDK_NGX_Result_Success &&
@@ -291,9 +302,11 @@ bool IFeature::UpdateOutputResolution(const NVSDK_NGX_Parameter* InParameters)
                  _targetHeight ||
              fsrDynamicOutputHeight != _displayHeight))
         {
-            _targetWidth = fsrDynamicOutputWidth * Config::Instance()->OutputScalingMultiplier.value_or_default();
+            _targetWidth = static_cast<unsigned int>(fsrDynamicOutputWidth *
+                                                     Config::Instance()->OutputScalingMultiplier.value_or_default());
             _displayWidth = fsrDynamicOutputWidth;
-            _targetHeight = fsrDynamicOutputHeight * Config::Instance()->OutputScalingMultiplier.value_or_default();
+            _targetHeight = static_cast<unsigned int>(fsrDynamicOutputHeight *
+                                                      Config::Instance()->OutputScalingMultiplier.value_or_default());
             _displayHeight = fsrDynamicOutputHeight;
 
             return true;

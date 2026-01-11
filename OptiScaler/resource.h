@@ -4,8 +4,10 @@
 //
 #ifdef _DEBUG
 #define VER_BUILD_DATE "Debug Build"
+#define VER_BUILD_COMMIT "Debug"
 #else
 #include "resource_build_date.h"
+#include "resource_build_commit.h"
 #endif // !_DEBUG
 
 #define VS_VERSION_INFO 1
@@ -25,11 +27,11 @@
 #define STRINGIZE(s) STRINGIZE_(s)
 
 #define VER_MAJOR_VERSION 0
-#define VER_MINOR_VERSION 7
-#define VER_HOTFIX_VERSION 9
-#define VER_BUILD_NUMBER 1
+#define VER_MINOR_VERSION 9
+#define VER_HOTFIX_VERSION 0
+#define VER_BUILD_NUMBER 8
 
-// #define VER_PRE_RELEASE
+#define VER_PRE_RELEASE
 
 #define VER_FILE_VERSION VER_MAJOR_VERSION, VER_MINOR_VERSION, VER_HOTFIX_VERSION, VER_BUILD_NUMBER
 #define VER_FILE_VERSION_STR                                                                                           \
@@ -39,10 +41,10 @@
 
 #ifdef VER_PRE_RELEASE
 #define VER_PRODUCT_VERSION_STR                                                                                        \
-    STRINGIZE(VER_MAJOR_VERSION) "." STRINGIZE(VER_MINOR_VERSION) "." STRINGIZE(VER_HOTFIX_VERSION) "-pre" STRINGIZE(VER_BUILD_NUMBER) " (" VER_BUILD_DATE ")"
+    STRINGIZE(VER_MAJOR_VERSION) "." STRINGIZE(VER_MINOR_VERSION) "." STRINGIZE(VER_HOTFIX_VERSION) "-pre" STRINGIZE(VER_BUILD_NUMBER) " (" VER_BUILD_COMMIT ") (" VER_BUILD_DATE ")"
 #else
 #define VER_PRODUCT_VERSION_STR                                                                                        \
-    STRINGIZE(VER_MAJOR_VERSION) "." STRINGIZE(VER_MINOR_VERSION) "." STRINGIZE(VER_HOTFIX_VERSION) "." STRINGIZE(VER_BUILD_NUMBER) "-final"
+    STRINGIZE(VER_MAJOR_VERSION) "." STRINGIZE(VER_MINOR_VERSION) "." STRINGIZE(VER_HOTFIX_VERSION) "-final (" VER_BUILD_COMMIT ")"
 #endif // VER_PRE_RELEASE
 
 #define VER_PRODUCT_NAME "OptiScaler v" VER_PRODUCT_VERSION_STR

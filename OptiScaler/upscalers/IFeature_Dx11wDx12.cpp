@@ -2,6 +2,9 @@
 
 #include <Config.h>
 
+#include <proxies/DXGI_Proxy.h>
+#include <proxies/D3D12_Proxy.h>
+
 #define ASSIGN_DESC(dest, src)                                                                                         \
     dest.Width = src.Width;                                                                                            \
     dest.Height = src.Height;                                                                                          \
@@ -22,6 +25,9 @@
 void IFeature_Dx11wDx12::ResourceBarrier(ID3D12GraphicsCommandList* commandList, ID3D12Resource* resource,
                                          D3D12_RESOURCE_STATES beforeState, D3D12_RESOURCE_STATES afterState)
 {
+    if (beforeState == afterState)
+        return;
+
     D3D12_RESOURCE_BARRIER barrier = {};
     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
     barrier.Transition.pResource = resource;
@@ -320,7 +326,7 @@ void IFeature_Dx11wDx12::GetHardwareAdapter(IDXGIFactory1* InFactory, IDXGIAdapt
 
             // Check to see whether the adapter supports Direct3D 12, but don't create the
             // actual device yet.
-            // auto result = D3D12CreateDevice(adapter, InFeatureLevel, _uuidof(ID3D12Device), nullptr);
+            // auto result = D3d12Proxy::D3D12CreateDevice_()(adapter, InFeatureLevel, _uuidof(ID3D12Device), nullptr);
             // LOG_DEBUG("D3D12CreateDevice test result: {:X}", (UINT) result);
 
             // if (result == S_FALSE)
@@ -344,7 +350,7 @@ void IFeature_Dx11wDx12::GetHardwareAdapter(IDXGIFactory1* InFactory, IDXGIAdapt
 
             // Check to see whether the adapter supports Direct3D 12, but don't create the
             // actual device yet.
-            auto result = D3D12CreateDevice(adapter, InFeatureLevel, _uuidof(ID3D12Device), nullptr);
+            auto result = D3d12Proxy::D3D12CreateDevice_()(adapter, InFeatureLevel, _uuidof(ID3D12Device), nullptr);
 
             if (result == S_FALSE)
             {
@@ -360,45 +366,48 @@ HRESULT IFeature_Dx11wDx12::CreateDx12Device(D3D_FEATURE_LEVEL InFeatureLevel)
 {
     LOG_FUNC();
 
-    State::Instance().vulkanSkipHooks = true;
-    State::Instance().skipSpoofing = true;
+    ScopedSkipSpoofing skipSpoofing {};
+    ScopedSkipVulkanHooks skipVulkanHooks {};
 
     HRESULT result;
 
     if (State::Instance().currentD3D12Device == nullptr)
     {
-        IDXGIFactory4* factory;
-        result = CreateDXGIFactory2(0, IID_PPV_ARGS(&factory));
+        IDXGIFactory2* factory = nullptr;
+
+        if (DxgiProxy::Module() == nullptr)
+            result = CreateDXGIFactory2(0, IID_PPV_ARGS(&factory));
+        else
+            result = DxgiProxy::CreateDxgiFactory2_()(0, __uuidof(factory), &factory);
 
         if (result != S_OK)
         {
             LOG_ERROR("Can't create factory: {0:x}", result);
-            State::Instance().vulkanSkipHooks = false;
-            State::Instance().skipSpoofing = false;
             return result;
         }
 
-        IDXGIAdapter* hardwareAdapter = nullptr;
-        GetHardwareAdapter(factory, &hardwareAdapter, InFeatureLevel, true);
+        IDXGIAdapter* hwAdapter = nullptr;
+        GetHardwareAdapter(factory, &hwAdapter, InFeatureLevel, true);
 
-        if (hardwareAdapter == nullptr)
-            LOG_WARN("Can't get hardwareAdapter, will try nullptr!");
+        if (hwAdapter == nullptr)
+            LOG_WARN("Can't get hwAdapter, will try nullptr!");
 
-        result =
-            D3D12CreateDevice(hardwareAdapter, InFeatureLevel, IID_PPV_ARGS(&State::Instance().currentD3D12Device));
+        if (D3d12Proxy::Module() == nullptr)
+            result = D3D12CreateDevice(hwAdapter, InFeatureLevel, IID_PPV_ARGS(&State::Instance().currentD3D12Device));
+        else
+            result = D3d12Proxy::D3D12CreateDevice_()(hwAdapter, InFeatureLevel,
+                                                      IID_PPV_ARGS(&State::Instance().currentD3D12Device));
 
         if (result != S_OK)
         {
             LOG_ERROR("Can't create device: {:X}", (UINT) result);
-            State::Instance().vulkanSkipHooks = false;
-            State::Instance().skipSpoofing = false;
             return result;
         }
 
-        if (hardwareAdapter != nullptr)
+        if (hwAdapter != nullptr)
         {
             DXGI_ADAPTER_DESC desc {};
-            if (hardwareAdapter->GetDesc(&desc) == S_OK)
+            if (hwAdapter->GetDesc(&desc) == S_OK)
             {
                 auto adapterDesc = wstring_to_string(desc.Description);
                 LOG_INFO("D3D12Device created with adapter: {}", adapterDesc);
@@ -419,8 +428,6 @@ HRESULT IFeature_Dx11wDx12::CreateDx12Device(D3D_FEATURE_LEVEL InFeatureLevel)
         if (result != S_OK || Dx12CommandQueue == nullptr)
         {
             LOG_DEBUG("CreateCommandQueue result: {0:x}", result);
-            State::Instance().vulkanSkipHooks = false;
-            State::Instance().skipSpoofing = false;
             return E_NOINTERFACE;
         }
     }
@@ -433,8 +440,6 @@ HRESULT IFeature_Dx11wDx12::CreateDx12Device(D3D_FEATURE_LEVEL InFeatureLevel)
         if (result != S_OK)
         {
             LOG_ERROR("CreateCommandAllocator error: {0:x}", result);
-            State::Instance().vulkanSkipHooks = false;
-            State::Instance().skipSpoofing = false;
             return E_NOINTERFACE;
         }
     }
@@ -447,13 +452,11 @@ HRESULT IFeature_Dx11wDx12::CreateDx12Device(D3D_FEATURE_LEVEL InFeatureLevel)
         if (result != S_OK)
         {
             LOG_ERROR("CreateCommandAllocator error: {0:x}", result);
-            State::Instance().vulkanSkipHooks = false;
-            State::Instance().skipSpoofing = false;
             return E_NOINTERFACE;
         }
     }
 
-    if (Dx12CommandList[0] == nullptr)
+    if (Dx12CommandList[0] == nullptr && Dx12CommandAllocator[0] != nullptr)
     {
         // CreateCommandList
         result = State::Instance().currentD3D12Device->CreateCommandList(
@@ -462,13 +465,13 @@ HRESULT IFeature_Dx11wDx12::CreateDx12Device(D3D_FEATURE_LEVEL InFeatureLevel)
         if (result != S_OK)
         {
             LOG_ERROR("CreateCommandList error: {0:x}", result);
-            State::Instance().vulkanSkipHooks = false;
-            State::Instance().skipSpoofing = false;
             return E_NOINTERFACE;
         }
+
+        Dx12CommandList[0]->Close();
     }
 
-    if (Dx12CommandList[1] == nullptr)
+    if (Dx12CommandList[1] == nullptr && Dx12CommandAllocator[1] != nullptr)
     {
         // CreateCommandList
         result = State::Instance().currentD3D12Device->CreateCommandList(
@@ -477,10 +480,10 @@ HRESULT IFeature_Dx11wDx12::CreateDx12Device(D3D_FEATURE_LEVEL InFeatureLevel)
         if (result != S_OK)
         {
             LOG_ERROR("CreateCommandList error: {0:x}", result);
-            State::Instance().vulkanSkipHooks = false;
-            State::Instance().skipSpoofing = false;
             return E_NOINTERFACE;
         }
+
+        Dx12CommandList[1]->Close();
     }
 
     if (Dx12Fence == nullptr)
@@ -490,8 +493,6 @@ HRESULT IFeature_Dx11wDx12::CreateDx12Device(D3D_FEATURE_LEVEL InFeatureLevel)
         if (result != S_OK)
         {
             LOG_ERROR("CreateFence error: {0:X}", result);
-            State::Instance().vulkanSkipHooks = false;
-            State::Instance().skipSpoofing = false;
             return E_NOINTERFACE;
         }
 
@@ -500,14 +501,10 @@ HRESULT IFeature_Dx11wDx12::CreateDx12Device(D3D_FEATURE_LEVEL InFeatureLevel)
         if (Dx12FenceEvent == nullptr)
         {
             LOG_ERROR("CreateEvent error!");
-            State::Instance().vulkanSkipHooks = false;
-            State::Instance().skipSpoofing = false;
             return E_NOINTERFACE;
         }
     }
 
-    State::Instance().vulkanSkipHooks = false;
-    State::Instance().skipSpoofing = false;
     return S_OK;
 }
 
@@ -857,6 +854,10 @@ bool IFeature_Dx11wDx12::BaseInit(ID3D11Device* InDevice, ID3D11DeviceContext* I
         LOG_ERROR("QueryInterface ID3D11DeviceContext4 result: {0:x}", contextResult);
         return false;
     }
+    else
+    {
+        Dx11DeviceContext->Release();
+    }
 
     if (!InDevice)
         Dx11DeviceContext->GetDevice(&InDevice);
@@ -867,6 +868,10 @@ bool IFeature_Dx11wDx12::BaseInit(ID3D11Device* InDevice, ID3D11DeviceContext* I
     {
         LOG_ERROR("QueryInterface ID3D11Device5 result: {0:x}", dx11DeviceResult);
         return false;
+    }
+    else
+    {
+        Dx11Device->Release();
     }
 
     auto fl = Dx11Device->GetFeatureLevel();

@@ -3,17 +3,16 @@
 #include <pch.h>
 
 #include <hudfix/Hudfix_Dx12.h>
+#include <framegen/IFGFeature_Dx12.h>
 
 #include <ankerl/unordered_dense.h>
 
-// Test resources if they are valid or not
-// #define DEBUG_TRACKING
+#include <new>
+#include <mutex>
+#include <atomic>
+#include <shared_mutex>
 
-#ifdef DEBUG_TRACKING
-#define LOG_TRACK(msg, ...) spdlog::debug(__FUNCTION__ " " msg, ##__VA_ARGS__)
-#else
-#define LOG_TRACK(msg, ...)
-#endif
+// #define DEBUG_TRACKING
 
 #ifdef DEBUG_TRACKING
 static void TestResource(ResourceInfo* info)
@@ -25,18 +24,112 @@ static void TestResource(ResourceInfo* info)
 
     if (desc.Width != info->width || desc.Height != info->height || desc.Format != info->format)
     {
-        LOG_WARN("Resource mismatch: {:X}, info: {:X}", (size_t) info->buffer, (size_t) info);
-        __debugbreak();
+        LOG_TRACK("Resource mismatch: {:X}, info: {:X}", (size_t) info->buffer, (size_t) info);
+
+        // LOG_WARN("Resource mismatch: {:X}, info: {:X}", (size_t) info->buffer, (size_t) info);
+        //__debugbreak();
     }
 }
 #endif
 
-static ankerl::unordered_dense::map<ID3D12Resource*, std::vector<ResourceInfo*>> _trackedResources;
-static std::mutex _trMutex;
-static std::shared_mutex _heapMutex[1000];
+#define USE_SPINLOCK_MUTEX
 
-typedef struct HeapInfo
+#ifdef USE_SPINLOCK_MUTEX
+
+// #define USE_PERF_SPINLOCK
+
+#ifdef __cpp_lib_hardware_interference_size
+constexpr size_t CACHE_LINE_SIZE = std::hardware_destructive_interference_size;
+#else
+constexpr size_t CACHE_LINE_SIZE = 64;
+#endif
+#else
+#ifdef __cpp_lib_hardware_interference_size
+constexpr size_t CACHE_LINE_SIZE = std::hardware_destructive_interference_size * 2;
+#else
+constexpr size_t CACHE_LINE_SIZE = 128;
+#endif
+#endif
+
+#ifdef USE_SPINLOCK_MUTEX
+#ifdef USE_PERF_SPINLOCK
+class SpinLock
 {
+    std::atomic<bool> _lock = { false };
+
+  public:
+    void lock()
+    {
+        int backoff = 1;
+
+        while (true)
+        {
+            // 1. Optimistic Read (TTAS)
+            // Using 'relaxed' because we don't need ordering until we actually acquire.
+            if (!_lock.load(std::memory_order_relaxed))
+            {
+
+                // 2. Attempt Acquire
+                // 'acquire' ensures no memory ops move before this lock
+                if (!_lock.exchange(true, std::memory_order_acquire))
+                {
+                    return; // Success
+                }
+            }
+
+            // 3. Pause instruction to help HT and branch prediction
+            _mm_pause();
+        }
+    }
+
+    void unlock()
+    {
+        // 'release' ensures all memory ops are finished before unlocking
+        _lock.store(false, std::memory_order_release);
+    }
+};
+#else
+struct SpinLock
+{
+    std::atomic<bool> _lock = { false };
+
+    __forceinline void lock()
+    {
+        // Fast path: try to grab immediately
+        if (!_lock.exchange(true, std::memory_order_acquire))
+            return;
+
+        // Slow path: spin
+        while (true)
+        {
+            // Spin read (avoids cache coherency traffic while waiting)
+            while (_lock.load(std::memory_order_relaxed))
+            {
+                _mm_pause(); // CPU hint: "I am spinning"
+            }
+
+            // Try to grab again
+            if (!_lock.exchange(true, std::memory_order_acquire))
+                return;
+        }
+    }
+
+    __forceinline void unlock() { _lock.store(false, std::memory_order_release); }
+};
+#endif
+#endif
+
+static ankerl::unordered_dense::map<ID3D12Resource*, std::vector<ResourceInfo*>> _trackedResources;
+#ifdef USE_SPINLOCK_MUTEX
+static SpinLock _trackedResourcesMutex;
+#else
+static std::mutex _trackedResourcesMutex;
+#endif
+
+struct HeapInfo
+{
+    // mutable std::shared_mutex mutex;
+
     ID3D12DescriptorHeap* heap = nullptr;
     SIZE_T cpuStart = NULL;
     SIZE_T cpuEnd = NULL;
@@ -47,17 +140,45 @@ typedef struct HeapInfo
     UINT type = 0;
     std::shared_ptr<ResourceInfo[]> info;
     UINT lastOffset = 0;
-    UINT mutexIndex = 0;
+    bool active = true;
 
     HeapInfo(ID3D12DescriptorHeap* heap, SIZE_T cpuStart, SIZE_T cpuEnd, SIZE_T gpuStart, SIZE_T gpuEnd,
-             UINT numResources, UINT increment, UINT type, UINT mutexIndex)
+             UINT numResources, UINT increment, UINT type)
         : cpuStart(cpuStart), cpuEnd(cpuEnd), gpuStart(gpuStart), gpuEnd(gpuEnd), numDescriptors(numResources),
-          increment(increment), info(new ResourceInfo[numResources]), type(type), heap(heap), mutexIndex(mutexIndex)
+          increment(increment), info(new ResourceInfo[numResources]), type(type), heap(heap)
     {
         for (size_t i = 0; i < numDescriptors; i++)
         {
             info[i].buffer = nullptr;
         }
+    }
+
+    void DetachFromOldResource(SIZE_T index) const
+    {
+        if (info[index].buffer == nullptr)
+            return;
+
+        std::scoped_lock lock(_trackedResourcesMutex);
+        LOG_TRACK("Heap: {:X}, Index: {}, Resource: {:X}, Res: {}x{}, Format: {}", (size_t) this, index,
+                  (size_t) info[index].buffer, info[index].width, info[index].height, (UINT) info[index].format);
+        auto it = _trackedResources.find(info[index].buffer);
+        if (it != _trackedResources.end())
+        {
+            auto& vec = it->second;
+            vec.erase(std::remove(vec.begin(), vec.end(), &info[index]), vec.end());
+            if (vec.empty())
+                _trackedResources.erase(it);
+        }
+    }
+
+    void AttachToNewResource(SIZE_T index) const
+    {
+        std::scoped_lock lock(_trackedResourcesMutex);
+        LOG_TRACK("Heap: {:X}, Index: {}, Resource: {:X}, Res: {}x{}, Format: {}", (size_t) this, index,
+                  (size_t) info[index].buffer, info[index].width, info[index].height, (UINT) info[index].format);
+        auto& vec = _trackedResources[info[index].buffer];
+        if (std::find(vec.begin(), vec.end(), &info[index]) == vec.end())
+            vec.push_back(&info[index]);
     }
 
     ResourceInfo* GetByCpuHandle(SIZE_T cpuHandle) const
@@ -67,10 +188,10 @@ typedef struct HeapInfo
         if (index >= numDescriptors)
             return nullptr;
 
-        {
-            if (info[index].buffer == nullptr)
-                return nullptr;
-        }
+        // std::shared_lock<std::shared_mutex> lock(mutex);
+
+        if (info[index].buffer == nullptr)
+            return nullptr;
 
 #ifdef DEBUG_TRACKING
         TestResource(&info[index]);
@@ -86,10 +207,10 @@ typedef struct HeapInfo
         if (index >= numDescriptors)
             return nullptr;
 
-        {
-            if (info[index].buffer == nullptr)
-                return nullptr;
-        }
+        // std::shared_lock<std::shared_mutex> lock(mutex);
+
+        if (info[index].buffer == nullptr)
+            return nullptr;
 
 #ifdef DEBUG_TRACKING
         TestResource(&info[index]);
@@ -105,24 +226,16 @@ typedef struct HeapInfo
         if (index >= numDescriptors)
             return;
 
+        // std::unique_lock<std::shared_mutex> lock(mutex);
+
 #ifdef DEBUG_TRACKING
         TestResource(&setInfo);
 #endif
-
-        info[index] = setInfo;
-
+        if (info[index].buffer != setInfo.buffer)
         {
-            _trMutex.lock();
-
-            if (_trackedResources.contains(setInfo.buffer))
-                _trackedResources[setInfo.buffer].push_back(&info[index]);
-            else
-                _trackedResources[setInfo.buffer] = { &info[index] };
-
-            LOG_TRACK("Add resource: {:X} to info: {:X}, Res: {}x{}", (size_t) setInfo.buffer, (size_t) &info[index],
-                      setInfo.width, setInfo.height);
-
-            _trMutex.unlock();
+            DetachFromOldResource(index);
+            info[index] = setInfo;
+            AttachToNewResource(index);
         }
     }
 
@@ -133,24 +246,17 @@ typedef struct HeapInfo
         if (index >= numDescriptors)
             return;
 
+        // std::unique_lock<std::shared_mutex> lock(mutex);
+
 #ifdef DEBUG_TRACKING
         TestResource(&setInfo);
 #endif
 
-        info[index] = setInfo;
-
+        if (info[index].buffer != setInfo.buffer)
         {
-            _trMutex.lock();
-
-            if (_trackedResources.contains(setInfo.buffer))
-                _trackedResources[setInfo.buffer].push_back(&info[index]);
-            else
-                _trackedResources[setInfo.buffer] = { &info[index] };
-
-            LOG_TRACK("Add resource: {:X} to info: {:X}, Res: {}x{}", (size_t) setInfo.buffer, (size_t) &info[index],
-                      setInfo.width, setInfo.height);
-
-            _trMutex.unlock();
+            DetachFromOldResource(index);
+            info[index] = setInfo;
+            AttachToNewResource(index);
         }
     }
 
@@ -161,29 +267,15 @@ typedef struct HeapInfo
         if (index >= numDescriptors)
             return;
 
-        _trMutex.lock();
+        // std::unique_lock<std::shared_mutex> lock(mutex);
 
         if (info[index].buffer != nullptr)
         {
-            LOG_TRACK("Resource: {:X}, Res: {}x{}", (size_t) info[index].buffer, info[index].width, info[index].height);
+            LOG_TRACK("Resource: {:X}, Res: {}x{}, Format: {}", (size_t) info[index].buffer, info[index].width,
+                      info[index].height, (UINT) info[index].format);
 
-            if (_trackedResources.contains(info[index].buffer))
-            {
-                auto vector = &_trackedResources[info[index].buffer];
-
-                for (size_t i = 0; i < vector->size(); i++)
-                {
-                    if (vector->at(i) == &info[index])
-                    {
-                        LOG_TRACK("Erase from _trackedResources info: {:X}", (size_t) vector->at(i));
-                        vector->erase(vector->begin() + i);
-                        break;
-                    }
-                }
-            }
+            DetachFromOldResource(index);
         }
-
-        _trMutex.unlock();
 
         info[index].buffer = nullptr;
         info[index].lastUsedFrame = 0;
@@ -196,49 +288,59 @@ typedef struct HeapInfo
         if (index >= numDescriptors)
             return;
 
-        _trMutex.lock();
+        // std::unique_lock<std::shared_mutex> lock(mutex);
 
         if (info[index].buffer != nullptr)
         {
-            LOG_TRACK("Resource: {:X}, Res: {}x{}", (size_t) info[index].buffer, info[index].width, info[index].height);
+            LOG_TRACK("Resource: {:X}, Res: {}x{}, Format: {}", (size_t) info[index].buffer, info[index].width,
+                      info[index].height, (UINT) info[index].format);
 
-            if (_trackedResources.contains(info[index].buffer))
-            {
-                auto vector = &_trackedResources[info[index].buffer];
-
-                for (size_t i = 0; i < vector->size(); i++)
-                {
-                    if (vector->at(i) == &info[index])
-                    {
-                        LOG_TRACK("Erase from _trackedResources info: {:X}", (size_t) vector->at(i));
-                        vector->erase(vector->begin() + i);
-                        break;
-                    }
-                }
-            }
+            DetachFromOldResource(index);
         }
-
-        _trMutex.unlock();
 
         info[index].buffer = nullptr;
         info[index].lastUsedFrame = 0;
     }
 };
 
-typedef struct ResourceHeapInfo
+struct ResourceHeapInfo
 {
     SIZE_T cpuStart = NULL;
     SIZE_T gpuStart = NULL;
 };
+
+#ifdef USE_SPINLOCK_MUTEX
+// Force each struct to start on a new cache line
+struct alignas(CACHE_LINE_SIZE) CommandListShard
+{
+    SpinLock mutex;
+    ankerl::unordered_dense::map<ID3D12GraphicsCommandList*,
+                                 ankerl::unordered_dense::map<ID3D12Resource*, ResourceInfo>>
+        map;
+
+    char padding[CACHE_LINE_SIZE - (sizeof(SpinLock) + sizeof(void*) % CACHE_LINE_SIZE)] = {};
+};
+#else
+struct alignas(CACHE_LINE_SIZE) CommandListShard
+{
+    std::mutex mutex;
+    ankerl::unordered_dense::map<ID3D12GraphicsCommandList*,
+                                 ankerl::unordered_dense::map<ID3D12Resource*, ResourceInfo>>
+        map;
+
+    char padding[CACHE_LINE_SIZE - (sizeof(std::mutex) + sizeof(void*) % CACHE_LINE_SIZE)] = {};
+};
+#endif
 
 class ResTrack_Dx12
 {
   private:
     inline static bool _presentDone = true;
     inline static std::mutex _drawMutex;
+    inline static bool _useShards = false;
 
-    inline static ID3D12GraphicsCommandList* _hudlessCommandList[BUFFER_COUNT] = { nullptr, nullptr, nullptr, nullptr };
-    inline static ID3D12GraphicsCommandList* _inputsCommandList[BUFFER_COUNT] = { nullptr, nullptr, nullptr, nullptr };
+    inline static std::mutex _resourceCommandListMutex;
+    inline static std::unordered_map<FG_ResourceType, ID3D12GraphicsCommandList*> _resourceCommandList[BUFFER_COUNT];
 
     inline static ULONG64 _lastHudlessFrame = 0;
     inline static std::mutex _hudlessMutex;
@@ -323,10 +425,19 @@ class ResTrack_Dx12
 
     static void FillResourceInfo(ID3D12Resource* resource, ResourceInfo* info);
 
+    // Sharding
+    inline static constexpr size_t SHARD_COUNT = 16;
+    inline static CommandListShard _hudlessShards[BUFFER_COUNT][SHARD_COUNT];
+
+    inline static size_t GetShardIndex(ID3D12GraphicsCommandList* ptr)
+    {
+        auto addr = (UINT64) ptr;
+        return (addr >> 4) % SHARD_COUNT;
+    }
+
   public:
     static void HookDevice(ID3D12Device* device);
+    static void ReleaseHooks();
     static void ClearPossibleHudless();
-    static void SetInputsCmdList(ID3D12GraphicsCommandList* cmdList);
-    static void SetHudlessCmdList(ID3D12GraphicsCommandList* cmdList);
-    static void ExecuteWaitingCommandLists();
+    static void SetResourceCmdList(FG_ResourceType type, ID3D12GraphicsCommandList* cmdList);
 };

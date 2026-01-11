@@ -2,12 +2,57 @@
 
 #include "pch.h"
 
-#include <d3d12.h>
 #include <sl.h>
 #include <sl1.h>
 #include <sl_dlss_g.h>
 #include <sl_pcl.h>
 #include <sl_reflex.h>
+
+#include <d3d12.h>
+#include "include/sl.param/parameters.h"
+
+struct Adapter
+{
+    LUID id {};
+    VendorId::Value vendor {};
+    uint32_t bit; // in the adapter bit-mask
+    uint32_t architecture {};
+    uint32_t implementation {};
+    uint32_t revision {};
+    uint32_t deviceId {};
+    void* nativeInterface {};
+};
+
+constexpr uint32_t kMaxNumSupportedGPUs = 8;
+
+struct SystemCaps
+{
+    uint32_t gpuCount {};
+    uint32_t osVersionMajor {};
+    uint32_t osVersionMinor {};
+    uint32_t osVersionBuild {};
+    uint32_t driverVersionMajor {};
+    uint32_t driverVersionMinor {};
+    Adapter adapters[kMaxNumSupportedGPUs] {};
+    uint32_t gpuLoad[kMaxNumSupportedGPUs] {}; // percentage
+    bool hwsSupported {};                      // OS wide setting, not per adapter
+    bool laptopDevice {};
+};
+
+struct SystemCapsSl15
+{
+    uint32_t gpuCount {};
+    uint32_t osVersionMajor {};
+    uint32_t osVersionMinor {};
+    uint32_t osVersionBuild {};
+    uint32_t driverVersionMajor {};
+    uint32_t driverVersionMinor {};
+    uint32_t architecture[kMaxNumSupportedGPUs] {};
+    uint32_t implementation[kMaxNumSupportedGPUs] {};
+    uint32_t revision[kMaxNumSupportedGPUs] {};
+    uint32_t gpuLoad[kMaxNumSupportedGPUs] {}; // percentage
+    bool hwSchedulingEnabled {};
+};
 
 class StreamlineHooks
 {
@@ -33,13 +78,42 @@ class StreamlineHooks
     static void unhookReflex();
     static void hookReflex(HMODULE slReflex);
 
+    static void unhookPcl();
+    static void hookPcl(HMODULE slPcl);
+
     static void unhookCommon();
     static void hookCommon(HMODULE slCommon);
 
+    static bool isInterposerHooked();
+    static bool isDlssHooked();
+    static bool isDlssgHooked();
+    static bool isCommonHooked();
+    static bool isPclHooked();
+    static bool isReflexHooked();
+
   private:
+    static sl::RenderAPI renderApi;
+    static std::mutex setConstantsMutex;
+
+    // System caps
+    static SystemCaps* systemCaps;
+    static SystemCapsSl15* systemCapsSl15;
+    static void hookSystemCaps(sl::param::IParameters* params);
+    static uint32_t getSystemCapsArch();
+    static void setArch(uint32_t arch);
+    static void spoofArch(uint32_t currentArch, sl::Feature feature);
+
     // Interposer
     static decltype(&slInit) o_slInit;
     static decltype(&slSetTag) o_slSetTag;
+    static decltype(&slSetTagForFrame) o_slSetTagForFrame;
+    static decltype(&slEvaluateFeature) o_slEvaluateFeature;
+    static decltype(&slAllocateResources) o_slAllocateResources;
+    static decltype(&slSetConstants) o_slSetConstants;
+    static decltype(&slGetNativeInterface) o_slGetNativeInterface;
+    static decltype(&slSetD3DDevice) o_slSetD3DDevice;
+    static decltype(&slGetNewFrameToken) o_slGetNewFrameToken;
+
     static decltype(&sl1::slInit) o_slInit_sl1;
 
     static sl::PFun_LogMessageCallback* o_logCallback;
@@ -49,6 +123,21 @@ class StreamlineHooks
     static bool hkslInit_sl1(sl1::Preferences* pref, int applicationId);
     static sl::Result hkslSetTag(sl::ViewportHandle& viewport, sl::ResourceTag* tags, uint32_t numTags,
                                  sl::CommandBuffer* cmdBuffer);
+
+    static sl::Result hkslSetTagForFrame(const sl::FrameToken& frame, const sl::ViewportHandle& viewport,
+                                         const sl::ResourceTag* resources, uint32_t numResources,
+                                         sl::CommandBuffer* cmdBuffer);
+
+    static sl::Result hkslEvaluateFeature(sl::Feature feature, const sl::FrameToken& frame,
+                                          const sl::BaseStructure** inputs, uint32_t numInputs,
+                                          sl::CommandBuffer* cmdBuffer);
+
+    static sl::Result hkslAllocateResources(sl::CommandBuffer* cmdBuffer, sl::Feature feature,
+                                            const sl::ViewportHandle& viewport);
+
+    static sl::Result hkslGetNativeInterface(void* proxyInterface, void** baseInterface);
+
+    static sl::Result hkslSetD3DDevice(void* d3dDevice);
 
     // DLSS
     static PFN_slGetPluginFunction o_dlss_slGetPluginFunction;
@@ -61,9 +150,14 @@ class StreamlineHooks
     static PFN_slGetPluginFunction o_dlssg_slGetPluginFunction;
     static PFN_slOnPluginLoad o_dlssg_slOnPluginLoad;
     static decltype(&slDLSSGSetOptions) o_slDLSSGSetOptions;
+    static decltype(&slDLSSGGetState) o_slDLSSGGetState;
 
     static bool hkdlssg_slOnPluginLoad(void* params, const char* loaderJSON, const char** pluginJSON);
+    static sl::Result hkslSetConstants(const sl::Constants& values, const sl::FrameToken& frame,
+                                       const sl::ViewportHandle& viewport);
     static sl::Result hkslDLSSGSetOptions(const sl::ViewportHandle& viewport, const sl::DLSSGOptions& options);
+    static sl::Result hkslDLSSGGetState(const sl::ViewportHandle& viewport, sl::DLSSGState& state,
+                                        const sl::DLSSGOptions* options);
     static void* hkdlssg_slGetPluginFunction(const char* functionName);
 
     // Reflex
@@ -77,6 +171,15 @@ class StreamlineHooks
     static sl::Result hkslReflexSetOptions(const sl::ReflexOptions& options);
     static bool hkreflex_slSetConstants_sl1(const void* data, uint32_t frameIndex, uint32_t id);
     static void* hkreflex_slGetPluginFunction(const char* functionName);
+
+    // PCL
+    static PFN_slGetPluginFunction o_pcl_slGetPluginFunction;
+    static PFN_slOnPluginLoad o_pcl_slOnPluginLoad;
+    static decltype(&slPCLSetMarker) o_slPCLSetMarker;
+
+    static bool hkpcl_slOnPluginLoad(void* params, const char* loaderJSON, const char** pluginJSON);
+    static void* hkpcl_slGetPluginFunction(const char* functionName);
+    static sl::Result hkslPCLSetMarker(sl::PCLMarker marker, const sl::FrameToken& frame);
 
     // Common
     static PFN_slGetPluginFunction o_common_slGetPluginFunction;

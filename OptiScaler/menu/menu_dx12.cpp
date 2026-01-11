@@ -226,12 +226,12 @@ Menu_Dx12::Menu_Dx12(HWND handle, ID3D12Device* pDevice) : MenuDxBase(handle), _
     srvDesc.NumDescriptors = SRV_HEAP_SIZE;
     srvDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 
-    State::Instance().skipHeapCapture = true;
+    {
+        ScopedSkipHeapCapture skipHeapCapture {};
 
-    if (pDevice->CreateDescriptorHeap(&srvDesc, IID_PPV_ARGS(&_srvDescHeap)) != S_OK)
-        return;
-
-    State::Instance().skipHeapCapture = false;
+        if (pDevice->CreateDescriptorHeap(&srvDesc, IID_PPV_ARGS(&_srvDescHeap)) != S_OK)
+            return;
+    }
 
     g_pd3dSrvDescHeapAlloc.Destroy();
     g_pd3dSrvDescHeapAlloc.Create(pDevice, _srvDescHeap);

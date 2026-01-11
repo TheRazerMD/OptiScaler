@@ -16,14 +16,13 @@ class DLSSDFeature : public virtual IFeature
 
     void ProcessEvaluateParams(NVSDK_NGX_Parameter* InParameters);
     void ProcessInitParams(NVSDK_NGX_Parameter* InParameters);
+    void ReadVersion();
 
-    static void Shutdown();
     float GetSharpness(const NVSDK_NGX_Parameter* InParameters);
 
   public:
-    feature_version Version() final { return feature_version { _version.major, _version.minor, _version.patch }; }
-    std::string Name() const { return "DLSSD"; }
-    void ReadVersion();
+    feature_version Version() override { return feature_version { _version.major, _version.minor, _version.patch }; }
+    std::string Name() const override { return "DLSSD"; }
 
     DLSSDFeature(unsigned int handleId, NVSDK_NGX_Parameter* InParameters);
 

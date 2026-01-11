@@ -19,6 +19,9 @@ class FSR2FeatureVk : public FSR2Feature, public IFeature_Vk
     {
     }
 
+    feature_version Version() override { return FSR2Feature::Version(); }
+    std::string Name() const override { return FSR2Feature::Name(); }
+
     bool Init(VkInstance InInstance, VkPhysicalDevice InPD, VkDevice InDevice, VkCommandBuffer InCmdList,
               PFN_vkGetInstanceProcAddr InGIPA, PFN_vkGetDeviceProcAddr InGDPA,
               NVSDK_NGX_Parameter* InParameters) override;

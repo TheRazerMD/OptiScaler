@@ -28,7 +28,5 @@ class IFeature_Dx12 : public virtual IFeature
 
     IFeature_Dx12(unsigned int InHandleId, NVSDK_NGX_Parameter* InParameters);
 
-    void Shutdown() final;
-
     ~IFeature_Dx12();
 };

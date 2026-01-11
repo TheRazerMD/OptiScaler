@@ -17,6 +17,21 @@ enum ResourceType
     UAV
 };
 
+enum CaptureInfo
+{
+    None = 0,
+    CreateRTV = 1,
+    CreateSRV = 2,
+    CreateUAV = 4,
+    OMSetRTV = 8,
+    Upscaler = 16,
+    SetCR = 32,
+    SetGR = 64,
+    Dispatch = 256,
+    DrawInstanced = 512,
+    DrawIndexedInstanced = 1024,
+};
+
 typedef struct ResourceInfo
 {
     ID3D12Resource* buffer = nullptr;
@@ -28,6 +43,7 @@ typedef struct ResourceInfo
     ResourceType type = SRV;
     double lastUsedFrame = 0;
     bool extended = false;
+    UINT captureInfo = 0;
 } resource_info;
 
 typedef struct HudlessInfo
@@ -56,6 +72,8 @@ class Hudfix_Dx12
     inline static double _upscaleEndTime = 0.0;
     inline static double _targetTime = 0.0;
     inline static double _frameTime = 0.0;
+
+    inline static bool _skipTracking = false;
 
     // Buffer for Format Transfer
     inline static ID3D12Resource* _captureBuffer[BUFFER_COUNT] = { nullptr, nullptr, nullptr, nullptr };
@@ -103,7 +121,7 @@ class Hudfix_Dx12
     static void UpscaleStart();
 
     // Trig for upscaling end
-    static void UpscaleEnd(UINT64 frameId, float lastFrameTime);
+    static void UpscaleEnd(UINT64 frameId, double lastFGFrameTime);
 
     // Trig for present start
     static void PresentStart();
@@ -121,10 +139,14 @@ class Hudfix_Dx12
     static bool SkipHudlessChecks();
 
     // Check resource for hudless
-    static bool CheckForHudless(std::string callerName, ID3D12GraphicsCommandList* cmdList, ResourceInfo* resource,
-                                D3D12_RESOURCE_STATES state, bool ignoreBlocked = false);
+    static bool CheckForHudless(ID3D12GraphicsCommandList* cmdList, ResourceInfo* resource, D3D12_RESOURCE_STATES state,
+                                bool ignoreBlocked = false);
+
     static bool CheckResource(ResourceInfo* resource);
 
     // Reset frame counters
     static void ResetCounters();
+
+    static bool GetSkipStatus() { return _skipTracking; }
+    static void SetSkipStatus(bool status) { _skipTracking = status; }
 };

@@ -23,6 +23,8 @@
 
 #include <stdint.h>
 
+#pragma warning(disable : 4005)
+
 namespace Fsr31
 {
 ///

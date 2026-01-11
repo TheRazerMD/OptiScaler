@@ -30,8 +30,9 @@
 
 namespace sl
 {
-constexpr uint64_t kSDKVersionMagic = 0xfedc;
-constexpr uint64_t kSDKVersion = (uint64_t(SL_VERSION_MAJOR) << 48) | (uint64_t(SL_VERSION_MINOR) << 32) | (uint64_t(SL_VERSION_PATCH) << 16) | kSDKVersionMagic;
+constexpr inline uint64_t kSDKVersionMagic = 0xfedc;
+constexpr inline uint64_t kSDKVersion = (uint64_t(SL_VERSION_MAJOR) << 48) | (uint64_t(SL_VERSION_MINOR) << 32) |
+                                        (uint64_t(SL_VERSION_PATCH) << 16) | kSDKVersionMagic;
 
 struct Version
 {

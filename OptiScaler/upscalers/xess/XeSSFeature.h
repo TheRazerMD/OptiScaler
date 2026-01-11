@@ -1,5 +1,7 @@
 #pragma once
+
 #include <upscalers/IFeature.h>
+
 #include <proxies/XeSS_Proxy.h>
 
 #include <string>
@@ -58,10 +60,11 @@ class XeSSFeature : public virtual IFeature
     bool InitXeSS(ID3D12Device* device, const NVSDK_NGX_Parameter* InParameters);
 
   public:
-    feature_version Version()
+    feature_version Version() override
     {
         return feature_version { XeSSProxy::Version().major, XeSSProxy::Version().minor, XeSSProxy::Version().patch };
     }
+
     std::string Name() const { return "XeSS"; }
 
     XeSSFeature(unsigned int handleId, NVSDK_NGX_Parameter* InParameters);

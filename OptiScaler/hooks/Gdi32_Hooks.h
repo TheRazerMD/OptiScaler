@@ -6,52 +6,7 @@
 
 #include "detours/detours.h"
 
-typedef struct _D3DKMT_WDDM_2_7_CAPS
-{
-    union
-    {
-        struct
-        {
-            UINT HwSchSupported : 1;
-            UINT HwSchEnabled : 1;
-            UINT HwSchEnabledByDefault : 1;
-            UINT IndependentVidPnVSyncControl : 1;
-            UINT Reserved : 28;
-        };
-        UINT Value;
-    };
-} D3DKMT_WDDM_2_7_CAPS;
-
-typedef enum _KMTQUERYADAPTERINFOTYPE
-{
-    KMTQAITYPE_WDDM_2_7_CAPS = 70,
-} KMTQUERYADAPTERINFOTYPE;
-
-typedef struct _D3DKMT_QUERYADAPTERINFO
-{
-    UINT hAdapter;
-    KMTQUERYADAPTERINFOTYPE Type;
-    VOID* pPrivateDriverData;
-    UINT PrivateDriverDataSize;
-} D3DKMT_QUERYADAPTERINFO;
-
-using D3DKMT_HANDLE = uint64_t;
-
-typedef struct _D3DKMT_ADAPTERINFO
-{
-    D3DKMT_HANDLE hAdapter;
-    LUID AdapterLuid;
-    ULONG NumOfSources;
-    BOOL bPrecisePresentRegionsPreferred;
-} D3DKMT_ADAPTERINFO;
-
-typedef struct _D3DKMT_ENUMADAPTERS2
-{
-    ULONG NumAdapters;
-    D3DKMT_ADAPTERINFO* pAdapters;
-} D3DKMT_ENUMADAPTERS2;
-
-typedef int (*PFN_D3DKMTQueryAdapterInfo)(const D3DKMT_QUERYADAPTERINFO* data);
+typedef decltype(&D3DKMTQueryAdapterInfo) PFN_D3DKMTQueryAdapterInfo;
 
 static PFN_D3DKMTQueryAdapterInfo o_D3DKMTQueryAdapterInfo = nullptr;
 
@@ -146,7 +101,8 @@ static void hookGdi32()
     LOG_FUNC();
 
     if (Config::Instance()->SpoofHAGS.value_or_default() ||
-        Config::Instance()->FGType.value_or_default() == FGType::Nukems)
+        Config::Instance()->FGInput.value_or_default() == FGInput::Nukems ||
+        Config::Instance()->FGInput.value_or_default() == FGInput::DLSSG)
     {
         o_D3DKMTQueryAdapterInfo =
             reinterpret_cast<PFN_D3DKMTQueryAdapterInfo>(DetourFindFunction("gdi32.dll", "D3DKMTQueryAdapterInfo"));

@@ -3,8 +3,10 @@
 
 #include "upscalers/IFeature.h"
 #include "framegen/IFGFeature_Dx12.h"
+#include <inputs/FG/Streamline_Inputs_Dx12.h>
 #include "misc/Quirks.h"
 
+#include <set>
 #include <deque>
 #include <vulkan/vulkan.h>
 #include <ankerl/unordered_dense.h>
@@ -18,16 +20,37 @@ typedef enum API
     Vulkan,
 } API;
 
-typedef enum FGType : uint32_t
+enum class FGPreset : uint32_t
 {
     NoFG,
     OptiFG,
-    Nukems
-} FGType;
+    Nukems,
+};
+
+enum class FGInput : uint32_t
+{
+    NoFG,
+    Nukems,
+    FSRFG,
+    DLSSG, // technically Streamline inputs
+    XeFG,
+    Upscaler, // OptiFG
+    FSRFG30,
+};
+
+enum class FGOutput : uint32_t
+{
+    NoFG,
+    Nukems,
+    FSRFG,
+    DLSSG,
+    XeFG
+};
 
 typedef struct CapturedHudlessInfo
 {
     UINT64 usageCount = 1;
+    UINT captureInfo = 0;
     bool enabled = true;
 } captured_hudless_info;
 
@@ -54,32 +77,41 @@ class State
     // Reseting on creation of new feature
     std::optional<bool> AutoExposure;
 
+    // FG
+    UINT64 FGLastFrame = 0;
+
     // DLSSG
     bool NukemsFilesAvailable = false;
     bool DLSSGDebugView = false;
     bool DLSSGInterpolatedOnly = false;
     uint32_t delayMenuRenderBy = 0;
+    UINT64 DLSSGLastFrame = 0;
 
     // FSR Common
     float lastFsrCameraNear = 0.0f;
     float lastFsrCameraFar = 0.0f;
 
     // Frame Generation
-    FGType activeFgType = FGType::NoFG;
+    FGInput activeFgInput = FGInput::NoFG;
+    FGOutput activeFgOutput = FGOutput::NoFG;
+
+    // Streamline FG inputs
+    Sl_Inputs_Dx12 slFGInputs = {};
 
     // OptiFG
     bool FGonlyGenerated = false;
+    bool FGHudlessCompare = false;
     bool FGchanged = false;
     bool SCchanged = false;
     bool skipHeapCapture = false;
 
     bool FGcaptureResources = false;
-    bool FGHudlessCompare = false;
-    int FGcapturedResourceCount = false;
+    size_t FGcapturedResourceCount = false;
     bool FGresetCapturedResources = false;
     bool FGonlyUseCapturedResources = false;
 
     bool FSRFGFTPchanged = false;
+    bool FSRFGInputActive = false;
 
     ankerl::unordered_dense::map<void*, CapturedHudlessInfo> CapturedHudlesses;
     bool ClearCapturedHudlesses = false;
@@ -94,6 +126,9 @@ class State
     NVSDK_NGX_LoggingInfo NVNGX_Logger { nullptr, NVSDK_NGX_LOGGING_LEVEL_OFF, false };
     NVSDK_NGX_EngineType NVNGX_Engine = NVSDK_NGX_ENGINE_TYPE_CUSTOM;
     std::string NVNGX_EngineVersion;
+    std::optional<std::wstring> NVNGX_DLSS_Path;
+    std::optional<std::wstring> NVNGX_DLSSD_Path;
+    std::optional<std::wstring> NVNGX_DLSSG_Path;
 
     // NGX OTA
     std::string NGX_OTA_Dlss;
@@ -104,13 +139,11 @@ class State
     API api = API::NotSelected;
     API swapchainApi = API::NotSelected;
 
-    // DLSS Enabler
-    bool enablerAvailable = false;
-
     // Framerate
     bool reflexLimitsFps = false;
     bool reflexShowWarning = false;
     bool rtssReflexInjection = false;
+    UINT64 frameCount = 0;
 
     // for realtime changes
     ankerl::unordered_dense::map<unsigned int, bool> changeBackend;
@@ -124,22 +157,47 @@ class State
 
     // DLSS
     bool dlssPresetsOverriddenExternally = false;
+    bool dlssPresetsOverridenByOpti = false;
+    uint32_t dlssRenderPresetDLAA = 0;
+    uint32_t dlssRenderPresetUltraQuality = 0;
+    uint32_t dlssRenderPresetQuality = 0;
+    uint32_t dlssRenderPresetBalanced = 0;
+    uint32_t dlssRenderPresetPerformance = 0;
+    uint32_t dlssRenderPresetUltraPerformance = 0;
+
+    // DLSSD
     bool dlssdPresetsOverriddenExternally = false;
+    bool dlssdPresetsOverridenByOpti = false;
+    uint32_t dlssdRenderPresetDLAA = 0;
+    uint32_t dlssdRenderPresetUltraQuality = 0;
+    uint32_t dlssdRenderPresetQuality = 0;
+    uint32_t dlssdRenderPresetBalanced = 0;
+    uint32_t dlssdRenderPresetPerformance = 0;
+    uint32_t dlssdRenderPresetUltraPerformance = 0;
 
     // Spoofing
     bool skipSpoofing = false;
     // For DXVK, it calls DXGI which cause softlock
     bool skipDxgiLoadChecks = false;
+    bool skipParentWrapping = false;
 
-    // FSR3.x
-    std::vector<const char*> fsr3xVersionNames {};
-    std::vector<uint64_t> fsr3xVersionIds {};
+    // quirks
+    std::vector<std::string> detectedQuirks {};
+
+    // FFX
+    std::vector<const char*> ffxUpscalerVersionNames {};
+    std::vector<uint64_t> ffxUpscalerVersionIds {};
+    std::vector<const char*> ffxFGVersionNames {};
+    std::vector<uint64_t> ffxFGVersionIds {};
     uint32_t currentFsr4Model {};
 
-    // Linux check
+    // Linux checks
     bool isRunningOnLinux = false;
     bool isRunningOnDXVK = false;
+
+    // Other checks
     bool isRunningOnNvidia = false;
+    bool isPascalOrOlder = false;
     bool isDxgiMode = false;
     bool isD3D12Mode = false;
     bool isWorkingAsNvngx = false;
@@ -152,7 +210,8 @@ class State
     // Framegraph
     std::deque<double> upscaleTimes;
     std::deque<double> frameTimes;
-    double lastFrameTime = 0.0;
+    double lastFGFrameTime = 0.0;
+    double presentFrameTime = 0.0;
     std::mutex frameTimeMutex;
 
     // Version check
@@ -167,6 +226,10 @@ class State
     // Swapchain info
     float screenWidth = 800.0;
     float screenHeight = 450.0;
+    bool realExclusiveFullscreen = false;
+    bool SCExclusiveFullscreen = false;
+    bool SCAllowTearing = false;
+    UINT SCLastFlags = 0;
 
     // HDR
     std::vector<IUnknown*> SCbuffers;
@@ -176,9 +239,10 @@ class State
     std::string currentInputApiName;
 
     bool isShuttingDown = false;
+    std::set<PVOID> modulesToFree;
 
     // menu warnings
-    bool showRestartWarning = false;
+    bool fgSettingsChanged = false;
     bool nvngxIniDetected = false;
 
     bool nvngxExists = false;
@@ -187,19 +251,20 @@ class State
     bool fsrHooks = false;
 
     IFeature* currentFeature = nullptr;
-
     IFGFeature_Dx12* currentFG = nullptr;
     IDXGISwapChain* currentSwapchain = nullptr;
+    IDXGISwapChain* currentWrappedSwapchain = nullptr;
+    IDXGISwapChain* currentRealSwapchain = nullptr;
+    IDXGISwapChain* currentFGSwapchain = nullptr;
     ID3D12Device* currentD3D12Device = nullptr;
     ID3D11Device* currentD3D11Device = nullptr;
     ID3D12CommandQueue* currentCommandQueue = nullptr;
     VkDevice currentVkDevice = nullptr;
+    DXGI_SWAP_CHAIN_DESC currentSwapchainDesc {};
 
     std::vector<ID3D12Device*> d3d12Devices;
     std::vector<ID3D11Device*> d3d11Devices;
-    std::map<UINT64, std::string> adapterDescs;
-
-    bool mhInited = false;
+    std::unordered_map<UINT64, std::string> adapterDescs;
 
     // Moved checks here to prevent circular includes
     /// <summary>
@@ -261,4 +326,92 @@ class State
     inline static UINT _serveOwner = 0;
 
     State() = default;
+};
+
+class ScopedSkipSpoofing
+{
+  private:
+    bool previousState;
+
+  public:
+    ScopedSkipSpoofing()
+    {
+        previousState = State::Instance().skipSpoofing;
+        State::Instance().skipSpoofing = true;
+    }
+
+    ~ScopedSkipSpoofing() { State::Instance().skipSpoofing = previousState; }
+};
+
+class ScopedSkipDxgiLoadChecks
+{
+  private:
+    bool previousState;
+
+  public:
+    ScopedSkipDxgiLoadChecks()
+    {
+        previousState = State::Instance().skipDxgiLoadChecks;
+        State::Instance().skipDxgiLoadChecks = true;
+    }
+
+    ~ScopedSkipDxgiLoadChecks() { State::Instance().skipDxgiLoadChecks = previousState; }
+};
+
+class ScopedSkipParentWrapping
+{
+  private:
+    bool previousState;
+
+  public:
+    ScopedSkipParentWrapping()
+    {
+        previousState = State::Instance().skipParentWrapping;
+        State::Instance().skipParentWrapping = true;
+    }
+
+    ~ScopedSkipParentWrapping() { State::Instance().skipParentWrapping = previousState; }
+};
+
+class ScopedSkipHeapCapture
+{
+  private:
+    bool previousState;
+
+  public:
+    ScopedSkipHeapCapture()
+    {
+        previousState = State::Instance().skipHeapCapture;
+        State::Instance().skipHeapCapture = true;
+    }
+
+    ~ScopedSkipHeapCapture() { State::Instance().skipHeapCapture = previousState; }
+};
+
+class ScopedSkipVulkanHooks
+{
+  private:
+    bool previousState;
+
+  public:
+    ScopedSkipVulkanHooks()
+    {
+        previousState = State::Instance().vulkanSkipHooks;
+        State::Instance().vulkanSkipHooks = true;
+    }
+    ~ScopedSkipVulkanHooks() { State::Instance().vulkanSkipHooks = previousState; }
+};
+
+class ScopedVulkanCreatingSC
+{
+  private:
+    bool previousState;
+
+  public:
+    ScopedVulkanCreatingSC()
+    {
+        previousState = State::Instance().vulkanCreatingSC;
+        State::Instance().vulkanCreatingSC = true;
+    }
+    ~ScopedVulkanCreatingSC() { State::Instance().vulkanCreatingSC = previousState; }
 };

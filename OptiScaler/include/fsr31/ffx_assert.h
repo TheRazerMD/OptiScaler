@@ -24,6 +24,8 @@
 #include "ffx_types.h"
 #include "ffx_util.h"
 
+#pragma warning(disable : 4005)
+
 namespace Fsr31
 {
 #ifdef __cplusplus

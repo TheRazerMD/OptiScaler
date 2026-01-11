@@ -8,7 +8,8 @@ class XeSSFeatureDx12 : public XeSSFeature, public IFeature_Dx12
   private:
   protected:
   public:
-    std::string Name() const { return "XeSS"; }
+    std::string Name() const override { return "XeSS"; }
+    feature_version Version() override { return XeSSFeature::Version(); }
 
     XeSSFeatureDx12(unsigned int InHandleId, NVSDK_NGX_Parameter* InParameters)
         : IFeature(InHandleId, InParameters), IFeature_Dx12(InHandleId, InParameters),

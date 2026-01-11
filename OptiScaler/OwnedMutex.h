@@ -9,19 +9,19 @@ class OwnedMutex
 {
   private:
     std::shared_mutex mtx;
-    std::atomic<uint32_t> owner {}; // don't use 0
+    std::atomic<uint32_t> owner { 0 }; // don't use 0
 
   public:
     void lock(uint32_t _owner)
     {
         mtx.lock();
-        owner.store(_owner, std::memory_order_seq_cst);
+        owner.store(_owner, std::memory_order_release);
     }
 
     // Only unlocks if owner matches
     void unlockThis(uint32_t _owner)
     {
-        uint32_t current_owner = owner.load(std::memory_order_seq_cst);
+        uint32_t current_owner = owner.load(std::memory_order_acquire);
 
         if (current_owner == 0 || current_owner != _owner)
         {
@@ -29,7 +29,7 @@ class OwnedMutex
             return;
         }
 
-        owner.store(0, std::memory_order_seq_cst);
+        owner.store(0, std::memory_order_release);
         mtx.unlock();
     }
 

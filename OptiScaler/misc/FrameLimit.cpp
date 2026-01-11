@@ -1,7 +1,7 @@
 #include "FrameLimit.h"
 
 #include "Config.h"
-#include "hooks/HooksDx.h"
+// #include "hooks/D3D11Hooks.h"
 
 inline uint64_t FrameLimit::get_timestamp()
 {
@@ -60,11 +60,15 @@ inline int FrameLimit::combined_sleep(int64_t ns)
     return status;
 }
 
-void FrameLimit::sleep()
+void FrameLimit::sleep(bool fgActive)
 {
     if (auto fpsCap = Config::Instance()->FramerateLimit.value_or_default(); fpsCap != 0.0f)
     {
         uint64_t min_interval_us = std::clamp((uint64_t) (1'000'000 / fpsCap), 0ULL, 100'000'000ULL);
+
+        if (fgActive)
+            min_interval_us *= 2;
+
         static uint64_t previous_frame_time = 0;
         uint64_t current_time = get_timestamp();
         uint64_t frame_time = current_time - previous_frame_time;

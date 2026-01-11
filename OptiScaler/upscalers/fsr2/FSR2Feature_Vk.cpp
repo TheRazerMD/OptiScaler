@@ -18,68 +18,68 @@ bool FSR2FeatureVk::InitFSR2(const NVSDK_NGX_Parameter* InParameters)
         return false;
     }
 
-    State::Instance().skipSpoofing = true;
-
-    auto scratchBufferSize = ffxFsr2GetScratchMemorySizeVK(PhysicalDevice);
-    void* scratchBuffer = calloc(scratchBufferSize, 1);
-
-    auto errorCode = ffxFsr2GetInterfaceVK(&_contextDesc.callbacks, scratchBuffer, scratchBufferSize, PhysicalDevice,
-                                           vkGetDeviceProcAddr);
-
-    if (errorCode != FFX_OK)
     {
-        LOG_ERROR("ffxGetInterfaceVK error: {0}", ResultToString(errorCode));
-        free(scratchBuffer);
-        return false;
-    }
+        ScopedSkipSpoofing skipSpoofing {};
 
-    _contextDesc.device = ffxGetDeviceVK(Device);
+        auto scratchBufferSize = ffxFsr2GetScratchMemorySizeVK(PhysicalDevice);
+        void* scratchBuffer = calloc(scratchBufferSize, 1);
 
-    if (Config::Instance()->ExtendedLimits.value_or_default())
-    {
-        _contextDesc.maxRenderSize.width = RenderWidth() < DisplayWidth() ? DisplayWidth() : RenderWidth();
-        _contextDesc.maxRenderSize.height = RenderHeight() < DisplayHeight() ? DisplayHeight() : RenderHeight();
-    }
-    else
-    {
-        _contextDesc.maxRenderSize.width = DisplayWidth();
-        _contextDesc.maxRenderSize.height = DisplayHeight();
-    }
+        auto errorCode = ffxFsr2GetInterfaceVK(&_contextDesc.callbacks, scratchBuffer, scratchBufferSize,
+                                               PhysicalDevice, vkGetDeviceProcAddr);
 
-    _contextDesc.displaySize.width = DisplayWidth();
-    _contextDesc.displaySize.height = DisplayHeight();
-    _contextDesc.flags = 0;
+        if (errorCode != FFX_OK)
+        {
+            LOG_ERROR("ffxGetInterfaceVK error: {0}", ResultToString(errorCode));
+            free(scratchBuffer);
+            return false;
+        }
 
-    if (DepthInverted())
-        _contextDesc.flags |= FFX_FSR2_ENABLE_DEPTH_INVERTED;
+        _contextDesc.device = ffxGetDeviceVK(Device);
 
-    if (AutoExposure())
-        _contextDesc.flags |= FFX_FSR2_ENABLE_AUTO_EXPOSURE;
+        if (Config::Instance()->ExtendedLimits.value_or_default())
+        {
+            _contextDesc.maxRenderSize.width = RenderWidth() < DisplayWidth() ? DisplayWidth() : RenderWidth();
+            _contextDesc.maxRenderSize.height = RenderHeight() < DisplayHeight() ? DisplayHeight() : RenderHeight();
+        }
+        else
+        {
+            _contextDesc.maxRenderSize.width = DisplayWidth();
+            _contextDesc.maxRenderSize.height = DisplayHeight();
+        }
 
-    if (IsHdr())
-        _contextDesc.flags |= FFX_FSR2_ENABLE_HIGH_DYNAMIC_RANGE;
+        _contextDesc.displaySize.width = DisplayWidth();
+        _contextDesc.displaySize.height = DisplayHeight();
+        _contextDesc.flags = 0;
 
-    if (JitteredMV())
-        _contextDesc.flags |= FFX_FSR2_ENABLE_MOTION_VECTORS_JITTER_CANCELLATION;
+        if (DepthInverted())
+            _contextDesc.flags |= FFX_FSR2_ENABLE_DEPTH_INVERTED;
 
-    if (!LowResMV())
-        _contextDesc.flags |= FFX_FSR2_ENABLE_DISPLAY_RESOLUTION_MOTION_VECTORS;
+        if (AutoExposure())
+            _contextDesc.flags |= FFX_FSR2_ENABLE_AUTO_EXPOSURE;
+
+        if (IsHdr())
+            _contextDesc.flags |= FFX_FSR2_ENABLE_HIGH_DYNAMIC_RANGE;
+
+        if (JitteredMV())
+            _contextDesc.flags |= FFX_FSR2_ENABLE_MOTION_VECTORS_JITTER_CANCELLATION;
+
+        if (!LowResMV())
+            _contextDesc.flags |= FFX_FSR2_ENABLE_DISPLAY_RESOLUTION_MOTION_VECTORS;
 
 #if _DEBUG
-    _contextDesc.flags |= FFX_FSR2_ENABLE_DEBUG_CHECKING;
-    _contextDesc.fpMessage = FfxLogCallback;
+        _contextDesc.flags |= FFX_FSR2_ENABLE_DEBUG_CHECKING;
+        _contextDesc.fpMessage = FfxLogCallback;
 #endif
 
-    LOG_DEBUG("ffxFsr2ContextCreate!");
+        LOG_DEBUG("ffxFsr2ContextCreate!");
 
-    auto ret = ffxFsr2ContextCreate(&_context, &_contextDesc);
+        auto ret = ffxFsr2ContextCreate(&_context, &_contextDesc);
 
-    State::Instance().skipSpoofing = false;
-
-    if (ret != FFX_OK)
-    {
-        LOG_ERROR("ffxFsr2ContextCreate error: {0}", ResultToString(ret));
-        return false;
+        if (ret != FFX_OK)
+        {
+            LOG_ERROR("ffxFsr2ContextCreate error: {0}", ResultToString(ret));
+            return false;
+        }
     }
 
     SetInit(true);

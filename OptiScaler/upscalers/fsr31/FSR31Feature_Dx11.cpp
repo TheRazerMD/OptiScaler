@@ -429,6 +429,9 @@ bool FSR31FeatureDx11::Evaluate(ID3D11DeviceContext* DeviceContext, NVSDK_NGX_Pa
         params.cameraNear = Config::Instance()->FsrCameraNear.value_or_default();
     }
 
+    State::Instance().lastFsrCameraFar = params.cameraFar;
+    State::Instance().lastFsrCameraNear = params.cameraNear;
+
     if (Config::Instance()->FsrVerticalFov.has_value())
         params.cameraFovAngleVertical = Config::Instance()->FsrVerticalFov.value() * 0.0174532925199433f;
     else if (Config::Instance()->FsrHorizontalFov.value_or_default() > 0.0f)
@@ -466,11 +469,17 @@ bool FSR31FeatureDx11::Evaluate(ID3D11DeviceContext* DeviceContext, NVSDK_NGX_Pa
 
     if (InParameters->Get("FSR.upscaleSize.width", &params.upscaleSize.width) == NVSDK_NGX_Result_Success &&
         Config::Instance()->OutputScalingEnabled.value_or_default())
-        params.upscaleSize.width *= Config::Instance()->OutputScalingMultiplier.value_or_default();
+    {
+        params.upscaleSize.width *=
+            static_cast<uint32_t>(Config::Instance()->OutputScalingMultiplier.value_or_default());
+    }
 
     if (InParameters->Get("FSR.upscaleSize.height", &params.upscaleSize.height) == NVSDK_NGX_Result_Success &&
         Config::Instance()->OutputScalingEnabled.value_or_default())
-        params.upscaleSize.height *= Config::Instance()->OutputScalingMultiplier.value_or_default();
+    {
+        params.upscaleSize.height *=
+            static_cast<uint32_t>(Config::Instance()->OutputScalingMultiplier.value_or_default());
+    }
 
     LOG_DEBUG("Dispatch!!");
     auto result = ffxFsr3ContextDispatchUpscale(&_upscalerContext, &params);
@@ -623,133 +632,137 @@ bool FSR31FeatureDx11::InitFSR3(const NVSDK_NGX_Parameter* InParameters)
         LOG_INFO("If FSR3.1 doesn't work, try enabling the OptiScaler Direct3D hooks by setting OverlayMenu=true.");
     }
 
-    State::Instance().skipSpoofing = true;
-    uint64_t versionCount = 0;
-    State::Instance().fsr3xVersionIds.resize(versionCount);
-    State::Instance().fsr3xVersionNames.resize(versionCount);
-    State::Instance().fsr3xVersionIds.push_back(1);
-    auto version_number = "3.1.2";
-    State::Instance().fsr3xVersionNames.push_back(version_number);
-
-    const size_t scratchBufferSize = Fsr31::ffxGetScratchMemorySizeDX11(1);
-    void* scratchBuffer = calloc(scratchBufferSize, 1);
-
-    auto errorCode =
-        Fsr31::ffxGetInterfaceDX11(&_upscalerContextDesc.backendInterfaceUpscaling,
-                                   Fsr31::ffxGetDeviceDX11_Fsr31(Device), scratchBuffer, scratchBufferSize, 1);
-
-    if (errorCode != Fsr31::FFX_OK)
     {
-        LOG_ERROR("ffxGetInterfaceDX11 error when creating backendInterfaceUpscaling: {0}", ResultToString(errorCode));
-        free(scratchBuffer);
-        return false;
-    }
+        ScopedSkipSpoofing skipSpoofing {};
 
-    _upscalerContextDesc.fpMessage = FfxLogCallback;
-    _upscalerContextDesc.flags = 0;
+        uint64_t versionCount = 0;
+        State::Instance().ffxUpscalerVersionIds.resize(versionCount);
+        State::Instance().ffxUpscalerVersionNames.resize(versionCount);
+        State::Instance().ffxUpscalerVersionIds.push_back(1);
+        auto version_number = "3.1.2";
+        State::Instance().ffxUpscalerVersionNames.push_back(version_number);
 
-    _upscalerContextDesc.flags |= Fsr31::FFX_FSR3_ENABLE_UPSCALING_ONLY;
+        const size_t scratchBufferSize = Fsr31::ffxGetScratchMemorySizeDX11(1);
+        void* scratchBuffer = calloc(scratchBufferSize, 1);
+
+        auto errorCode =
+            Fsr31::ffxGetInterfaceDX11(&_upscalerContextDesc.backendInterfaceUpscaling,
+                                       Fsr31::ffxGetDeviceDX11_Fsr31(Device), scratchBuffer, scratchBufferSize, 1);
+
+        if (errorCode != Fsr31::FFX_OK)
+        {
+            LOG_ERROR("ffxGetInterfaceDX11 error when creating backendInterfaceUpscaling: {0}",
+                      ResultToString(errorCode));
+            free(scratchBuffer);
+            return false;
+        }
+
+        _upscalerContextDesc.fpMessage = FfxLogCallback;
+        _upscalerContextDesc.flags = 0;
+
+        _upscalerContextDesc.flags |= Fsr31::FFX_FSR3_ENABLE_UPSCALING_ONLY;
 #ifdef _DEBUG
-    _upscalerContextDesc.flags |= Fsr31::FFX_FSR3_ENABLE_DEBUG_CHECKING;
+        _upscalerContextDesc.flags |= Fsr31::FFX_FSR3_ENABLE_DEBUG_CHECKING;
 #endif
 
-    if (DepthInverted())
-        _upscalerContextDesc.flags |= Fsr31::FFX_FSR3_ENABLE_DEPTH_INVERTED;
+        if (DepthInverted())
+            _upscalerContextDesc.flags |= Fsr31::FFX_FSR3_ENABLE_DEPTH_INVERTED;
 
-    if (AutoExposure())
-        _upscalerContextDesc.flags |= Fsr31::FFX_FSR3_ENABLE_AUTO_EXPOSURE;
+        if (AutoExposure())
+            _upscalerContextDesc.flags |= Fsr31::FFX_FSR3_ENABLE_AUTO_EXPOSURE;
 
-    if (IsHdr())
-        _upscalerContextDesc.flags |= Fsr31::FFX_FSR3_ENABLE_HIGH_DYNAMIC_RANGE;
+        if (IsHdr())
+            _upscalerContextDesc.flags |= Fsr31::FFX_FSR3_ENABLE_HIGH_DYNAMIC_RANGE;
 
-    if (JitteredMV())
-        _upscalerContextDesc.flags |= Fsr31::FFX_FSR3_ENABLE_MOTION_VECTORS_JITTER_CANCELLATION;
+        if (JitteredMV())
+            _upscalerContextDesc.flags |= Fsr31::FFX_FSR3_ENABLE_MOTION_VECTORS_JITTER_CANCELLATION;
 
-    if (!LowResMV())
-        _upscalerContextDesc.flags |= Fsr31::FFX_FSR3_ENABLE_DISPLAY_RESOLUTION_MOTION_VECTORS;
+        if (!LowResMV())
+            _upscalerContextDesc.flags |= Fsr31::FFX_FSR3_ENABLE_DISPLAY_RESOLUTION_MOTION_VECTORS;
 
-    if (Config::Instance()->FsrNonLinearPQ.value_or_default() ||
-        Config::Instance()->FsrNonLinearSRGB.value_or_default())
-    {
-        _upscalerContextDesc.flags |= FFX_UPSCALE_ENABLE_NON_LINEAR_COLORSPACE;
-        LOG_INFO("contextDesc.initFlags (NonLinearColorSpace) {0:b}", _upscalerContextDesc.flags);
-    }
-
-    if (Config::Instance()->OutputScalingEnabled.value_or_default() && LowResMV())
-    {
-        float ssMulti = Config::Instance()->OutputScalingMultiplier.value_or_default();
-
-        if (ssMulti < 0.5f)
+        if (Config::Instance()->FsrNonLinearPQ.value_or_default() ||
+            Config::Instance()->FsrNonLinearSRGB.value_or_default())
         {
-            ssMulti = 0.5f;
-            Config::Instance()->OutputScalingMultiplier.set_volatile_value(ssMulti);
-        }
-        else if (ssMulti > 3.0f)
-        {
-            ssMulti = 3.0f;
-            Config::Instance()->OutputScalingMultiplier.set_volatile_value(ssMulti);
+            _upscalerContextDesc.flags |= FFX_UPSCALE_ENABLE_NON_LINEAR_COLORSPACE;
+            LOG_INFO("contextDesc.initFlags (NonLinearColorSpace) {0:b}", _upscalerContextDesc.flags);
         }
 
-        _targetWidth = DisplayWidth() * ssMulti;
-        _targetHeight = DisplayHeight() * ssMulti;
-    }
-    else
-    {
-        _targetWidth = DisplayWidth();
-        _targetHeight = DisplayHeight();
-    }
-
-    // extended limits changes how resolution
-    if (Config::Instance()->ExtendedLimits.value_or_default() && RenderWidth() > DisplayWidth())
-    {
-        _upscalerContextDesc.maxRenderSize.width = RenderWidth();
-        _upscalerContextDesc.maxRenderSize.height = RenderHeight();
-
-        Config::Instance()->OutputScalingMultiplier.set_volatile_value(1.0f);
-
-        // if output scaling active let it to handle downsampling
         if (Config::Instance()->OutputScalingEnabled.value_or_default() && LowResMV())
         {
-            _upscalerContextDesc.maxUpscaleSize.width = _upscalerContextDesc.maxRenderSize.width;
-            _upscalerContextDesc.maxUpscaleSize.height = _upscalerContextDesc.maxRenderSize.height;
-            // update target res
-            _targetWidth = _upscalerContextDesc.maxRenderSize.width;
-            _targetHeight = _upscalerContextDesc.maxRenderSize.height;
+            float ssMulti = Config::Instance()->OutputScalingMultiplier.value_or_default();
+
+            if (ssMulti < 0.5f)
+            {
+                ssMulti = 0.5f;
+                Config::Instance()->OutputScalingMultiplier.set_volatile_value(ssMulti);
+            }
+            else if (ssMulti > 3.0f)
+            {
+                ssMulti = 3.0f;
+                Config::Instance()->OutputScalingMultiplier.set_volatile_value(ssMulti);
+            }
+
+            _targetWidth = static_cast<unsigned int>(DisplayWidth() * ssMulti);
+            _targetHeight = static_cast<unsigned int>(DisplayHeight() * ssMulti);
         }
         else
         {
-            _upscalerContextDesc.maxUpscaleSize.width = DisplayWidth();
-            _upscalerContextDesc.maxUpscaleSize.height = DisplayHeight();
+            _targetWidth = DisplayWidth();
+            _targetHeight = DisplayHeight();
         }
+
+        // extended limits changes how resolution
+        if (Config::Instance()->ExtendedLimits.value_or_default() && RenderWidth() > DisplayWidth())
+        {
+            _upscalerContextDesc.maxRenderSize.width = RenderWidth();
+            _upscalerContextDesc.maxRenderSize.height = RenderHeight();
+
+            Config::Instance()->OutputScalingMultiplier.set_volatile_value(1.0f);
+
+            // if output scaling active let it to handle downsampling
+            if (Config::Instance()->OutputScalingEnabled.value_or_default() && LowResMV())
+            {
+                _upscalerContextDesc.maxUpscaleSize.width = _upscalerContextDesc.maxRenderSize.width;
+                _upscalerContextDesc.maxUpscaleSize.height = _upscalerContextDesc.maxRenderSize.height;
+                // update target res
+                _targetWidth = _upscalerContextDesc.maxRenderSize.width;
+                _targetHeight = _upscalerContextDesc.maxRenderSize.height;
+            }
+            else
+            {
+                _upscalerContextDesc.maxUpscaleSize.width = DisplayWidth();
+                _upscalerContextDesc.maxUpscaleSize.height = DisplayHeight();
+            }
+        }
+        else
+        {
+            _upscalerContextDesc.maxRenderSize.width = TargetWidth() > DisplayWidth() ? TargetWidth() : DisplayWidth();
+            _upscalerContextDesc.maxRenderSize.height =
+                TargetHeight() > DisplayHeight() ? TargetHeight() : DisplayHeight();
+            _upscalerContextDesc.maxUpscaleSize.width = TargetWidth();
+            _upscalerContextDesc.maxUpscaleSize.height = TargetHeight();
+        }
+
+        if (Config::Instance()->FfxUpscalerIndex.value_or_default() < 0 ||
+            Config::Instance()->FfxUpscalerIndex.value_or_default() >= State::Instance().ffxUpscalerVersionIds.size())
+            Config::Instance()->FfxUpscalerIndex.set_volatile_value(0);
+
+        LOG_DEBUG("_createContext!");
+        auto ret = ffxFsr3ContextCreate(&_upscalerContext, &_upscalerContextDesc);
+
+        if (ret != Fsr31::FFX_OK)
+        {
+            LOG_ERROR("_createContext error: {0}", ResultToString(ret));
+            return false;
+        }
+
+        LOG_INFO("_createContext success!");
+
+        auto version =
+            State::Instance().ffxUpscalerVersionNames[Config::Instance()->FfxUpscalerIndex.value_or_default()];
+        _name = "FSR";
+        parse_version(version);
     }
-    else
-    {
-        _upscalerContextDesc.maxRenderSize.width = TargetWidth() > DisplayWidth() ? TargetWidth() : DisplayWidth();
-        _upscalerContextDesc.maxRenderSize.height = TargetHeight() > DisplayHeight() ? TargetHeight() : DisplayHeight();
-        _upscalerContextDesc.maxUpscaleSize.width = TargetWidth();
-        _upscalerContextDesc.maxUpscaleSize.height = TargetHeight();
-    }
-
-    if (Config::Instance()->Fsr3xIndex.value_or_default() < 0 ||
-        Config::Instance()->Fsr3xIndex.value_or_default() >= State::Instance().fsr3xVersionIds.size())
-        Config::Instance()->Fsr3xIndex.set_volatile_value(0);
-
-    LOG_DEBUG("_createContext!");
-    auto ret = ffxFsr3ContextCreate(&_upscalerContext, &_upscalerContextDesc);
-
-    if (ret != Fsr31::FFX_OK)
-    {
-        LOG_ERROR("_createContext error: {0}", ResultToString(ret));
-        return false;
-    }
-
-    LOG_INFO("_createContext success!");
-
-    auto version = State::Instance().fsr3xVersionNames[Config::Instance()->Fsr3xIndex.value_or_default()];
-    _name = "FSR";
-    parse_version(version);
-
-    State::Instance().skipSpoofing = false;
 
     SetInit(true);
 

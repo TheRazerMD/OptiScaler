@@ -58,18 +58,17 @@ class FSR2Feature212 : public virtual IFeature
 
     virtual bool InitFSR2(const NVSDK_NGX_Parameter* InParameters) = 0;
 
-    double MillisecondsNow();
     double GetDeltaTime();
 
   public:
-    feature_version Version() final { return _version; }
-    std::string Name() const { return "FSR"; }
+    feature_version Version() override { return _version; }
+    std::string Name() const override { return "FSR"; }
 
     FSR2Feature212(unsigned int InHandleId, NVSDK_NGX_Parameter* InParameters) : IFeature(InHandleId, InParameters)
     {
         _initParameters = SetInitParameters(InParameters);
         _moduleLoaded = true;
-        _lastFrameTime = MillisecondsNow();
+        _lastFrameTime = Util::MillisecondsNow();
     }
 
     ~FSR2Feature212();

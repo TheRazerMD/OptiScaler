@@ -1,84 +1,68 @@
 /*
-* Copyright (c) 2022 NVIDIA CORPORATION. All rights reserved
-*
-* Permission is hereby granted, free of charge, to any person obtaining a copy
-* of this software and associated documentation files (the "Software"), to deal
-* in the Software without restriction, including without limitation the rights
-* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-* copies of the Software, and to permit persons to whom the Software is
-* furnished to do so, subject to the following conditions:
-*
-* The above copyright notice and this permission notice shall be included in all
-* copies or substantial portions of the Software.
-*
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-* SOFTWARE.
-*/ 
+ * Copyright (c) 2022 NVIDIA CORPORATION. All rights reserved
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 
 #pragma once
 
 #include <stdint.h>
 
-#define SL_ENUM_OPERATORS_64(T)                                                         \
-inline bool operator&(T a, T b)                                                         \
-{                                                                                       \
-    return ((uint64_t)a & (uint64_t)b) != 0;                                            \
-}                                                                                       \
-                                                                                        \
-inline T& operator&=(T& a, T b)                                                         \
-{                                                                                       \
-    a = (T)((uint64_t)a & (uint64_t)b);                                                 \
-    return a;                                                                           \
-}                                                                                       \
-                                                                                        \
-inline T operator|(T a, T b)                                                            \
-{                                                                                       \
-    return (T)((uint64_t)a | (uint64_t)b);                                              \
-}                                                                                       \
-                                                                                        \
-inline T& operator |= (T& lhs, T rhs)                                                   \
-{                                                                                       \
-    lhs = (T)((uint64_t)lhs | (uint64_t)rhs);                                           \
-    return lhs;                                                                         \
-}                                                                                       \
-                                                                                        \
-inline T operator~(T a)                                                                 \
-{                                                                                       \
-    return (T)~((uint64_t)a);                                                           \
-}
+#pragma warning(disable : 4005)
 
-#define SL_ENUM_OPERATORS_32(T)                                                         \
-inline bool operator&(T a, T b)                                                         \
-{                                                                                       \
-    return ((uint32_t)a & (uint32_t)b) != 0;                                            \
-}                                                                                       \
-                                                                                        \
-inline T& operator&=(T& a, T b)                                                         \
-{                                                                                       \
-    a = (T)((uint32_t)a & (uint32_t)b);                                                 \
-    return a;                                                                           \
-}                                                                                       \
-                                                                                        \
-inline T operator|(T a, T b)                                                            \
-{                                                                                       \
-    return (T)((uint32_t)a | (uint32_t)b);                                              \
-}                                                                                       \
-                                                                                        \
-inline T& operator |= (T& lhs, T rhs)                                                   \
-{                                                                                       \
-    lhs = (T)((uint32_t)lhs | (uint32_t)rhs);                                           \
-    return lhs;                                                                         \
-}                                                                                       \
-                                                                                        \
-inline T operator~(T a)                                                                 \
-{                                                                                       \
-    return (T)~((uint32_t)a);                                                           \
-}
+#define SL_ENUM_OPERATORS_64(T)                                                                                        \
+    inline bool operator&(T a, T b) { return ((uint64_t) a & (uint64_t) b) != 0; }                                     \
+                                                                                                                       \
+    inline T& operator&=(T& a, T b)                                                                                    \
+    {                                                                                                                  \
+        a = (T) ((uint64_t) a & (uint64_t) b);                                                                         \
+        return a;                                                                                                      \
+    }                                                                                                                  \
+                                                                                                                       \
+    inline T operator|(T a, T b) { return (T) ((uint64_t) a | (uint64_t) b); }                                         \
+                                                                                                                       \
+    inline T& operator|=(T& lhs, T rhs)                                                                                \
+    {                                                                                                                  \
+        lhs = (T) ((uint64_t) lhs | (uint64_t) rhs);                                                                   \
+        return lhs;                                                                                                    \
+    }                                                                                                                  \
+                                                                                                                       \
+    inline T operator~(T a) { return (T) ~((uint64_t) a); }
+
+#define SL_ENUM_OPERATORS_32(T)                                                                                        \
+    inline bool operator&(T a, T b) { return ((uint32_t) a & (uint32_t) b) != 0; }                                     \
+                                                                                                                       \
+    inline T& operator&=(T& a, T b)                                                                                    \
+    {                                                                                                                  \
+        a = (T) ((uint32_t) a & (uint32_t) b);                                                                         \
+        return a;                                                                                                      \
+    }                                                                                                                  \
+                                                                                                                       \
+    inline T operator|(T a, T b) { return (T) ((uint32_t) a | (uint32_t) b); }                                         \
+                                                                                                                       \
+    inline T& operator|=(T& lhs, T rhs)                                                                                \
+    {                                                                                                                  \
+        lhs = (T) ((uint32_t) lhs | (uint32_t) rhs);                                                                   \
+        return lhs;                                                                                                    \
+    }                                                                                                                  \
+                                                                                                                       \
+    inline T operator~(T a) { return (T) ~((uint32_t) a); }
 
 namespace sl1
 {
@@ -114,28 +98,25 @@ struct float4x4
     inline const float4& operator[](uint32_t i) const { return row[i]; }
     inline void setRow(uint32_t i, const float4& v) { row[i] = v; }
     inline const float4& getRow(uint32_t i) { return row[i]; }
-private:
+
+  private:
     //! Row major matrix
     float4 row[4];
 };
 
 struct Extent
 {
-    uint32_t top{};
-    uint32_t left{};
-    uint32_t width{};
-    uint32_t height{};
+    uint32_t top {};
+    uint32_t left {};
+    uint32_t width {};
+    uint32_t height {};
 
     inline operator bool() const { return width != 0 && height != 0; }
-    inline bool operator==(const Extent& rhs) const 
-    { 
-        return top == rhs.top && left == rhs.left &&
-        width == rhs.width && height == rhs.height;
-    }
-    inline bool operator!=(const Extent& rhs) const
+    inline bool operator==(const Extent& rhs) const
     {
-        return !operator==(rhs);
+        return top == rhs.top && left == rhs.left && width == rhs.width && height == rhs.height;
     }
+    inline bool operator!=(const Extent& rhs) const { return !operator==(rhs); }
 };
 
 //! For cases when value has to be provided and we don't have good default
@@ -152,7 +133,7 @@ struct Constants
     //! IMPORTANT: All matrices are row major (see float4x4 definition) and
     //! must NOT contain temporal AA jitter offset (if any). Any jitter offset
     //! should be provided as the additional parameter Constants::jitterOffset (see below)
-            
+
     //! Specifies matrix transformation from the camera view to the clip space.
     float4x4 cameraViewToClip;
     //! Specifies matrix transformation from the clip space to the camera view space.
@@ -165,7 +146,7 @@ struct Constants
     //! Specifies matrix transformation from the previous clip to the current clip space.
     //! prevClipToClip = clipToPrevClip.inverse()
     float4x4 prevClipToClip;
-        
+
     //! Specifies pixel space jitter offset
     float2 jitterOffset;
     //! Specifies scale factors used to normalize motion vectors (so the values are in [-1,1] range)
@@ -180,7 +161,7 @@ struct Constants
     float3 cameraRight;
     //! Specifies camera forward vector in world space.
     float3 cameraFwd;
-        
+
     //! Specifies camera near view plane distance.
     float cameraNear = INVALID_FLOAT;
     //! Specifies camera far view plane distance.
@@ -214,4 +195,4 @@ struct Constants
     void* ext = {};
 };
 
-}
+} // namespace sl1

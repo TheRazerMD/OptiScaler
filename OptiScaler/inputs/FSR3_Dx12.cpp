@@ -43,15 +43,44 @@ static PFN_ffxFsr3UpscalerGetRenderResolutionFromQualityMode o_ffxFsr3UpscalerGe
     nullptr;
 static PFN_ffxFSR3GetInterfaceDX12 o_ffxFSR3GetInterfaceDX12 = nullptr;
 
-static std::map<Fsr3::FfxFsr3UpscalerContext*, Fsr3::FfxFsr3UpscalerContextDescription> _initParams;
-static std::map<Fsr3::FfxFsr3UpscalerContext*, NVSDK_NGX_Parameter*> _nvParams;
-static std::map<Fsr3::FfxFsr3UpscalerContext*, NVSDK_NGX_Handle*> _contexts;
+static std::unordered_map<Fsr3::FfxFsr3UpscalerContext*, Fsr3::FfxFsr3UpscalerContextDescription> _initParams;
+static std::unordered_map<Fsr3::FfxFsr3UpscalerContext*, NVSDK_NGX_Parameter*> _nvParams;
+static std::unordered_map<Fsr3::FfxFsr3UpscalerContext*, NVSDK_NGX_Handle*> _contexts;
 static ID3D12Device* _d3d12Device = nullptr;
 static bool _nvnxgInited = false;
 static bool _skipCreate = false;
 static bool _skipDispatch = false;
 static bool _skipDestroy = false;
-static float qualityRatios[] = { 1.0, 1.5, 1.7, 2.0, 3.0 };
+static float qualityRatios[] = { 1.0f, 1.5f, 1.7f, 2.0f, 3.0f };
+
+static D3D12_RESOURCE_STATES GetD3D12State(Fsr3::FfxResourceStates state)
+{
+    switch (state)
+    {
+    case Fsr3::FFX_RESOURCE_STATE_COMMON:
+        return D3D12_RESOURCE_STATE_COMMON;
+    case Fsr3::FFX_RESOURCE_STATE_UNORDERED_ACCESS:
+        return D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+    case Fsr3::FFX_RESOURCE_STATE_COMPUTE_READ:
+        return D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+    case Fsr3::FFX_RESOURCE_STATE_PIXEL_READ:
+        return D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+    case Fsr3::FFX_RESOURCE_STATE_PIXEL_COMPUTE_READ:
+        return (D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+    case Fsr3::FFX_RESOURCE_STATE_COPY_SRC:
+        return D3D12_RESOURCE_STATE_COPY_SOURCE;
+    case Fsr3::FFX_RESOURCE_STATE_COPY_DEST:
+        return D3D12_RESOURCE_STATE_COPY_DEST;
+    case Fsr3::FFX_RESOURCE_STATE_GENERIC_READ:
+        return D3D12_RESOURCE_STATE_GENERIC_READ;
+    case Fsr3::FFX_RESOURCE_STATE_INDIRECT_ARGUMENT:
+        return D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
+    case Fsr3::FFX_RESOURCE_STATE_RENDER_TARGET:
+        return D3D12_RESOURCE_STATE_RENDER_TARGET;
+    default:
+        return D3D12_RESOURCE_STATE_COMMON;
+    }
+}
 
 static bool CreateDLSSContext(Fsr3::FfxFsr3UpscalerContext* handle,
                               const Fsr3::FfxFsr3UpscalerDispatchDescription* pExecParams)
@@ -171,7 +200,7 @@ static std::optional<float> GetQualityOverrideRatioFfx(const Fsr3::FfxFsr3Upscal
     return output;
 }
 
-typedef struct dummyDevice
+struct dummyDevice
 {
     uint32_t dummy0[5];
     size_t dummy1[32];
@@ -184,14 +213,21 @@ static Fsr3::FfxErrorCode ffxFsr3ContextCreate_Dx12(Fsr3::FfxFsr3UpscalerContext
     if (pContext == nullptr || pContextDescription->backendInterface.device == nullptr)
         return Fsr3::FFX_ERROR_INVALID_ARGUMENT;
 
-    _skipCreate = true;
-    auto ccResult = o_ffxFsr3UpscalerContextCreate_Dx12(pContext, pContextDescription);
-    _skipCreate = false;
+    auto& state = State::Instance();
+    Fsr3::FfxErrorCode ccResult = Fsr3::FFX_ERROR_INVALID_ARGUMENT;
 
-    if (ccResult != Fsr3::FFX_OK)
     {
-        LOG_ERROR("create error: {}", (UINT) ccResult);
-        return ccResult;
+        ScopedSkipHeapCapture skipHeapCapture {};
+
+        _skipCreate = true;
+        ccResult = o_ffxFsr3UpscalerContextCreate_Dx12(pContext, pContextDescription);
+        _skipCreate = false;
+
+        if (ccResult != Fsr3::FFX_OK)
+        {
+            LOG_ERROR("create error: {}", (UINT) ccResult);
+            return ccResult;
+        }
     }
 
     // check for d3d12 device
@@ -200,9 +236,9 @@ static Fsr3::FfxErrorCode ffxFsr3ContextCreate_Dx12(Fsr3::FfxFsr3UpscalerContext
     {
         auto bDevice = (ID3D12Device*) pContextDescription->backendInterface.device;
 
-        for (size_t i = 0; i < State::Instance().d3d12Devices.size(); i++)
+        for (size_t i = 0; i < state.d3d12Devices.size(); i++)
         {
-            if (State::Instance().d3d12Devices[i] == bDevice)
+            if (state.d3d12Devices[i] == bDevice)
             {
                 _d3d12Device = bDevice;
                 break;
@@ -212,8 +248,8 @@ static Fsr3::FfxErrorCode ffxFsr3ContextCreate_Dx12(Fsr3::FfxFsr3UpscalerContext
 
     // if still no device use latest created one
     // Might fixed TLOU but FMF2 still crashes
-    if (_d3d12Device == nullptr && State::Instance().d3d12Devices.size() > 0)
-        _d3d12Device = State::Instance().d3d12Devices[State::Instance().d3d12Devices.size() - 1];
+    if (_d3d12Device == nullptr && state.d3d12Devices.size() > 0)
+        _d3d12Device = state.d3d12Devices[state.d3d12Devices.size() - 1];
 
     if (_d3d12Device == nullptr)
     {
@@ -221,19 +257,18 @@ static Fsr3::FfxErrorCode ffxFsr3ContextCreate_Dx12(Fsr3::FfxFsr3UpscalerContext
         return ccResult;
     }
 
-    if (!State::Instance().NvngxDx12Inited)
+    if (!state.NvngxDx12Inited)
     {
         NVSDK_NGX_FeatureCommonInfo fcInfo {};
 
-        auto dllPath = Util::DllPath().remove_filename();
-        auto nvngxDlssPath = Util::FindFilePath(dllPath, "nvngx_dlss.dll");
-        auto nvngxDlssDPath = Util::FindFilePath(dllPath, "nvngx_dlssd.dll");
-        auto nvngxDlssGPath = Util::FindFilePath(dllPath, "nvngx_dlssg.dll");
+        auto exePath = Util::ExePath().remove_filename();
+        auto nvngxDlssPath = Util::FindFilePath(exePath, "nvngx_dlss.dll");
+        auto nvngxDlssDPath = Util::FindFilePath(exePath, "nvngx_dlssd.dll");
+        auto nvngxDlssGPath = Util::FindFilePath(exePath, "nvngx_dlssg.dll");
 
         std::vector<std::wstring> pathStorage;
 
-        pathStorage.push_back(dllPath.wstring());
-
+        pathStorage.push_back(exePath.wstring());
         if (nvngxDlssPath.has_value())
             pathStorage.push_back(nvngxDlssPath.value().parent_path().wstring());
 
@@ -257,8 +292,8 @@ static Fsr3::FfxErrorCode ffxFsr3ContextCreate_Dx12(Fsr3::FfxFsr3UpscalerContext
         fcInfo.PathListInfo.Length = (int) pathStorage.size();
 
         auto nvResult = NVSDK_NGX_D3D12_Init_with_ProjectID(
-            "OptiScaler", State::Instance().NVNGX_Engine, VER_PRODUCT_VERSION_STR, dllPath.c_str(), _d3d12Device,
-            &fcInfo, State::Instance().NVNGX_Version == 0 ? NVSDK_NGX_Version_API : State::Instance().NVNGX_Version);
+            "OptiScaler", state.NVNGX_Engine, VER_PRODUCT_VERSION_STR, exePath.c_str(), _d3d12Device, &fcInfo,
+            state.NVNGX_Version == 0 ? NVSDK_NGX_Version_API : state.NVNGX_Version);
 
         if (nvResult != NVSDK_NGX_Result_Success)
             return Fsr3::FFX_ERROR_BACKEND_API_ERROR;
@@ -342,6 +377,26 @@ static Fsr3::FfxErrorCode ffxFsr3ContextDispatch_Dx12(Fsr3::FfxFsr3UpscalerConte
     params->Set("FSR.viewSpaceToMetersFactor", pDispatchDescription->viewSpaceToMetersFactor);
     params->Set(NVSDK_NGX_Parameter_Sharpness, pDispatchDescription->sharpness);
 
+    if (pDispatchDescription->color.resource != nullptr && pDispatchDescription->color.state > 0)
+        Config::Instance()->ColorResourceBarrier.set_volatile_value(GetD3D12State(pDispatchDescription->color.state));
+
+    if (pDispatchDescription->depth.resource != nullptr && pDispatchDescription->depth.state > 0)
+        Config::Instance()->DepthResourceBarrier.set_volatile_value(GetD3D12State(pDispatchDescription->depth.state));
+
+    if (pDispatchDescription->exposure.resource != nullptr && pDispatchDescription->exposure.state > 0)
+        Config::Instance()->ExposureResourceBarrier.set_volatile_value(
+            GetD3D12State(pDispatchDescription->exposure.state));
+
+    if (pDispatchDescription->motionVectors.resource != nullptr && pDispatchDescription->motionVectors.state > 0)
+        Config::Instance()->MVResourceBarrier.set_volatile_value(
+            GetD3D12State(pDispatchDescription->motionVectors.state));
+
+    if (pDispatchDescription->output.resource != nullptr && pDispatchDescription->output.state > 0)
+        Config::Instance()->OutputResourceBarrier.set_volatile_value(GetD3D12State(pDispatchDescription->output.state));
+
+    if (pDispatchDescription->reactive.resource != nullptr && pDispatchDescription->reactive.state > 0)
+        Config::Instance()->MaskResourceBarrier.set_volatile_value(GetD3D12State(pDispatchDescription->reactive.state));
+
     LOG_DEBUG("handle: {:X}, internalResolution: {}x{}", handle->Id, pDispatchDescription->renderSize.width,
               pDispatchDescription->renderSize.height);
 
@@ -387,15 +442,22 @@ ffxFsr3ContextCreate_Pattern_Dx12(Fsr3::FfxFsr3UpscalerContext* pContext,
     if (pContext == nullptr || pContextDescription->backendInterface.device == nullptr)
         return Fsr3::FFX_ERROR_INVALID_ARGUMENT;
 
-    auto ccResult = o_ffxFsr3UpscalerContextCreate_Pattern_Dx12(pContext, pContextDescription);
+    auto& state = State::Instance();
 
-    if (_skipCreate)
-        return ccResult;
-
-    if (ccResult != Fsr3::FFX_OK)
+    Fsr3::FfxErrorCode ccResult = Fsr3::FFX_OK;
     {
-        LOG_ERROR("create error: {}", (UINT) ccResult);
-        return ccResult;
+        ScopedSkipHeapCapture skipHeapCapture {};
+
+        ccResult = o_ffxFsr3UpscalerContextCreate_Pattern_Dx12(pContext, pContextDescription);
+
+        if (_skipCreate)
+            return ccResult;
+
+        if (ccResult != Fsr3::FFX_OK)
+        {
+            LOG_ERROR("create error: {}", (UINT) ccResult);
+            return ccResult;
+        }
     }
 
     // check for d3d12 device
@@ -404,9 +466,9 @@ ffxFsr3ContextCreate_Pattern_Dx12(Fsr3::FfxFsr3UpscalerContext* pContext,
     {
         auto bDevice = (ID3D12Device*) pContextDescription->backendInterface.device;
 
-        for (size_t i = 0; i < State::Instance().d3d12Devices.size(); i++)
+        for (size_t i = 0; i < state.d3d12Devices.size(); i++)
         {
-            if (State::Instance().d3d12Devices[i] == bDevice)
+            if (state.d3d12Devices[i] == bDevice)
             {
                 _d3d12Device = bDevice;
                 break;
@@ -416,8 +478,8 @@ ffxFsr3ContextCreate_Pattern_Dx12(Fsr3::FfxFsr3UpscalerContext* pContext,
 
     // if still no device use latest created one
     // Might fixed TLOU but FMF2 still crashes
-    if (_d3d12Device == nullptr && State::Instance().d3d12Devices.size() > 0)
-        _d3d12Device = State::Instance().d3d12Devices[State::Instance().d3d12Devices.size() - 1];
+    if (_d3d12Device == nullptr && state.d3d12Devices.size() > 0)
+        _d3d12Device = state.d3d12Devices[state.d3d12Devices.size() - 1];
 
     if (_d3d12Device == nullptr)
     {
@@ -425,18 +487,18 @@ ffxFsr3ContextCreate_Pattern_Dx12(Fsr3::FfxFsr3UpscalerContext* pContext,
         return ccResult;
     }
 
-    if (!State::Instance().NvngxDx12Inited)
+    if (!state.NvngxDx12Inited)
     {
         NVSDK_NGX_FeatureCommonInfo fcInfo {};
 
-        auto dllPath = Util::DllPath().remove_filename();
-        auto nvngxDlssPath = Util::FindFilePath(dllPath, "nvngx_dlss.dll");
-        auto nvngxDlssDPath = Util::FindFilePath(dllPath, "nvngx_dlssd.dll");
-        auto nvngxDlssGPath = Util::FindFilePath(dllPath, "nvngx_dlssg.dll");
+        auto exePath = Util::ExePath().remove_filename();
+        auto nvngxDlssPath = Util::FindFilePath(exePath, "nvngx_dlss.dll");
+        auto nvngxDlssDPath = Util::FindFilePath(exePath, "nvngx_dlssd.dll");
+        auto nvngxDlssGPath = Util::FindFilePath(exePath, "nvngx_dlssg.dll");
 
         std::vector<std::wstring> pathStorage;
 
-        pathStorage.push_back(dllPath.wstring());
+        pathStorage.push_back(exePath.wstring());
 
         if (nvngxDlssPath.has_value())
             pathStorage.push_back(nvngxDlssPath.value().parent_path().wstring());
@@ -461,8 +523,8 @@ ffxFsr3ContextCreate_Pattern_Dx12(Fsr3::FfxFsr3UpscalerContext* pContext,
         fcInfo.PathListInfo.Length = (int) pathStorage.size();
 
         auto nvResult = NVSDK_NGX_D3D12_Init_with_ProjectID(
-            "OptiScaler", State::Instance().NVNGX_Engine, VER_PRODUCT_VERSION_STR, dllPath.c_str(), _d3d12Device,
-            &fcInfo, State::Instance().NVNGX_Version == 0 ? NVSDK_NGX_Version_API : State::Instance().NVNGX_Version);
+            "OptiScaler", state.NVNGX_Engine, VER_PRODUCT_VERSION_STR, exePath.c_str(), _d3d12Device, &fcInfo,
+            state.NVNGX_Version == 0 ? NVSDK_NGX_Version_API : state.NVNGX_Version);
 
         if (nvResult != NVSDK_NGX_Result_Success)
             return Fsr3::FFX_ERROR_BACKEND_API_ERROR;
@@ -536,6 +598,26 @@ ffxFsr3ContextDispatch_Pattern_Dx12(Fsr3::FfxFsr3UpscalerContext* pContext,
     params->Set("FSR.reactive", pDispatchDescription->reactive.resource);
     params->Set("FSR.viewSpaceToMetersFactor", pDispatchDescription->viewSpaceToMetersFactor);
     params->Set(NVSDK_NGX_Parameter_Sharpness, pDispatchDescription->sharpness);
+
+    if (pDispatchDescription->color.resource != nullptr && pDispatchDescription->color.state > 0)
+        Config::Instance()->ColorResourceBarrier.set_volatile_value(GetD3D12State(pDispatchDescription->color.state));
+
+    if (pDispatchDescription->depth.resource != nullptr && pDispatchDescription->depth.state > 0)
+        Config::Instance()->DepthResourceBarrier.set_volatile_value(GetD3D12State(pDispatchDescription->depth.state));
+
+    if (pDispatchDescription->exposure.resource != nullptr && pDispatchDescription->exposure.state > 0)
+        Config::Instance()->ExposureResourceBarrier.set_volatile_value(
+            GetD3D12State(pDispatchDescription->exposure.state));
+
+    if (pDispatchDescription->motionVectors.resource != nullptr && pDispatchDescription->motionVectors.state > 0)
+        Config::Instance()->MVResourceBarrier.set_volatile_value(
+            GetD3D12State(pDispatchDescription->motionVectors.state));
+
+    if (pDispatchDescription->output.resource != nullptr && pDispatchDescription->output.state > 0)
+        Config::Instance()->OutputResourceBarrier.set_volatile_value(GetD3D12State(pDispatchDescription->output.state));
+
+    if (pDispatchDescription->reactive.resource != nullptr && pDispatchDescription->reactive.state > 0)
+        Config::Instance()->MaskResourceBarrier.set_volatile_value(GetD3D12State(pDispatchDescription->reactive.state));
 
     LOG_DEBUG("handle: {:X}, internalResolution: {}x{}", handle->Id, pDispatchDescription->renderSize.width,
               pDispatchDescription->renderSize.height);

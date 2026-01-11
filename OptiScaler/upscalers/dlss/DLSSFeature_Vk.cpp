@@ -16,7 +16,6 @@ bool DLSSFeatureVk::Init(VkInstance InInstance, VkPhysicalDevice InPD, VkDevice 
         return false;
     }
 
-    HRESULT result;
     NVSDK_NGX_Result nvResult;
     bool initResult = false;
 
@@ -108,19 +107,6 @@ bool DLSSFeatureVk::Evaluate(VkCommandBuffer InCmdBuffer, NVSDK_NGX_Parameter* I
     _frameCount++;
 
     return true;
-}
-
-void DLSSFeatureVk::Shutdown(VkDevice InDevice)
-{
-    if (_dlssInited)
-    {
-        if (NVNGXProxy::VULKAN_Shutdown() != nullptr)
-            NVNGXProxy::VULKAN_Shutdown()();
-        else if (NVNGXProxy::VULKAN_Shutdown1() != nullptr)
-            NVNGXProxy::VULKAN_Shutdown1()(InDevice);
-    }
-
-    DLSSFeature::Shutdown();
 }
 
 DLSSFeatureVk::DLSSFeatureVk(unsigned int InHandleId, NVSDK_NGX_Parameter* InParameters)

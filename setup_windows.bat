@@ -17,7 +17,14 @@ del "!! EXTRACT ALL FILES TO GAME FOLDER !!" 2>nul
 setlocal enabledelayedexpansion
 
 if not exist OptiScaler.dll (
-    echo OptiScaler "OptiScaler.dll" file is not found!
+    echo OptiScaler "OptiScaler.dll" file is not found^^!
+    echo Either a folder permissions issue or the repo source code was downloaded.
+    echo.
+    echo If "OptiScaler.dll" exists, please manually rename to a supported filename ^(e.g. dxgi/winmm.dll^) and you are done^^!
+    echo If .sln or .git files are in the folder, congratz, you have the source code. Now try properly downloading Opti please
+    echo Hint - use the Releases page on GitHub, or RTFM :^)
+    echo.
+    echo.
     goto end
 )
 
@@ -44,7 +51,7 @@ if exist "%gamePath%\Engine" (
 REM Prompt user to select a filename for OptiScaler
 :selectFilename
 echo.
-echo Choose a filename for OptiScaler (default is dxgi.dll):
+echo Choose a filename for OptiScaler (default is dxgi.dll, most compatible):
 echo  [1] dxgi.dll
 echo  [2] winmm.dll
 echo  [3] version.dll
@@ -53,6 +60,7 @@ echo  [5] d3d12.dll
 echo  [6] wininet.dll
 echo  [7] winhttp.dll
 echo  [8] OptiScaler.asi
+echo.
 set /p filenameChoice="Enter 1-8 (or press Enter for default): "
 
 if "%filenameChoice%"=="" (
@@ -119,6 +127,7 @@ echo.
 echo Are you using an Nvidia GPU or AMD/Intel GPU?
 echo [1] AMD/Intel
 echo [2] Nvidia
+echo.
 if "%isNvidia%"=="true" (
     set /p gpuChoice="Enter 1 or 2 (or press Enter for Nvidia): "
 ) else (
@@ -138,9 +147,12 @@ if "%gpuChoice%"=="" (
 
 REM Query user for DLSS
 echo.
-echo Will you try to use DLSS inputs? (enables spoofing, required for DLSS FG, Reflex-^>AL2)
+echo Will you try to use DLSS inputs? (enables spoofing, required for DLSS-FG, Reflex-^>AL2)
+echo If you want to change the setting later, edit OptiScaler.ini and set Dxgi=false to disable spoofing and reverse.
+echo.
 echo [1] Yes
 echo [2] No
+echo.
 set /p enablingSpoofing="Enter 1 or 2 (or press Enter for Yes): "
 
 set configFile=OptiScaler.ini
@@ -165,7 +177,9 @@ echo Renaming OptiScaler file to %selectedFilename%...
 rename "%optiScalerFile%" %selectedFilename%
 if errorlevel 1 (
     echo.
-    echo ERROR: Failed to rename OptiScaler file to %selectedFilename%.
+    echo ERROR: Failed to rename OptiScaler file to %selectedFilename%. Most likely due to folder permissions issues.
+    echo Please rename OptiScaler.dll manually to %selectedFilename%^^! No need to run setup BAT again after that.
+    echo.
     goto end
 )
 
@@ -216,6 +230,11 @@ echo if "%%removeChoice%%"=="y" ^(
 echo    del OptiScaler.log
 echo    del OptiScaler.ini
 echo    del %selectedFilename%
+echo    del fakenvapi.dll
+echo    del fakenvapi.ini
+echo    del fakenvapi.log
+echo    del dlssg_to_fsr3_amd_is_better.dll
+echo    del dlssg_to_fsr3.log
 echo    del /Q D3D12_Optiscaler\*
 echo    rd D3D12_Optiscaler
 echo    del /Q DlssOverrides\*
@@ -223,7 +242,7 @@ echo    rd DlssOverrides
 echo    del /Q Licenses\*
 echo    rd Licenses
 echo    echo.
-echo    echo OptiScaler removed!
+echo    echo OptiScaler removed^^! Ignore the warnings about missing files.
 echo    echo.
 echo ^) else ^(
 echo    echo.

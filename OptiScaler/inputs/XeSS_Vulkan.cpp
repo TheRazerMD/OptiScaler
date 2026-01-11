@@ -132,15 +132,14 @@ xess_result_t hk_xessVKCreateContext(VkInstance instance, VkPhysicalDevice physi
     {
         NVSDK_NGX_FeatureCommonInfo fcInfo {};
 
-        auto dllPath = Util::DllPath().remove_filename();
-        auto nvngxDlssPath = Util::FindFilePath(dllPath, "nvngx_dlss.dll");
-        auto nvngxDlssDPath = Util::FindFilePath(dllPath, "nvngx_dlssd.dll");
-        auto nvngxDlssGPath = Util::FindFilePath(dllPath, "nvngx_dlssg.dll");
+        auto exePath = Util::ExePath().remove_filename();
+        auto nvngxDlssPath = Util::FindFilePath(exePath, "nvngx_dlss.dll");
+        auto nvngxDlssDPath = Util::FindFilePath(exePath, "nvngx_dlssd.dll");
+        auto nvngxDlssGPath = Util::FindFilePath(exePath, "nvngx_dlssg.dll");
 
         std::vector<std::wstring> pathStorage;
 
-        pathStorage.push_back(dllPath.wstring());
-
+        pathStorage.push_back(exePath.wstring());
         if (nvngxDlssPath.has_value())
             pathStorage.push_back(nvngxDlssPath.value().parent_path().wstring());
 
@@ -164,7 +163,7 @@ xess_result_t hk_xessVKCreateContext(VkInstance instance, VkPhysicalDevice physi
         fcInfo.PathListInfo.Length = (int) pathStorage.size();
 
         auto nvResult = NVSDK_NGX_VULKAN_Init_ProjectID_Ext(
-            "OptiScaler", NVSDK_NGX_ENGINE_TYPE_CUSTOM, VER_PRODUCT_VERSION_STR, dllPath.c_str(), _instance,
+            "OptiScaler", NVSDK_NGX_ENGINE_TYPE_CUSTOM, VER_PRODUCT_VERSION_STR, exePath.c_str(), _instance,
             _physicalDevice, _device, vkGetInstanceProcAddr, vkGetDeviceProcAddr, State::Instance().NVNGX_Version,
             &fcInfo);
 
@@ -393,4 +392,42 @@ xess_result_t hk_xessVKGetResourcesToDump(xess_context_handle_t hContext,
 {
     LOG_DEBUG("");
     return XESS_RESULT_SUCCESS;
+}
+
+xess_result_t hk_xessVKGetRequiredInstanceExtensions(uint32_t* instanceExtensionsCount,
+                                                     const char* const** instanceExtensions, uint32_t* minVkApiVersion)
+{
+    LOG_DEBUG();
+
+    ScopedSkipSpoofing skipSpoofing {};
+
+    auto result =
+        XeSSProxy::VKGetRequiredInstanceExtensions()(instanceExtensionsCount, instanceExtensions, minVkApiVersion);
+
+    return result;
+}
+
+xess_result_t hk_xessVKGetRequiredDeviceExtensions(VkInstance instance, VkPhysicalDevice physicalDevice,
+                                                   uint32_t* deviceExtensionsCount,
+                                                   const char* const** deviceExtensions)
+{
+    LOG_DEBUG();
+
+    ScopedSkipSpoofing skipSpoofing {};
+
+    auto result =
+        XeSSProxy::VKGetRequiredDeviceExtensions()(instance, physicalDevice, deviceExtensionsCount, deviceExtensions);
+
+    return result;
+}
+
+xess_result_t hk_xessVKGetRequiredDeviceFeatures(VkInstance instance, VkPhysicalDevice physicalDevice, void** features)
+{
+    LOG_DEBUG();
+
+    ScopedSkipSpoofing skipSpoofing {};
+
+    auto result = XeSSProxy::VKGetRequiredDeviceFeatures()(instance, physicalDevice, features);
+
+    return result;
 }

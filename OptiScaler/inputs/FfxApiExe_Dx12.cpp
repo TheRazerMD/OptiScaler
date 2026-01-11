@@ -20,12 +20,12 @@ inline static PfnFfxConfigure _D3D12_Configure = nullptr;
 inline static PfnFfxQuery _D3D12_Query = nullptr;
 inline static PfnFfxDispatch _D3D12_Dispatch = nullptr;
 
-static std::map<ffxContext, ffxCreateContextDescUpscale> _initParams;
-static std::map<ffxContext, NVSDK_NGX_Parameter*> _nvParams;
-static std::map<ffxContext, NVSDK_NGX_Handle*> _contexts;
+static std::unordered_map<ffxContext, ffxCreateContextDescUpscale> _initParams;
+static std::unordered_map<ffxContext, NVSDK_NGX_Parameter*> _nvParams;
+static std::unordered_map<ffxContext, NVSDK_NGX_Handle*> _contexts;
 static ID3D12Device* _d3d12Device = nullptr;
 static bool _nvnxgInited = false;
-static float qualityRatios[] = { 1.0, 1.5, 1.7, 2.0, 3.0 };
+static float qualityRatios[] = { 1.0f, 1.5f, 1.7f, 2.0f, 3.0f };
 
 static bool CreateDLSSContext(ffxContext handle, const ffxDispatchDescUpscale* pExecParams)
 {
@@ -203,14 +203,14 @@ static ffxReturnCode_t ffxCreateContext_Dx12(ffxContext* context, ffxCreateConte
     {
         NVSDK_NGX_FeatureCommonInfo fcInfo {};
 
-        auto dllPath = Util::DllPath().remove_filename();
-        auto nvngxDlssPath = Util::FindFilePath(dllPath, "nvngx_dlss.dll");
-        auto nvngxDlssDPath = Util::FindFilePath(dllPath, "nvngx_dlssd.dll");
-        auto nvngxDlssGPath = Util::FindFilePath(dllPath, "nvngx_dlssg.dll");
+        auto exePath = Util::ExePath().remove_filename();
+        auto nvngxDlssPath = Util::FindFilePath(exePath, "nvngx_dlss.dll");
+        auto nvngxDlssDPath = Util::FindFilePath(exePath, "nvngx_dlssd.dll");
+        auto nvngxDlssGPath = Util::FindFilePath(exePath, "nvngx_dlssg.dll");
 
         std::vector<std::wstring> pathStorage;
 
-        pathStorage.push_back(dllPath.wstring());
+        pathStorage.push_back(exePath.wstring());
 
         if (nvngxDlssPath.has_value())
             pathStorage.push_back(nvngxDlssPath.value().parent_path().wstring());
@@ -235,7 +235,7 @@ static ffxReturnCode_t ffxCreateContext_Dx12(ffxContext* context, ffxCreateConte
         fcInfo.PathListInfo.Length = (int) pathStorage.size();
 
         auto nvResult = NVSDK_NGX_D3D12_Init_with_ProjectID(
-            "OptiScaler", State::Instance().NVNGX_Engine, VER_PRODUCT_VERSION_STR, dllPath.c_str(), _d3d12Device,
+            "OptiScaler", State::Instance().NVNGX_Engine, VER_PRODUCT_VERSION_STR, exePath.c_str(), _d3d12Device,
             &fcInfo, State::Instance().NVNGX_Version == 0 ? NVSDK_NGX_Version_API : State::Instance().NVNGX_Version);
 
         if (nvResult != NVSDK_NGX_Result_Success)
@@ -282,7 +282,7 @@ static ffxReturnCode_t ffxDestroyContext_Dx12(ffxContext* context, const ffxAllo
     return FFX_API_RETURN_OK;
 }
 
-static ffxReturnCode_t ffxConfigure_Dx12(ffxContext* context, const ffxConfigureDescHeader* desc)
+static ffxReturnCode_t ffxConfigure_Dx12(ffxContext* context, ffxConfigureDescHeader* desc)
 {
     if (desc == nullptr)
         return FFX_API_RETURN_ERROR_PARAMETER;

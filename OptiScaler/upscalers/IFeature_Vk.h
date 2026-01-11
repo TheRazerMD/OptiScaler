@@ -20,10 +20,5 @@ class IFeature_Vk : public virtual IFeature
 
     IFeature_Vk(unsigned int InHandleId, NVSDK_NGX_Parameter* InParameters) : IFeature(InHandleId, InParameters) {}
 
-    void Shutdown() final
-    {
-        //
-    }
-
     virtual ~IFeature_Vk() {}
 };

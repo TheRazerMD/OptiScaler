@@ -170,6 +170,8 @@ bool FSR2FeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_N
 
     auto ffxresult = FFX_ERROR_INVALID_ARGUMENT;
 
+    uint8_t state = 0;
+
     do
     {
 
@@ -205,6 +207,8 @@ bool FSR2FeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_N
                                            D3D12_RESOURCE_STATE_UNORDERED_ACCESS) &&
                 Bias->CanRender())
             {
+                state = 1;
+
                 Bias->SetBufferState(cmdList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
                 if (Config::Instance()->DlssReactiveMaskBias.value_or_default() > 0.0f &&
@@ -225,6 +229,8 @@ bool FSR2FeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_N
                                                    TargetWidth(), TargetHeight(),
                                                    D3D12_RESOURCE_STATE_UNORDERED_ACCESS))
             {
+                state = 1;
+
                 OutputScaler->SetBufferState(cmdList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
                 params.output = ffxGetResourceDX12(&_context, OutputScaler->Buffer(), L"FSR2_Out",
                                                    FFX_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -249,6 +255,7 @@ bool FSR2FeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_N
             RCAS->CreateBufferResource(State::Instance().currentD3D12Device, (ID3D12Resource*) params.output.resource,
                                        D3D12_RESOURCE_STATE_UNORDERED_ACCESS))
         {
+            state = 1;
             RCAS->SetBufferState(cmdList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             params.output =
                 ffxGetResourceDX12(&_context, RCAS->Buffer(), L"FSR2_Out", FFX_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -301,6 +308,7 @@ bool FSR2FeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_N
 
         LOG_DEBUG("Dispatch!!");
         ffxresult = ffxFsr2ContextDispatch(&_context, &params);
+        state = 1;
 
         if (ffxresult != FFX_OK)
         {
@@ -368,18 +376,26 @@ bool FSR2FeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_N
             }
         }
 
+        state = 2;
+
     } while (false);
 
     // Execute dx12 commands to process fsr
-    cmdList->Close();
-    ID3D12CommandList* ppCommandLists[] = { cmdList };
-    Dx12CommandQueue->ExecuteCommandLists(1, ppCommandLists);
-    Dx12CommandQueue->Signal(dx12FenceTextureCopy, _fenceValue);
+    if (state > 0)
+    {
+        cmdList->Close();
+        ID3D12CommandList* ppCommandLists[] = { cmdList };
+        Dx12CommandQueue->ExecuteCommandLists(1, ppCommandLists);
+        Dx12CommandQueue->Signal(dx12FenceTextureCopy, _fenceValue);
+    }
 
     auto evalResult = false;
 
     do
     {
+        if (state != 2)
+            break;
+
         if (ffxresult != FFX_OK)
             break;
 
@@ -437,114 +453,113 @@ bool FSR2FeatureDx11on12::InitFSR2(const NVSDK_NGX_Parameter* InParameters)
         return false;
     }
 
-    State::Instance().skipSpoofing = true;
-
-    const size_t scratchBufferSize = ffxFsr2GetScratchMemorySizeDX12();
-    void* scratchBuffer = calloc(scratchBufferSize, 1);
-
-    auto errorCode = ffxFsr2GetInterfaceDX12(&_contextDesc.callbacks, State::Instance().currentD3D12Device,
-                                             scratchBuffer, scratchBufferSize);
-
-    if (errorCode != FFX_OK)
     {
-        LOG_ERROR("ffxGetInterfaceDX12 error: {0}", ResultToString(errorCode));
-        free(scratchBuffer);
-        return false;
-    }
+        ScopedSkipSpoofing skipSpoofing {};
 
-    _contextDesc.device = ffxGetDeviceDX12(State::Instance().currentD3D12Device);
-    _contextDesc.flags = 0;
+        const size_t scratchBufferSize = ffxFsr2GetScratchMemorySizeDX12();
+        void* scratchBuffer = calloc(scratchBufferSize, 1);
 
-    if (DepthInverted())
-        _contextDesc.flags |= FFX_FSR2_ENABLE_DEPTH_INVERTED;
+        auto errorCode = ffxFsr2GetInterfaceDX12(&_contextDesc.callbacks, State::Instance().currentD3D12Device,
+                                                 scratchBuffer, scratchBufferSize);
 
-    if (AutoExposure())
-        _contextDesc.flags |= FFX_FSR2_ENABLE_AUTO_EXPOSURE;
-
-    if (IsHdr())
-        _contextDesc.flags |= FFX_FSR2_ENABLE_HIGH_DYNAMIC_RANGE;
-
-    if (JitteredMV())
-        _contextDesc.flags |= FFX_FSR2_ENABLE_MOTION_VECTORS_JITTER_CANCELLATION;
-
-    if (!LowResMV())
-        _contextDesc.flags |= FFX_FSR2_ENABLE_DISPLAY_RESOLUTION_MOTION_VECTORS;
-
-    // output scaling
-    if (Config::Instance()->OutputScalingEnabled.value_or_default() && LowResMV())
-    {
-        float ssMulti = Config::Instance()->OutputScalingMultiplier.value_or_default();
-
-        if (ssMulti < 0.5f)
+        if (errorCode != FFX_OK)
         {
-            ssMulti = 0.5f;
-            Config::Instance()->OutputScalingMultiplier.set_volatile_value(ssMulti);
-        }
-        else if (ssMulti > 3.0f)
-        {
-            ssMulti = 3.0f;
-            Config::Instance()->OutputScalingMultiplier.set_volatile_value(ssMulti);
+            LOG_ERROR("ffxGetInterfaceDX12 error: {0}", ResultToString(errorCode));
+            free(scratchBuffer);
+            return false;
         }
 
-        _targetWidth = DisplayWidth() * ssMulti;
-        _targetHeight = DisplayHeight() * ssMulti;
-    }
-    else
-    {
-        _targetWidth = DisplayWidth();
-        _targetHeight = DisplayHeight();
-    }
+        _contextDesc.device = ffxGetDeviceDX12(State::Instance().currentD3D12Device);
+        _contextDesc.flags = 0;
 
-    // extended limits changes how resolution
-    if (Config::Instance()->ExtendedLimits.value_or_default() && RenderWidth() > DisplayWidth())
-    {
-        _contextDesc.maxRenderSize.width = RenderWidth();
-        _contextDesc.maxRenderSize.height = RenderHeight();
+        if (DepthInverted())
+            _contextDesc.flags |= FFX_FSR2_ENABLE_DEPTH_INVERTED;
 
-        Config::Instance()->OutputScalingMultiplier.set_volatile_value(1.0f);
+        if (AutoExposure())
+            _contextDesc.flags |= FFX_FSR2_ENABLE_AUTO_EXPOSURE;
 
-        // if output scaling active let it to handle downsampling
+        if (IsHdr())
+            _contextDesc.flags |= FFX_FSR2_ENABLE_HIGH_DYNAMIC_RANGE;
+
+        if (JitteredMV())
+            _contextDesc.flags |= FFX_FSR2_ENABLE_MOTION_VECTORS_JITTER_CANCELLATION;
+
+        if (!LowResMV())
+            _contextDesc.flags |= FFX_FSR2_ENABLE_DISPLAY_RESOLUTION_MOTION_VECTORS;
+
+        // output scaling
         if (Config::Instance()->OutputScalingEnabled.value_or_default() && LowResMV())
         {
-            _contextDesc.displaySize.width = _contextDesc.maxRenderSize.width;
-            _contextDesc.displaySize.height = _contextDesc.maxRenderSize.height;
+            float ssMulti = Config::Instance()->OutputScalingMultiplier.value_or_default();
 
-            // update target res
-            _targetWidth = _contextDesc.maxRenderSize.width;
-            _targetHeight = _contextDesc.maxRenderSize.height;
+            if (ssMulti < 0.5f)
+            {
+                ssMulti = 0.5f;
+                Config::Instance()->OutputScalingMultiplier.set_volatile_value(ssMulti);
+            }
+            else if (ssMulti > 3.0f)
+            {
+                ssMulti = 3.0f;
+                Config::Instance()->OutputScalingMultiplier.set_volatile_value(ssMulti);
+            }
+
+            _targetWidth = static_cast<unsigned int>(DisplayWidth() * ssMulti);
+            _targetHeight = static_cast<unsigned int>(DisplayHeight() * ssMulti);
         }
         else
         {
-            _contextDesc.displaySize.width = DisplayWidth();
-            _contextDesc.displaySize.height = DisplayHeight();
+            _targetWidth = DisplayWidth();
+            _targetHeight = DisplayHeight();
         }
-    }
-    else
-    {
-        _contextDesc.maxRenderSize.width = TargetWidth() > DisplayWidth() ? TargetWidth() : DisplayWidth();
-        _contextDesc.maxRenderSize.height = TargetHeight() > DisplayHeight() ? TargetHeight() : DisplayHeight();
-        _contextDesc.displaySize.width = TargetWidth();
-        _contextDesc.displaySize.height = TargetHeight();
-    }
+
+        // extended limits changes how resolution
+        if (Config::Instance()->ExtendedLimits.value_or_default() && RenderWidth() > DisplayWidth())
+        {
+            _contextDesc.maxRenderSize.width = RenderWidth();
+            _contextDesc.maxRenderSize.height = RenderHeight();
+
+            Config::Instance()->OutputScalingMultiplier.set_volatile_value(1.0f);
+
+            // if output scaling active let it to handle downsampling
+            if (Config::Instance()->OutputScalingEnabled.value_or_default() && LowResMV())
+            {
+                _contextDesc.displaySize.width = _contextDesc.maxRenderSize.width;
+                _contextDesc.displaySize.height = _contextDesc.maxRenderSize.height;
+
+                // update target res
+                _targetWidth = _contextDesc.maxRenderSize.width;
+                _targetHeight = _contextDesc.maxRenderSize.height;
+            }
+            else
+            {
+                _contextDesc.displaySize.width = DisplayWidth();
+                _contextDesc.displaySize.height = DisplayHeight();
+            }
+        }
+        else
+        {
+            _contextDesc.maxRenderSize.width = TargetWidth() > DisplayWidth() ? TargetWidth() : DisplayWidth();
+            _contextDesc.maxRenderSize.height = TargetHeight() > DisplayHeight() ? TargetHeight() : DisplayHeight();
+            _contextDesc.displaySize.width = TargetWidth();
+            _contextDesc.displaySize.height = TargetHeight();
+        }
 
 #if _DEBUG
-    _contextDesc.flags |= FFX_FSR2_ENABLE_DEBUG_CHECKING;
-    _contextDesc.fpMessage = FfxLogCallback;
+        _contextDesc.flags |= FFX_FSR2_ENABLE_DEBUG_CHECKING;
+        _contextDesc.fpMessage = FfxLogCallback;
 #endif
 
-    LOG_DEBUG("ffxFsr2ContextCreate!");
+        LOG_DEBUG("ffxFsr2ContextCreate!");
 
-    State::Instance().skipHeapCapture = true;
-    auto ret = ffxFsr2ContextCreate(&_context, &_contextDesc);
-    State::Instance().skipHeapCapture = false;
+        ScopedSkipHeapCapture skipHeapCapture {};
+        auto ret = ffxFsr2ContextCreate(&_context, &_contextDesc);
 
-    if (ret != FFX_OK)
-    {
-        LOG_ERROR("ffxFsr2ContextCreate error: {0}", ResultToString(ret));
-        return false;
+        if (ret != FFX_OK)
+        {
+            LOG_ERROR("ffxFsr2ContextCreate error: {0}", ResultToString(ret));
+            return false;
+        }
     }
-
-    State::Instance().skipSpoofing = false;
 
     SetInit(true);
 

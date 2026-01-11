@@ -16,7 +16,9 @@ FSR31FeatureDx11on12::FSR31FeatureDx11on12(unsigned int InHandleId, NVSDK_NGX_Pa
     : FSR31Feature(InHandleId, InParameters), IFeature_Dx11wDx12(InHandleId, InParameters),
       IFeature_Dx11(InHandleId, InParameters), IFeature(InHandleId, SetParameters(InParameters))
 {
-    _moduleLoaded = FfxApiProxy::InitFfxDx12();
+    FfxApiProxy::InitFfxDx12();
+
+    _moduleLoaded = FfxApiProxy::IsSRReady();
 
     if (_moduleLoaded)
         LOG_INFO("amd_fidelityfx_dx12.dll methods loaded!");
@@ -150,13 +152,18 @@ bool FSR31FeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_
     struct ffxDispatchDescUpscale params = { 0 };
     params.header.type = FFX_API_DISPATCH_DESC_TYPE_UPSCALE;
 
-    if (Config::Instance()->FsrDebugView.value_or_default())
-        params.flags = FFX_UPSCALE_FLAG_DRAW_DEBUG_VIEW;
+    params.flags = 0;
+
+    if (Config::Instance()->FsrDebugView.value_or_default() &&
+        (Version() < feature_version { 4, 0, 0 } || Config::Instance()->Fsr4EnableDebugView.value_or_default()))
+    {
+        params.flags |= FFX_UPSCALE_FLAG_DRAW_DEBUG_VIEW;
+    }
 
     if (Config::Instance()->FsrNonLinearPQ.value_or_default())
-        params.flags = FFX_UPSCALE_FLAG_NON_LINEAR_COLOR_PQ;
+        params.flags |= FFX_UPSCALE_FLAG_NON_LINEAR_COLOR_PQ;
     else if (Config::Instance()->FsrNonLinearSRGB.value_or_default())
-        params.flags = FFX_UPSCALE_FLAG_NON_LINEAR_COLOR_SRGB;
+        params.flags |= FFX_UPSCALE_FLAG_NON_LINEAR_COLOR_SRGB;
 
     InParameters->Get(NVSDK_NGX_Parameter_Jitter_Offset_X, &params.jitterOffset.x);
     InParameters->Get(NVSDK_NGX_Parameter_Jitter_Offset_Y, &params.jitterOffset.y);
@@ -180,6 +187,16 @@ bool FSR31FeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_
         params.sharpness = _sharpness;
     }
 
+    // Force enable RCAS when in FSR4 debug view mode
+    // it crashes when sharpening is disabled
+    // Debug view expects RCAS output (now sure why)
+    if (Version() >= feature_version { 4, 0, 2 } && Config::Instance()->FsrDebugView.value_or_default() &&
+        Config::Instance()->Fsr4EnableDebugView.value_or_default() && !params.enableSharpening)
+    {
+        params.enableSharpening = true;
+        params.sharpness = 0.01f;
+    }
+
     unsigned int reset;
     InParameters->Get(NVSDK_NGX_Parameter_Reset, &reset);
     params.reset = (reset == 1);
@@ -196,6 +213,8 @@ bool FSR31FeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_
     params.commandList = cmdList;
 
     ffxReturnCode_t ffxresult = FFX_API_RETURN_ERROR;
+
+    uint8_t state = 0;
 
     do
     {
@@ -226,6 +245,7 @@ bool FSR31FeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_
                                            D3D12_RESOURCE_STATE_UNORDERED_ACCESS) &&
                 Bias->CanRender())
             {
+                state = 1;
                 Bias->SetBufferState(cmdList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
                 if (Bias->Dispatch(State::Instance().currentD3D12Device, cmdList, dx11Reactive.Dx12Resource,
@@ -244,6 +264,8 @@ bool FSR31FeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_
                                                    TargetWidth(), TargetHeight(),
                                                    D3D12_RESOURCE_STATE_UNORDERED_ACCESS))
             {
+                state = 1;
+
                 OutputScaler->SetBufferState(cmdList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
                 params.output = ffxApiGetResourceDX12(OutputScaler->Buffer(), FFX_API_RESOURCE_STATE_UNORDERED_ACCESS);
             }
@@ -261,6 +283,7 @@ bool FSR31FeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_
             RCAS->CreateBufferResource(State::Instance().currentD3D12Device, (ID3D12Resource*) params.output.resource,
                                        D3D12_RESOURCE_STATE_UNORDERED_ACCESS))
         {
+            state = 1;
             RCAS->SetBufferState(cmdList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             params.output = ffxApiGetResourceDX12(RCAS->Buffer(), FFX_API_RESOURCE_STATE_UNORDERED_ACCESS);
         }
@@ -313,6 +336,9 @@ bool FSR31FeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_
             params.cameraNear = Config::Instance()->FsrCameraNear.value_or_default();
         }
 
+        State::Instance().lastFsrCameraFar = params.cameraFar;
+        State::Instance().lastFsrCameraNear = params.cameraNear;
+
         if (Config::Instance()->FsrVerticalFov.has_value())
             params.cameraFovAngleVertical = Config::Instance()->FsrVerticalFov.value() * 0.0174532925199433f;
         else if (Config::Instance()->FsrHorizontalFov.value_or_default() > 0.0f)
@@ -340,7 +366,7 @@ bool FSR31FeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_
             m_upscalerKeyValueConfig.header.type = FFX_API_CONFIGURE_DESC_TYPE_UPSCALE_KEYVALUE;
             m_upscalerKeyValueConfig.key = FFX_API_CONFIGURE_UPSCALE_KEY_FVELOCITYFACTOR;
             m_upscalerKeyValueConfig.ptr = &_velocity;
-            auto result = FfxApiProxy::D3D12_Configure()(&_context, &m_upscalerKeyValueConfig.header);
+            auto result = FfxApiProxy::D3D12_Configure(&_context, &m_upscalerKeyValueConfig.header);
 
             if (result != FFX_API_RETURN_OK)
                 LOG_WARN("Velocity configure result: {}", (UINT) result);
@@ -355,7 +381,7 @@ bool FSR31FeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_
                 m_upscalerKeyValueConfig.header.type = FFX_API_CONFIGURE_DESC_TYPE_UPSCALE_KEYVALUE;
                 m_upscalerKeyValueConfig.key = FFX_API_CONFIGURE_UPSCALE_KEY_FREACTIVENESSSCALE;
                 m_upscalerKeyValueConfig.ptr = &_reactiveScale;
-                auto result = FfxApiProxy::D3D12_Configure()(&_context, &m_upscalerKeyValueConfig.header);
+                auto result = FfxApiProxy::D3D12_Configure(&_context, &m_upscalerKeyValueConfig.header);
 
                 if (result != FFX_API_RETURN_OK)
                     LOG_WARN("Reactive Scale configure result: {}", (UINT) result);
@@ -368,7 +394,7 @@ bool FSR31FeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_
                 m_upscalerKeyValueConfig.header.type = FFX_API_CONFIGURE_DESC_TYPE_UPSCALE_KEYVALUE;
                 m_upscalerKeyValueConfig.key = FFX_API_CONFIGURE_UPSCALE_KEY_FSHADINGCHANGESCALE;
                 m_upscalerKeyValueConfig.ptr = &_shadingScale;
-                auto result = FfxApiProxy::D3D12_Configure()(&_context, &m_upscalerKeyValueConfig.header);
+                auto result = FfxApiProxy::D3D12_Configure(&_context, &m_upscalerKeyValueConfig.header);
 
                 if (result != FFX_API_RETURN_OK)
                     LOG_WARN("Shading Scale configure result: {}", (UINT) result);
@@ -381,7 +407,7 @@ bool FSR31FeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_
                 m_upscalerKeyValueConfig.header.type = FFX_API_CONFIGURE_DESC_TYPE_UPSCALE_KEYVALUE;
                 m_upscalerKeyValueConfig.key = FFX_API_CONFIGURE_UPSCALE_KEY_FACCUMULATIONADDEDPERFRAME;
                 m_upscalerKeyValueConfig.ptr = &_accAddPerFrame;
-                auto result = FfxApiProxy::D3D12_Configure()(&_context, &m_upscalerKeyValueConfig.header);
+                auto result = FfxApiProxy::D3D12_Configure(&_context, &m_upscalerKeyValueConfig.header);
 
                 if (result != FFX_API_RETURN_OK)
                     LOG_WARN("Acc. Add Per Frame configure result: {}", (UINT) result);
@@ -394,7 +420,7 @@ bool FSR31FeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_
                 m_upscalerKeyValueConfig.header.type = FFX_API_CONFIGURE_DESC_TYPE_UPSCALE_KEYVALUE;
                 m_upscalerKeyValueConfig.key = FFX_API_CONFIGURE_UPSCALE_KEY_FMINDISOCCLUSIONACCUMULATION;
                 m_upscalerKeyValueConfig.ptr = &_minDisOccAcc;
-                auto result = FfxApiProxy::D3D12_Configure()(&_context, &m_upscalerKeyValueConfig.header);
+                auto result = FfxApiProxy::D3D12_Configure(&_context, &m_upscalerKeyValueConfig.header);
 
                 if (result != FFX_API_RETURN_OK)
                     LOG_WARN("Minimum Disocclusion Acc. configure result: {}", (UINT) result);
@@ -403,14 +429,21 @@ bool FSR31FeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_
 
         if (InParameters->Get("FSR.upscaleSize.width", &params.upscaleSize.width) == NVSDK_NGX_Result_Success &&
             Config::Instance()->OutputScalingEnabled.value_or_default())
-            params.upscaleSize.width *= Config::Instance()->OutputScalingMultiplier.value_or_default();
+        {
+            params.upscaleSize.width *=
+                static_cast<uint32_t>(Config::Instance()->OutputScalingMultiplier.value_or_default());
+        }
 
         if (InParameters->Get("FSR.upscaleSize.height", &params.upscaleSize.height) == NVSDK_NGX_Result_Success &&
             Config::Instance()->OutputScalingEnabled.value_or_default())
-            params.upscaleSize.height *= Config::Instance()->OutputScalingMultiplier.value_or_default();
+        {
+            params.upscaleSize.height *=
+                static_cast<uint32_t>(Config::Instance()->OutputScalingMultiplier.value_or_default());
+        }
 
         LOG_DEBUG("Dispatch!!");
-        ffxresult = FfxApiProxy::D3D12_Dispatch()(&_context, &params.header);
+        ffxresult = FfxApiProxy::D3D12_Dispatch(&_context, &params.header);
+        state = 1;
 
         if (ffxresult != FFX_API_RETURN_OK)
         {
@@ -479,17 +512,25 @@ bool FSR31FeatureDx11on12::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_
             }
         }
 
+        state = 2;
+
     } while (false);
 
-    cmdList->Close();
-    ID3D12CommandList* ppCommandLists[] = { cmdList };
-    Dx12CommandQueue->ExecuteCommandLists(1, ppCommandLists);
-    Dx12CommandQueue->Signal(dx12FenceTextureCopy, _fenceValue);
+    if (state > 0)
+    {
+        cmdList->Close();
+        ID3D12CommandList* ppCommandLists[] = { cmdList };
+        Dx12CommandQueue->ExecuteCommandLists(1, ppCommandLists);
+        Dx12CommandQueue->Signal(dx12FenceTextureCopy, _fenceValue);
+    }
 
     auto evalResult = false;
 
     do
     {
+        if (state != 2)
+            break;
+
         if (ffxresult != FFX_API_RETURN_OK)
             break;
 
@@ -548,145 +589,153 @@ bool FSR31FeatureDx11on12::InitFSR3(const NVSDK_NGX_Parameter* InParameters)
         return false;
     }
 
-    State::Instance().skipSpoofing = true;
+    {
+        ScopedSkipSpoofing skipSpoofing {};
 
-    ffxQueryDescGetVersions versionQuery {};
-    versionQuery.header.type = FFX_API_QUERY_DESC_TYPE_GET_VERSIONS;
-    versionQuery.createDescType = FFX_API_CREATE_CONTEXT_DESC_TYPE_UPSCALE;
-    versionQuery.device = State::Instance().currentD3D12Device; // only for DirectX 12 applications
-    uint64_t versionCount = 0;
-    versionQuery.outputCount = &versionCount;
-    // get number of versions for allocation
-    FfxApiProxy::D3D12_Query()(nullptr, &versionQuery.header);
+        ffxQueryDescGetVersions versionQuery {};
+        versionQuery.header.type = FFX_API_QUERY_DESC_TYPE_GET_VERSIONS;
+        versionQuery.createDescType = FFX_API_CREATE_CONTEXT_DESC_TYPE_UPSCALE;
+        versionQuery.device = State::Instance().currentD3D12Device; // only for DirectX 12 applications
+        uint64_t versionCount = 0;
+        versionQuery.outputCount = &versionCount;
+        // get number of versions for allocation
+        FfxApiProxy::D3D12_Query(nullptr, &versionQuery.header);
 
-    State::Instance().fsr3xVersionIds.resize(versionCount);
-    State::Instance().fsr3xVersionNames.resize(versionCount);
-    versionQuery.versionIds = State::Instance().fsr3xVersionIds.data();
-    versionQuery.versionNames = State::Instance().fsr3xVersionNames.data();
-    // fill version ids and names arrays.
-    FfxApiProxy::D3D12_Query()(nullptr, &versionQuery.header);
+        State::Instance().ffxUpscalerVersionIds.resize(versionCount);
+        State::Instance().ffxUpscalerVersionNames.resize(versionCount);
+        versionQuery.versionIds = State::Instance().ffxUpscalerVersionIds.data();
+        versionQuery.versionNames = State::Instance().ffxUpscalerVersionNames.data();
+        // fill version ids and names arrays.
+        FfxApiProxy::D3D12_Query(nullptr, &versionQuery.header);
 
-    _contextDesc.flags = 0;
-    _contextDesc.header.type = FFX_API_CREATE_CONTEXT_DESC_TYPE_UPSCALE;
-
-    _contextDesc.fpMessage = FfxLogCallback;
+        _contextDesc.flags = 0;
+        _contextDesc.header.type = FFX_API_CREATE_CONTEXT_DESC_TYPE_UPSCALE;
 
 #ifdef _DEBUG
-    _contextDesc.flags |= FFX_UPSCALE_ENABLE_DEBUG_CHECKING;
+        LOG_INFO("Debug checking enabled!");
+        _contextDesc.flags |= FFX_UPSCALE_ENABLE_DEBUG_CHECKING;
+        _contextDesc.fpMessage = FfxLogCallback;
 #endif
 
-    if (DepthInverted())
-        _contextDesc.flags |= FFX_UPSCALE_ENABLE_DEPTH_INVERTED;
+        if (DepthInverted())
+            _contextDesc.flags |= FFX_UPSCALE_ENABLE_DEPTH_INVERTED;
 
-    if (AutoExposure())
-        _contextDesc.flags |= FFX_UPSCALE_ENABLE_AUTO_EXPOSURE;
+        if (AutoExposure())
+            _contextDesc.flags |= FFX_UPSCALE_ENABLE_AUTO_EXPOSURE;
 
-    if (IsHdr())
-        _contextDesc.flags |= FFX_UPSCALE_ENABLE_HIGH_DYNAMIC_RANGE;
+        if (IsHdr())
+            _contextDesc.flags |= FFX_UPSCALE_ENABLE_HIGH_DYNAMIC_RANGE;
 
-    if (JitteredMV())
-        _contextDesc.flags |= FFX_UPSCALE_ENABLE_MOTION_VECTORS_JITTER_CANCELLATION;
+        if (JitteredMV())
+            _contextDesc.flags |= FFX_UPSCALE_ENABLE_MOTION_VECTORS_JITTER_CANCELLATION;
 
-    if (!LowResMV())
-        _contextDesc.flags |= FFX_UPSCALE_ENABLE_DISPLAY_RESOLUTION_MOTION_VECTORS;
+        if (!LowResMV())
+            _contextDesc.flags |= FFX_UPSCALE_ENABLE_DISPLAY_RESOLUTION_MOTION_VECTORS;
 
-    if (Config::Instance()->FsrNonLinearPQ.value_or_default() ||
-        Config::Instance()->FsrNonLinearSRGB.value_or_default())
-    {
-        _contextDesc.flags |= FFX_UPSCALE_ENABLE_NON_LINEAR_COLORSPACE;
-        LOG_INFO("contextDesc.initFlags (NonLinearColorSpace) {0:b}", _contextDesc.flags);
-    }
-
-    if (Config::Instance()->OutputScalingEnabled.value_or_default() && LowResMV())
-    {
-        float ssMulti = Config::Instance()->OutputScalingMultiplier.value_or_default();
-
-        if (ssMulti < 0.5f)
+        if (Config::Instance()->Fsr4EnableDebugView.value_or_default())
         {
-            ssMulti = 0.5f;
-            Config::Instance()->OutputScalingMultiplier.set_volatile_value(ssMulti);
-        }
-        else if (ssMulti > 3.0f)
-        {
-            ssMulti = 3.0f;
-            Config::Instance()->OutputScalingMultiplier.set_volatile_value(ssMulti);
+            LOG_INFO("Debug view enabled!");
+            _contextDesc.flags |= 512; // FFX_UPSCALE_ENABLE_DEBUG_VISUALIZATION
         }
 
-        _targetWidth = DisplayWidth() * ssMulti;
-        _targetHeight = DisplayHeight() * ssMulti;
-    }
-    else
-    {
-        _targetWidth = DisplayWidth();
-        _targetHeight = DisplayHeight();
-    }
+        if (Config::Instance()->FsrNonLinearColorSpace.value_or_default())
+        {
+            _contextDesc.flags |= FFX_UPSCALE_ENABLE_NON_LINEAR_COLORSPACE;
+            LOG_INFO("contextDesc.initFlags (NonLinearColorSpace) {0:b}", _contextDesc.flags);
+        }
 
-    // extended limits changes how resolution
-    if (Config::Instance()->ExtendedLimits.value_or_default() && RenderWidth() > DisplayWidth())
-    {
-        _contextDesc.maxRenderSize.width = RenderWidth();
-        _contextDesc.maxRenderSize.height = RenderHeight();
-
-        Config::Instance()->OutputScalingMultiplier.set_volatile_value(1.0f);
-
-        // if output scaling active let it to handle downsampling
         if (Config::Instance()->OutputScalingEnabled.value_or_default() && LowResMV())
         {
-            _contextDesc.maxUpscaleSize.width = _contextDesc.maxRenderSize.width;
-            _contextDesc.maxUpscaleSize.height = _contextDesc.maxRenderSize.height;
+            float ssMulti = Config::Instance()->OutputScalingMultiplier.value_or_default();
 
-            // update target res
-            _targetWidth = _contextDesc.maxRenderSize.width;
-            _targetHeight = _contextDesc.maxRenderSize.height;
+            if (ssMulti < 0.5f)
+            {
+                ssMulti = 0.5f;
+                Config::Instance()->OutputScalingMultiplier.set_volatile_value(ssMulti);
+            }
+            else if (ssMulti > 3.0f)
+            {
+                ssMulti = 3.0f;
+                Config::Instance()->OutputScalingMultiplier.set_volatile_value(ssMulti);
+            }
+
+            _targetWidth = static_cast<unsigned int>(DisplayWidth() * ssMulti);
+            _targetHeight = static_cast<unsigned int>(DisplayHeight() * ssMulti);
         }
         else
         {
-            _contextDesc.maxUpscaleSize.width = DisplayWidth();
-            _contextDesc.maxUpscaleSize.height = DisplayHeight();
+            _targetWidth = DisplayWidth();
+            _targetHeight = DisplayHeight();
         }
+
+        // extended limits changes how resolution
+        if (Config::Instance()->ExtendedLimits.value_or_default() && RenderWidth() > DisplayWidth())
+        {
+            _contextDesc.maxRenderSize.width = RenderWidth();
+            _contextDesc.maxRenderSize.height = RenderHeight();
+
+            Config::Instance()->OutputScalingMultiplier.set_volatile_value(1.0f);
+
+            // if output scaling active let it to handle downsampling
+            if (Config::Instance()->OutputScalingEnabled.value_or_default() && LowResMV())
+            {
+                _contextDesc.maxUpscaleSize.width = _contextDesc.maxRenderSize.width;
+                _contextDesc.maxUpscaleSize.height = _contextDesc.maxRenderSize.height;
+
+                // update target res
+                _targetWidth = _contextDesc.maxRenderSize.width;
+                _targetHeight = _contextDesc.maxRenderSize.height;
+            }
+            else
+            {
+                _contextDesc.maxUpscaleSize.width = DisplayWidth();
+                _contextDesc.maxUpscaleSize.height = DisplayHeight();
+            }
+        }
+        else
+        {
+            _contextDesc.maxRenderSize.width = TargetWidth() > DisplayWidth() ? TargetWidth() : DisplayWidth();
+            _contextDesc.maxRenderSize.height = TargetHeight() > DisplayHeight() ? TargetHeight() : DisplayHeight();
+            _contextDesc.maxUpscaleSize.width = TargetWidth();
+            _contextDesc.maxUpscaleSize.height = TargetHeight();
+        }
+
+        ffxCreateBackendDX12Desc backendDesc = { 0 };
+        backendDesc.header.type = FFX_API_CREATE_CONTEXT_DESC_TYPE_BACKEND_DX12;
+        backendDesc.device = State::Instance().currentD3D12Device;
+        _contextDesc.header.pNext = &backendDesc.header;
+
+        if (Config::Instance()->FfxUpscalerIndex.value_or_default() < 0 ||
+            Config::Instance()->FfxUpscalerIndex.value_or_default() >= State::Instance().ffxUpscalerVersionIds.size())
+            Config::Instance()->FfxUpscalerIndex.set_volatile_value(0);
+
+        ffxOverrideVersion ov = { 0 };
+        ov.header.type = FFX_API_DESC_TYPE_OVERRIDE_VERSION;
+        ov.versionId = State::Instance().ffxUpscalerVersionIds[Config::Instance()->FfxUpscalerIndex.value_or_default()];
+        backendDesc.header.pNext = &ov.header;
+
+        LOG_DEBUG("_createContext!");
+
+        {
+            ScopedSkipHeapCapture skipHeapCapture {};
+
+            auto ret = FfxApiProxy::D3D12_CreateContext(&_context, &_contextDesc.header, NULL);
+
+            if (ret != FFX_API_RETURN_OK)
+            {
+                LOG_ERROR("_createContext error: {0}", FfxApiProxy::ReturnCodeToString(ret));
+                return false;
+            }
+        }
+
+        auto version =
+            State::Instance().ffxUpscalerVersionNames[Config::Instance()->FfxUpscalerIndex.value_or_default()];
+        _name = "FSR";
+        parse_version(version);
+
+        LOG_TRACE("sleeping after _createContext creation for 500ms");
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
-    else
-    {
-        _contextDesc.maxRenderSize.width = TargetWidth() > DisplayWidth() ? TargetWidth() : DisplayWidth();
-        _contextDesc.maxRenderSize.height = TargetHeight() > DisplayHeight() ? TargetHeight() : DisplayHeight();
-        _contextDesc.maxUpscaleSize.width = TargetWidth();
-        _contextDesc.maxUpscaleSize.height = TargetHeight();
-    }
-
-    ffxCreateBackendDX12Desc backendDesc = { 0 };
-    backendDesc.header.type = FFX_API_CREATE_CONTEXT_DESC_TYPE_BACKEND_DX12;
-    backendDesc.device = State::Instance().currentD3D12Device;
-    _contextDesc.header.pNext = &backendDesc.header;
-
-    if (Config::Instance()->Fsr3xIndex.value_or_default() < 0 ||
-        Config::Instance()->Fsr3xIndex.value_or_default() >= State::Instance().fsr3xVersionIds.size())
-        Config::Instance()->Fsr3xIndex.set_volatile_value(0);
-
-    ffxOverrideVersion ov = { 0 };
-    ov.header.type = FFX_API_DESC_TYPE_OVERRIDE_VERSION;
-    ov.versionId = State::Instance().fsr3xVersionIds[Config::Instance()->Fsr3xIndex.value_or_default()];
-    backendDesc.header.pNext = &ov.header;
-
-    LOG_DEBUG("_createContext!");
-
-    State::Instance().skipHeapCapture = true;
-    auto ret = FfxApiProxy::D3D12_CreateContext()(&_context, &_contextDesc.header, NULL);
-    State::Instance().skipHeapCapture = false;
-
-    if (ret != FFX_API_RETURN_OK)
-    {
-        LOG_ERROR("_createContext error: {0}", FfxApiProxy::ReturnCodeToString(ret));
-        return false;
-    }
-
-    auto version = State::Instance().fsr3xVersionNames[Config::Instance()->Fsr3xIndex.value_or_default()];
-    _name = "FSR";
-    parse_version(version);
-
-    LOG_TRACE("sleeping after _createContext creation for 500ms");
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
-    State::Instance().skipSpoofing = false;
 
     SetInit(true);
 

@@ -326,12 +326,10 @@ class IGDExtProxy
         if (_atomicSupportEnabled)
             return;
 
-        State::Instance().skipSpoofing = true;
+        ScopedSkipSpoofing skipSpoofing {};
 
         if (CreateContext(device))
             EnableAtomic64Support();
-
-        State::Instance().skipSpoofing = false;
     }
 
     static void DestroyContext()

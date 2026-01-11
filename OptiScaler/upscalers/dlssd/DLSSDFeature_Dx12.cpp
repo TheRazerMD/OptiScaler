@@ -45,8 +45,13 @@ bool DLSSDFeatureDx12::Init(ID3D12Device* InDevice, ID3D12GraphicsCommandList* I
             ProcessInitParams(InParameters);
 
             _p_dlssdHandle = &_dlssdHandle;
-            nvResult = NVNGXProxy::D3D12_CreateFeature()(InCommandList, NVSDK_NGX_Feature_RayReconstruction,
-                                                         InParameters, &_p_dlssdHandle);
+
+            {
+                ScopedSkipHeapCapture skipHeapCapture {};
+
+                nvResult = NVNGXProxy::D3D12_CreateFeature()(InCommandList, NVSDK_NGX_Feature_RayReconstruction,
+                                                             InParameters, &_p_dlssdHandle);
+            }
 
             if (nvResult != NVSDK_NGX_Result_Success)
             {
@@ -264,8 +269,6 @@ bool DLSSDFeatureDx12::Evaluate(ID3D12GraphicsCommandList* InCommandList, NVSDK_
 
     return true;
 }
-
-void DLSSDFeatureDx12::Shutdown(ID3D12Device* InDevice) {}
 
 DLSSDFeatureDx12::DLSSDFeatureDx12(unsigned int InHandleId, NVSDK_NGX_Parameter* InParameters)
     : IFeature(InHandleId, InParameters), IFeature_Dx12(InHandleId, InParameters),

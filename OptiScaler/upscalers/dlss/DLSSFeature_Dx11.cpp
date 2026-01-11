@@ -292,19 +292,6 @@ bool DLSSFeatureDx11::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_NGX_P
     return true;
 }
 
-void DLSSFeatureDx11::Shutdown(ID3D11Device* InDevice)
-{
-    if (_dlssInited)
-    {
-        if (NVNGXProxy::D3D11_Shutdown() != nullptr)
-            NVNGXProxy::D3D11_Shutdown()();
-        else if (NVNGXProxy::D3D11_Shutdown1() != nullptr)
-            NVNGXProxy::D3D11_Shutdown1()(InDevice);
-    }
-
-    DLSSFeature::Shutdown();
-}
-
 DLSSFeatureDx11::DLSSFeatureDx11(unsigned int InHandleId, NVSDK_NGX_Parameter* InParameters)
     : IFeature(InHandleId, InParameters), IFeature_Dx11(InHandleId, InParameters), DLSSFeature(InHandleId, InParameters)
 {

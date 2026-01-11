@@ -230,6 +230,11 @@ if [ "$remove_choice" = "y" ] || [ "$remove_choice" = "Y" ]; then
     rm -f OptiScaler.log
     rm -f OptiScaler.ini
     rm -f SELECTED_FILENAME_PLACEHOLDER
+    rm -f fakenvapi.dll
+    rm -f fakenvapi.ini
+    rm -f fakenvapi.log
+    rm -f dlssg_to_fsr3_amd_is_better.dll
+    rm -f dlssg_to_fsr3.log
     
     # Remove directories
     rm -rf D3D12_Optiscaler

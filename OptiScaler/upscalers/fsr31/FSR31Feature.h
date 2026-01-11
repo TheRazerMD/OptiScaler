@@ -26,7 +26,6 @@ class FSR31Feature : public virtual IFeature
 
     virtual bool InitFSR3(const NVSDK_NGX_Parameter* InParameters) = 0;
 
-    double MillisecondsNow();
     double GetDeltaTime();
 
     static inline void parse_version(const char* version_str)
@@ -96,14 +95,10 @@ class FSR31Feature : public virtual IFeature
     float _minDisOccAcc = -0.333f;
 
   public:
-    feature_version Version() final { return _version; }
-    std::string Name() const { return _name.c_str(); }
+    feature_version Version() override { return _version; }
+    std::string Name() const override { return _name.c_str(); }
 
-    FSR31Feature(unsigned int InHandleId, NVSDK_NGX_Parameter* InParameters) : IFeature(InHandleId, InParameters)
-    {
-        _initParameters = SetInitParameters(InParameters);
-        _lastFrameTime = MillisecondsNow();
-    }
+    FSR31Feature(unsigned int InHandleId, NVSDK_NGX_Parameter* InParameters);
 
     ~FSR31Feature();
 };

@@ -6,9 +6,11 @@
 #include <shlobj.h>
 
 typedef LONG(WINAPI* RtlGetVersionPtr)(PRTL_OSVERSIONINFOW);
-typedef DWORD (*PFN_GetFileVersionInfoSizeW)(LPCWSTR lptstrFilename, LPDWORD lpdwHandle);
-typedef BOOL (*PFN_GetFileVersionInfoW)(LPCWSTR lptstrFilename, DWORD dwHandle, DWORD dwLen, LPVOID lpData);
-typedef BOOL (*PFN_VerQueryValueW)(LPCVOID pBlock, LPCWSTR lpSubBlock, LPVOID* lplpBuffer, PUINT puLen);
+typedef decltype(&GetFileVersionInfoSizeW) PFN_GetFileVersionInfoSizeW;
+typedef decltype(&GetFileVersionInfoW) PFN_GetFileVersionInfoW;
+typedef decltype(&VerQueryValueW) PFN_VerQueryValueW;
+
+static IID streamlineRiid {};
 
 /// <summary>
 /// Returns caller module filename
@@ -18,24 +20,32 @@ typedef BOOL (*PFN_VerQueryValueW)(LPCVOID pBlock, LPCWSTR lpSubBlock, LPVOID* l
 /// <returns>Caller module filename</returns>
 std::string Util::WhoIsTheCaller(void* returnAddress)
 {
-    HMODULE hModule = NULL;
     char callerPath[MAX_PATH] = { 0 };
 
     // Get the return address from the current function call.
     // void* returnAddress = _ReturnAddress();
 
     // Get the base address of the module containing the return address.
-    if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                           (LPCSTR) returnAddress, &hModule))
+    if (HMODULE hModule = GetCallerModule(returnAddress); hModule != nullptr)
     {
         // Get the full path of the calling module.
         GetModuleFileNameA(hModule, callerPath, sizeof(callerPath));
         auto path = std::filesystem::path(callerPath);
 
-        return path.filename().string();
+        return wstring_to_string(path.filename().wstring());
     }
 
     return "";
+}
+
+HMODULE Util::GetCallerModule(void* returnAddress)
+{
+    HMODULE hModule = NULL;
+
+    GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                       (LPCSTR) returnAddress, &hModule);
+
+    return hModule;
 }
 
 std::wstring Util::GetWindowTitle(HWND hwnd)
@@ -182,7 +192,7 @@ std::optional<std::filesystem::path> Util::NvngxPath()
 
     if (ls == ERROR_SUCCESS)
     {
-        wchar_t regNGXCorePath[260];
+        wchar_t regNGXCorePath[260] {};
         DWORD NGXCorePathSize = 260;
 
         ls = RegQueryValueExW(regNGXCore, L"NGXPath", nullptr, nullptr, (LPBYTE) regNGXCorePath, &NGXCorePathSize);
@@ -190,7 +200,7 @@ std::optional<std::filesystem::path> Util::NvngxPath()
         if (ls == ERROR_SUCCESS)
         {
             auto path = std::filesystem::path(regNGXCorePath);
-            LOG_INFO("nvngx registry path: {0}", path.string());
+            LOG_INFO(L"nvngx registry path: {0}", path.wstring());
             return path;
         }
     }
@@ -262,7 +272,7 @@ HWND Util::GetProcessWindow()
     return hwnd;
 }
 
-inline std::string LogLastError()
+static inline std::string LogLastError()
 {
     DWORD errorCode = GetLastError();
     LPWSTR errorBuffer = nullptr;
@@ -359,7 +369,7 @@ std::optional<std::filesystem::path> Util::FindFilePath(const std::filesystem::p
     std::filesystem::path candidate = startDir / fileName;
     if (std::filesystem::exists(candidate) && std::filesystem::is_regular_file(candidate))
     {
-        LOG_INFO("{} found at {}", fileName.string(), candidate.parent_path().string());
+        LOG_INFO(L"{} found at {}", fileName.wstring(), candidate.parent_path().wstring());
         return candidate;
     }
 
@@ -369,25 +379,31 @@ std::optional<std::filesystem::path> Util::FindFilePath(const std::filesystem::p
     {
         if (!entry.is_directory() && entry.path().filename() == fileName)
         {
-            LOG_INFO("{} found at {}", fileName.string(), entry.path().parent_path().string());
+            LOG_INFO(L"{} found at {}", fileName.wstring(), entry.path().parent_path().wstring());
             return entry.path();
         }
     }
 
     // 3) Unreal-Engine/WinGDK fallback: check for Win64 or WinGDK in parent
     std::filesystem::path parent = startDir.parent_path().parent_path();
+    uint32_t cnt = 0;
     for (const char* folder : { "Win64", "WinGDK", "Win64MasterMasterSteamPGO" })
     {
         if (std::filesystem::exists(parent / folder) && std::filesystem::is_directory(parent / folder))
         {
-            // Move up two more levels from 'parent' to reach UE project root
-            std::filesystem::path ueRoot = parent.parent_path().parent_path();
+            // Move up two more levels from 'parent' to reach UE project root but one level for KCD2
+            std::filesystem::path gameRoot;
+            if (cnt < 2)
+                gameRoot = parent.parent_path().parent_path();
+            else
+                gameRoot = parent.parent_path();
+
             for (auto& entry : std::filesystem::recursive_directory_iterator(
-                     ueRoot, std::filesystem::directory_options::skip_permission_denied))
+                     gameRoot, std::filesystem::directory_options::skip_permission_denied))
             {
                 if (!entry.is_directory() && entry.path().filename() == fileName)
                 {
-                    LOG_INFO("{} found at {}", fileName.string(), entry.path().parent_path().string());
+                    LOG_INFO(L"{} found at {}", fileName.wstring(), entry.path().parent_path().wstring());
                     return entry.path();
                 }
             }
@@ -395,8 +411,112 @@ std::optional<std::filesystem::path> Util::FindFilePath(const std::filesystem::p
             // If not found under this folder, break to avoid double-search
             break;
         }
+
+        cnt++;
     }
 
     // Not found anywhere
     return std::nullopt;
+}
+
+int Util::GetActiveRefreshRate(HWND hwnd)
+{
+    // Step 1: Get monitor handle
+    HMONITOR hMon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+    if (!hMon)
+        return 0;
+
+    // Step 2: Get monitor device name
+    MONITORINFOEXW mi = {};
+    mi.cbSize = sizeof(mi);
+
+    if (!GetMonitorInfoW(hMon, &mi))
+        return 0;
+
+    // Step 3: Query active display mode
+    DEVMODEW dm = {};
+    dm.dmSize = sizeof(dm);
+
+    // Use ENUM_CURRENT_SETTINGS to get ACTUAL active mode
+    if (!EnumDisplaySettingsW(mi.szDevice, ENUM_CURRENT_SETTINGS, &dm))
+        return 0;
+
+    // Note: dmDisplayFrequency may contain 0 or 1 for "unspecified" in rare driver cases.
+    return dm.dmDisplayFrequency;
+}
+
+Util::MonitorInfo Util::GetMonitorInfoForWindow(HWND hwnd)
+{
+    MonitorInfo out {};
+    out.handle = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+
+    MONITORINFOEXW mi {};
+    mi.cbSize = sizeof(mi);
+    if (GetMonitorInfoW(out.handle, &mi))
+    {
+        out.x = mi.rcMonitor.left;
+        out.y = mi.rcMonitor.top;
+        out.width = mi.rcMonitor.right - mi.rcMonitor.left;
+        out.height = mi.rcMonitor.bottom - mi.rcMonitor.top;
+        out.monitorRect = mi.rcMonitor;
+        out.workRect = mi.rcWork;
+
+        wchar_t bufName[32];
+        std::wcsncpy(bufName, mi.szDevice, _countof(bufName) - 1);
+        bufName[_countof(bufName) - 1] = L'\0';
+        out.name = std::wstring(bufName);
+    }
+    return out;
+}
+
+Util::MonitorInfo Util::GetMonitorInfoForOutput(IDXGIOutput* pOutput)
+{
+    MonitorInfo out {};
+
+    DXGI_OUTPUT_DESC desc {};
+    pOutput->GetDesc(&desc);
+
+    out.handle = desc.Monitor;
+
+    MONITORINFOEXW mi {};
+    mi.cbSize = sizeof(mi);
+    if (GetMonitorInfoW(out.handle, &mi))
+    {
+        out.x = mi.rcMonitor.left;
+        out.y = mi.rcMonitor.top;
+        out.width = mi.rcMonitor.right - mi.rcMonitor.left;
+        out.height = mi.rcMonitor.bottom - mi.rcMonitor.top;
+        out.monitorRect = mi.rcMonitor;
+        out.workRect = mi.rcWork;
+
+        wchar_t bufName[32];
+        std::wcsncpy(bufName, mi.szDevice, _countof(bufName) - 1);
+        bufName[_countof(bufName) - 1] = L'\0';
+        out.name = std::wstring(bufName);
+    }
+    return out;
+}
+
+bool Util::CheckForRealObject(std::string functionName, IUnknown* pObject, IUnknown** ppRealObject)
+{
+    // Need to check if this is necessary
+
+    if (streamlineRiid.Data1 == 0)
+    {
+        auto iidResult = IIDFromString(L"{ADEC44E2-61F0-45C3-AD9F-1B37379284FF}", &streamlineRiid);
+
+        if (iidResult != S_OK)
+            return false;
+    }
+
+    auto qResult = pObject->QueryInterface(streamlineRiid, (void**) ppRealObject);
+
+    if (qResult == S_OK && *ppRealObject != nullptr)
+    {
+        LOG_INFO("{} Streamline proxy found!", functionName);
+        (*ppRealObject)->Release();
+        return true;
+    }
+
+    return false;
 }

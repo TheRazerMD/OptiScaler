@@ -22,5 +22,8 @@ class FSR2FeatureDx12_212 : public FSR2Feature212, public IFeature_Dx12
               NVSDK_NGX_Parameter* InParameters) override;
     bool Evaluate(ID3D12GraphicsCommandList* InCommandList, NVSDK_NGX_Parameter* InParameters) override;
 
+    feature_version Version() override { return FSR2Feature212::Version(); }
+    std::string Name() const override { return FSR2Feature212::Name(); }
+
     ~FSR2FeatureDx12_212();
 };

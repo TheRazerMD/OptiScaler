@@ -294,8 +294,6 @@ bool DLSSDFeatureDx11::Evaluate(ID3D11DeviceContext* InDeviceContext, NVSDK_NGX_
     return true;
 }
 
-void DLSSDFeatureDx11::Shutdown(ID3D11Device* InDevice) {}
-
 DLSSDFeatureDx11::DLSSDFeatureDx11(unsigned int InHandleId, NVSDK_NGX_Parameter* InParameters)
     : IFeature(InHandleId, InParameters), IFeature_Dx11(InHandleId, InParameters),
       DLSSDFeature(InHandleId, InParameters)

@@ -6,6 +6,7 @@
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/sinks/callback_sink.h"
+#include <include/spdlog_sink/debug_sink.h>
 
 #include "Util.h"
 
@@ -71,7 +72,7 @@ void PrepareLogger()
             spdlog::default_logger().reset();
 
         if (Config::Instance()->LogToConsole.value_or_default() || Config::Instance()->LogToFile.value_or_default() ||
-            Config::Instance()->LogToNGX.value_or_default())
+            Config::Instance()->LogToNGX.value_or_default() || Config::Instance()->LogToDebug.value_or_default())
         {
             if (Config::Instance()->OpenConsole.value_or_default())
                 InitializeConsole();
@@ -85,6 +86,21 @@ void PrepareLogger()
             }
 
             std::vector<spdlog::sink_ptr> sinks;
+
+            if (Config::Instance()->LogToDebug.value_or_default())
+            {
+                auto debug_sink = std::make_shared<spdlog::sinks::debug_sink_mt>();
+                debug_sink->set_level(spdlog::level::level_enum::trace);
+
+#ifdef LOG_ASYNC
+                debug_sink->set_pattern("%H:%M:%S.%f\t%L\t%v");
+#else
+                debug_sink->set_pattern("[%H:%M:%S.%f] [%L] %v");
+                // file_sink->set_pattern("[%H:%M:%S.%f] [thread %t] [%L] %v");
+#endif // LOG_ASYNC
+
+                sinks.push_back(debug_sink);
+            }
 
             if (Config::Instance()->LogToConsole.value_or_default())
             {

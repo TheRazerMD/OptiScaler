@@ -8,7 +8,7 @@
 #include <WinTrust.h>
 #include <Softpub.h>
 
-typedef LONG (*PFN_WinVerifyTrust)(HWND hwnd, GUID* pgActionID, LPVOID pWVTData);
+typedef decltype(&WinVerifyTrust) PFN_WinVerifyTrust;
 static PFN_WinVerifyTrust o_WinVerifyTrust = nullptr;
 
 static LONG hkWinVerifyTrust(HWND hwnd, GUID* pgActionID, LPVOID pWVTData)
@@ -27,6 +27,22 @@ static LONG hkWinVerifyTrust(HWND hwnd, GUID* pgActionID, LPVOID pWVTData)
     if (path.contains("amd_fidelityfx_dx12.dll") || path.contains("amd_fidelityfx_vk.dll"))
     {
         return ERROR_SUCCESS;
+    }
+
+    // This generally isn't needed but for some reason, when using SpecialK, our hooked CreateFileW doesn't get called
+    // and WinVerifyTrust fails as nvngx.dll doesn't exist
+    if (path.contains("nvngx.dll") && State::Instance().nvngxReplacement.has_value())
+    {
+        WINTRUST_DATA newData = *data;
+        WINTRUST_FILE_INFO_ newFile = *newData.pFile;
+        newData.pFile = &newFile;
+        newData.pFile->pcwszFilePath = State::Instance().nvngxReplacement.value().c_str();
+
+        auto result = o_WinVerifyTrust(hwnd, pgActionID, &newData);
+
+        data->hWVTStateData = newData.hWVTStateData;
+
+        return result;
     }
 
     return o_WinVerifyTrust(hwnd, pgActionID, pWVTData);

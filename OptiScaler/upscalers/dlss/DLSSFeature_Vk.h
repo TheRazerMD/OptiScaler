@@ -14,7 +14,8 @@ class DLSSFeatureVk : public DLSSFeature, public IFeature_Vk
               NVSDK_NGX_Parameter* InParameters) override;
     bool Evaluate(VkCommandBuffer InCmdBuffer, NVSDK_NGX_Parameter* InParameters) override;
 
-    static void Shutdown(VkDevice InDevice);
+    feature_version Version() override { return DLSSFeature::Version(); }
+    std::string Name() const override { return DLSSFeature::Name(); }
 
     DLSSFeatureVk(unsigned int InHandleId, NVSDK_NGX_Parameter* InParameters);
     ~DLSSFeatureVk();

@@ -8,8 +8,6 @@
 
 void DLSSDFeature::ProcessEvaluateParams(NVSDK_NGX_Parameter* InParameters)
 {
-    float floatValue;
-
     // override sharpness
     if (Config::Instance()->OverrideSharpness.value_or_default() &&
         !(State::Instance().api == DX12 && Config::Instance()->RcasEnabled.value_or_default()))
@@ -35,8 +33,6 @@ void DLSSDFeature::ProcessEvaluateParams(NVSDK_NGX_Parameter* InParameters)
 
 void DLSSDFeature::ProcessInitParams(NVSDK_NGX_Parameter* InParameters)
 {
-    unsigned int uintValue;
-
     // Create flags -----------------------------
     unsigned int featureFlags = 0;
 
@@ -76,8 +72,8 @@ void DLSSDFeature::ProcessInitParams(NVSDK_NGX_Parameter* InParameters)
             Config::Instance()->OutputScalingMultiplier.set_volatile_value(ssMulti);
         }
 
-        _targetWidth = DisplayWidth() * ssMulti;
-        _targetHeight = DisplayHeight() * ssMulti;
+        _targetWidth = static_cast<unsigned int>(DisplayWidth() * ssMulti);
+        _targetHeight = static_cast<unsigned int>(DisplayHeight() * ssMulti);
     }
     else
     {
@@ -104,8 +100,32 @@ void DLSSDFeature::ProcessInitParams(NVSDK_NGX_Parameter* InParameters)
     InParameters->Set(NVSDK_NGX_Parameter_OutWidth, TargetWidth());
     InParameters->Set(NVSDK_NGX_Parameter_OutHeight, TargetHeight());
 
-    if (Config::Instance()->RenderPresetOverride.value_or_default())
+    if (Config::Instance()->DLSSDRenderPresetOverride.value_or_default())
     {
+        if (!State::Instance().dlssdPresetsOverridenByOpti)
+        {
+            InParameters->Get("RayReconstruction.Hint.Render.Preset.DLAA", &State::Instance().dlssdRenderPresetDLAA);
+            InParameters->Get("RayReconstruction.Hint.Render.Preset.UltraQuality",
+                              &State::Instance().dlssdRenderPresetUltraQuality);
+            InParameters->Get("RayReconstruction.Hint.Render.Preset.Quality",
+                              &State::Instance().dlssdRenderPresetQuality);
+            InParameters->Get("RayReconstruction.Hint.Render.Preset.Balanced",
+                              &State::Instance().dlssdRenderPresetBalanced);
+            InParameters->Get("RayReconstruction.Hint.Render.Preset.Performance",
+                              &State::Instance().dlssdRenderPresetPerformance);
+            InParameters->Get("RayReconstruction.Hint.Render.Preset.UltraPerformance",
+                              &State::Instance().dlssdRenderPresetUltraPerformance);
+
+            LOG_DEBUG("Original Preset_DLAA {}", State::Instance().dlssdRenderPresetDLAA);
+            LOG_DEBUG("Original Preset_UltraQuality {}", State::Instance().dlssdRenderPresetUltraQuality);
+            LOG_DEBUG("Original Preset_Quality {}", State::Instance().dlssdRenderPresetQuality);
+            LOG_DEBUG("Original Preset_Balanced {}", State::Instance().dlssdRenderPresetBalanced);
+            LOG_DEBUG("Original Preset_Performance {}", State::Instance().dlssdRenderPresetPerformance);
+            LOG_DEBUG("Original Preset_UltraPerformance {}", State::Instance().dlssdRenderPresetUltraPerformance);
+        }
+
+        State::Instance().dlssdPresetsOverridenByOpti = true;
+
         uint32_t RenderPresetDLAA = 0;
         uint32_t RenderPresetUltraQuality = 0;
         uint32_t RenderPresetQuality = 0;
@@ -120,20 +140,20 @@ void DLSSDFeature::ProcessInitParams(NVSDK_NGX_Parameter* InParameters)
         InParameters->Get("RayReconstruction.Hint.Render.Preset.Performance", &RenderPresetPerformance);
         InParameters->Get("RayReconstruction.Hint.Render.Preset.UltraPerformance", &RenderPresetUltraPerformance);
 
-        if (Config::Instance()->RenderPresetOverride.value_or_default())
+        if (Config::Instance()->DLSSDRenderPresetOverride.value_or_default())
         {
-            RenderPresetDLAA = Config::Instance()->RenderPresetForAll.value_or(
-                Config::Instance()->RenderPresetDLAA.value_or(RenderPresetDLAA));
-            RenderPresetUltraQuality = Config::Instance()->RenderPresetForAll.value_or(
-                Config::Instance()->RenderPresetUltraQuality.value_or(RenderPresetUltraQuality));
-            RenderPresetQuality = Config::Instance()->RenderPresetForAll.value_or(
-                Config::Instance()->RenderPresetQuality.value_or(RenderPresetQuality));
-            RenderPresetBalanced = Config::Instance()->RenderPresetForAll.value_or(
-                Config::Instance()->RenderPresetBalanced.value_or(RenderPresetBalanced));
-            RenderPresetPerformance = Config::Instance()->RenderPresetForAll.value_or(
-                Config::Instance()->RenderPresetPerformance.value_or(RenderPresetPerformance));
-            RenderPresetUltraPerformance = Config::Instance()->RenderPresetForAll.value_or(
-                Config::Instance()->RenderPresetUltraPerformance.value_or(RenderPresetUltraPerformance));
+            RenderPresetDLAA = Config::Instance()->DLSSDRenderPresetForAll.value_or(
+                Config::Instance()->DLSSDRenderPresetDLAA.value_or(RenderPresetDLAA));
+            RenderPresetUltraQuality = Config::Instance()->DLSSDRenderPresetForAll.value_or(
+                Config::Instance()->DLSSDRenderPresetUltraQuality.value_or(RenderPresetUltraQuality));
+            RenderPresetQuality = Config::Instance()->DLSSDRenderPresetForAll.value_or(
+                Config::Instance()->DLSSDRenderPresetQuality.value_or(RenderPresetQuality));
+            RenderPresetBalanced = Config::Instance()->DLSSDRenderPresetForAll.value_or(
+                Config::Instance()->DLSSDRenderPresetBalanced.value_or(RenderPresetBalanced));
+            RenderPresetPerformance = Config::Instance()->DLSSDRenderPresetForAll.value_or(
+                Config::Instance()->DLSSDRenderPresetPerformance.value_or(RenderPresetPerformance));
+            RenderPresetUltraPerformance = Config::Instance()->DLSSDRenderPresetForAll.value_or(
+                Config::Instance()->DLSSDRenderPresetUltraPerformance.value_or(RenderPresetUltraPerformance));
 
             LOG_DEBUG("Preset override active, config overrides:");
             LOG_DEBUG("Preset_DLAA {}", RenderPresetDLAA);
@@ -150,6 +170,53 @@ void DLSSDFeature::ProcessInitParams(NVSDK_NGX_Parameter* InParameters)
         InParameters->Set("RayReconstruction.Hint.Render.Preset.Balanced", RenderPresetBalanced);
         InParameters->Set("RayReconstruction.Hint.Render.Preset.Performance", RenderPresetPerformance);
         InParameters->Set("RayReconstruction.Hint.Render.Preset.UltraPerformance", RenderPresetUltraPerformance);
+    }
+    else
+    {
+        if (State::Instance().dlssdPresetsOverridenByOpti)
+        {
+            LOG_DEBUG("Restoring Preset_DLAA {}", State::Instance().dlssdRenderPresetDLAA);
+            LOG_DEBUG("Restoring Preset_UltraQuality {}", State::Instance().dlssdRenderPresetUltraQuality);
+            LOG_DEBUG("Restoring Preset_Quality {}", State::Instance().dlssdRenderPresetQuality);
+            LOG_DEBUG("Restoring Preset_Balanced {}", State::Instance().dlssdRenderPresetBalanced);
+            LOG_DEBUG("Restoring Preset_Performance {}", State::Instance().dlssdRenderPresetPerformance);
+            LOG_DEBUG("Restoring Preset_UltraPerformance {}", State::Instance().dlssdRenderPresetUltraPerformance);
+
+            InParameters->Set("RayReconstruction.Hint.Render.Preset.DLAA", State::Instance().dlssdRenderPresetDLAA);
+            InParameters->Set("RayReconstruction.Hint.Render.Preset.UltraQuality",
+                              State::Instance().dlssdRenderPresetUltraQuality);
+            InParameters->Set("RayReconstruction.Hint.Render.Preset.Quality",
+                              State::Instance().dlssdRenderPresetQuality);
+            InParameters->Set("RayReconstruction.Hint.Render.Preset.Balanced",
+                              State::Instance().dlssdRenderPresetBalanced);
+            InParameters->Set("RayReconstruction.Hint.Render.Preset.Performance",
+                              State::Instance().dlssdRenderPresetPerformance);
+            InParameters->Set("RayReconstruction.Hint.Render.Preset.UltraPerformance",
+                              State::Instance().dlssdRenderPresetUltraPerformance);
+        }
+        else
+        {
+            InParameters->Get("RayReconstruction.Hint.Render.Preset.DLAA", &State::Instance().dlssdRenderPresetDLAA);
+            InParameters->Get("RayReconstruction.Hint.Render.Preset.UltraQuality",
+                              &State::Instance().dlssdRenderPresetUltraQuality);
+            InParameters->Get("RayReconstruction.Hint.Render.Preset.Quality",
+                              &State::Instance().dlssdRenderPresetQuality);
+            InParameters->Get("RayReconstruction.Hint.Render.Preset.Balanced",
+                              &State::Instance().dlssdRenderPresetBalanced);
+            InParameters->Get("RayReconstruction.Hint.Render.Preset.Performance",
+                              &State::Instance().dlssdRenderPresetPerformance);
+            InParameters->Get("RayReconstruction.Hint.Render.Preset.UltraPerformance",
+                              &State::Instance().dlssdRenderPresetUltraPerformance);
+
+            LOG_DEBUG("Original Preset_DLAA {}", State::Instance().dlssdRenderPresetDLAA);
+            LOG_DEBUG("Original Preset_UltraQuality {}", State::Instance().dlssdRenderPresetUltraQuality);
+            LOG_DEBUG("Original Preset_Quality {}", State::Instance().dlssdRenderPresetQuality);
+            LOG_DEBUG("Original Preset_Balanced {}", State::Instance().dlssdRenderPresetBalanced);
+            LOG_DEBUG("Original Preset_Performance {}", State::Instance().dlssdRenderPresetPerformance);
+            LOG_DEBUG("Original Preset_UltraPerformance {}", State::Instance().dlssdRenderPresetUltraPerformance);
+        }
+
+        State::Instance().dlssdPresetsOverridenByOpti = false;
     }
 
     UINT perfQ = NVSDK_NGX_PerfQuality_Value_Balanced;
@@ -199,7 +266,7 @@ DLSSDFeature::DLSSDFeature(unsigned int handleId, NVSDK_NGX_Parameter* InParamet
     if (NVNGXProxy::NVNGXModule() == nullptr)
         NVNGXProxy::InitNVNGX();
 
-    if (NVNGXProxy::NVNGXModule() != nullptr && !State::Instance().enablerAvailable)
+    if (NVNGXProxy::NVNGXModule() != nullptr)
     {
         HookNgxApi(NVNGXProxy::NVNGXModule());
     }
@@ -208,8 +275,6 @@ DLSSDFeature::DLSSDFeature(unsigned int handleId, NVSDK_NGX_Parameter* InParamet
 }
 
 DLSSDFeature::~DLSSDFeature() {}
-
-void DLSSDFeature::Shutdown() {}
 
 float DLSSDFeature::GetSharpness(const NVSDK_NGX_Parameter* InParameters)
 {

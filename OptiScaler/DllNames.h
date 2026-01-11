@@ -4,9 +4,7 @@
 
 #include <proxies/KernelBase_Proxy.h>
 
-//#define DEFINE_NAME_VECTORS(varName, libName)                                                                          \
-//    inline std::vector<std::string> varName##Names = { libName ".dll", libName };                                      \
-//    inline std::vector<std::wstring> varName##NamesW = { L##libName L".dll", L##libName };
+#include <cwctype> // for std::towlower
 
 #define DEFINE_NAME_VECTORS(varName, ...)                                                                              \
     inline std::vector<std::string> varName##Names = []                                                                \
@@ -135,8 +133,48 @@ inline std::vector<std::wstring> blockOverlayNamesW = { L"eosovh-win32-shipping.
                                                         L"overlay",
                                                         L"overlay.dll" };
 
+inline std::vector<std::string> skipDxgiWrappingNames = { "eosovh-win32-shipping.dll",
+                                                          "eosovh-win64-shipping.dll",
+                                                          "gameoverlayrenderer64",
+                                                          "gameoverlayrenderer64.dll",
+                                                          "gameoverlayrenderer.dll",
+                                                          "socialclubd3d12renderer.dll",
+                                                          "owutils.dll",
+                                                          "galaxy.dll",
+                                                          "galaxy64.dll",
+                                                          "discordoverlay.dll",
+                                                          "discordoverlay64.dll",
+                                                          "overlay64.dll",
+                                                          "overlay.dll", // Overlays ended
+                                                          "d3d11.dll",
+                                                          "d3d12.dll",
+                                                          "d3d12core.dll" }; // directx ended
+/*
+                                                          "fakenvapi.dll", // fakenvapi
+                                                          "libxell.dll",
+                                                          "libxess.dll",
+                                                          "libxess_dx11.dll",
+                                                          "igxess.dll",
+                                                          "igxess2.dll",
+                                                          "libxess_fg.dll",
+                                                          "igxess_fg.dll", // xess ended
+                                                          "intelcontrollib.dll",
+                                                          "igdext64.dll",
+                                                          "igdgmm64.dll", // intel drivers ended
+                                                          "ffx_fsr2_api_x64.dll",
+                                                          "ffx_fsr2_api_dx12_x64.dll",
+                                                          "ffx_fsr3upscaler_x64.dll",
+                                                          "ffx_backend_dx12_x64.dll",
+                                                          "amd_fidelityfx_dx12.dll",
+                                                          "amd_fidelityfx_loader_dx12.dll",
+                                                          "amd_fidelityfx_upscaler_dx12.dll",
+                                                          "amd_fidelityfx_framegeneration_dx12.dll", // fsr ended
+                                                          "nvcamera64.dll",                          // nvcamera?
+*/
+
 DEFINE_NAME_VECTORS(dx11, "d3d11");
 DEFINE_NAME_VECTORS(dx12, "d3d12");
+DEFINE_NAME_VECTORS(dx12agility, "d3d12core");
 DEFINE_NAME_VECTORS(dxgi, "dxgi");
 DEFINE_NAME_VECTORS(vk, "vulkan-1", "winevulkan");
 
@@ -147,6 +185,7 @@ DEFINE_NAME_VECTORS(slInterposer, "sl.interposer");
 DEFINE_NAME_VECTORS(slDlss, "sl.dlss");
 DEFINE_NAME_VECTORS(slDlssg, "sl.dlss_g");
 DEFINE_NAME_VECTORS(slReflex, "sl.reflex");
+DEFINE_NAME_VECTORS(slPcl, "sl.pcl");
 DEFINE_NAME_VECTORS(slCommon, "sl.common");
 
 DEFINE_NAME_VECTORS(xess, "libxess");
@@ -159,16 +198,54 @@ DEFINE_NAME_VECTORS(fsr3, "ffx_fsr3upscaler_x64");
 DEFINE_NAME_VECTORS(fsr3BE, "ffx_backend_dx12_x64");
 
 DEFINE_NAME_VECTORS(ffxDx12, "amd_fidelityfx_dx12", "amd_fidelityfx_loader_dx12");
+DEFINE_NAME_VECTORS(ffxDx12Upscaler, "amd_fidelityfx_upscaler_dx12");
+DEFINE_NAME_VECTORS(ffxDx12FG, "amd_fidelityfx_framegeneration_dx12");
 DEFINE_NAME_VECTORS(ffxVk, "amd_fidelityfx_vk");
+
+inline static bool CompareFileName(std::string* first, std::string* second)
+{
+    if (first->size() < second->size())
+        return false;
+
+    auto start = first->size() - second->size();
+
+    bool match = true;
+    for (size_t j = 0; j < second->size(); ++j)
+    {
+        if (std::tolower(static_cast<unsigned char>((*first)[start + j])) !=
+            std::tolower(static_cast<unsigned char>((*second)[j])))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+inline static bool CompareFileNameW(std::wstring* first, std::wstring* second)
+{
+    if (first->size() < second->size())
+        return false;
+
+    auto start = first->size() - second->size();
+
+    bool match = true;
+    for (size_t j = 0; j < second->size(); ++j)
+    {
+        if (std::towlower((*first)[start + j]) != std::towlower((*second)[j]))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
 
 inline static bool CheckDllName(std::string* dllName, std::vector<std::string>* namesList)
 {
-    for (size_t i = 0; i < namesList->size(); i++)
+    for (auto& name : *namesList)
     {
-        auto name = namesList->at(i);
-        auto pos = dllName->rfind(name);
-
-        if (pos != std::string::npos && pos == (dllName->size() - name.size()))
+        if (CompareFileName(dllName, &name))
             return true;
     }
 
@@ -177,12 +254,9 @@ inline static bool CheckDllName(std::string* dllName, std::vector<std::string>* 
 
 inline static bool CheckDllNameW(std::wstring* dllName, std::vector<std::wstring>* namesList)
 {
-    for (size_t i = 0; i < namesList->size(); i++)
+    for (auto& name : *namesList)
     {
-        auto name = namesList->at(i);
-        auto pos = dllName->rfind(name);
-
-        if (pos != std::string::npos && pos == (dllName->size() - name.size()))
+        if (CompareFileNameW(dllName, &name))
             return true;
     }
 

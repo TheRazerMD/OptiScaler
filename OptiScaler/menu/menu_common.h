@@ -25,6 +25,36 @@ class ScopedIndent
     float m_indent;
 };
 
+class ScopedCollapsingHeader
+{
+  public:
+    explicit ScopedCollapsingHeader(const char* label, ImGuiTreeNodeFlags flags = 0)
+    {
+        ImGui::PushID(label);
+
+        ImGui::BeginChild("##CollapsingHeaderChild", ImVec2(0, 0), ImGuiChildFlags_AutoResizeY,
+                          ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+
+        _headerOpen = ImGui::CollapsingHeader(label, flags);
+        _active = true;
+    }
+
+    bool IsHeaderOpen() const { return _headerOpen; }
+
+    ~ScopedCollapsingHeader()
+    {
+        if (_active)
+        {
+            ImGui::EndChild();
+            ImGui::PopID();
+        }
+    }
+
+  private:
+    bool _active = false;
+    bool _headerOpen = false;
+};
+
 class MenuCommon
 {
   private:
@@ -52,10 +82,11 @@ class MenuCommon
     inline static UINT64 _frameCount = 0;
 
     // reflex
-    inline static float _limitFps = INFINITY;
+    inline static float _limitFps = std::numeric_limits<float>::infinity();
 
-    // fsr3x
-    inline static int _fsr3xIndex = -1;
+    // ffx
+    inline static int _ffxUpscalerIndex = -1;
+    inline static int _ffxFGIndex = -1;
 
     // output scaling
     inline static float _ssRatio = 0.0f;
@@ -83,12 +114,12 @@ class MenuCommon
 #pragma region "Hooks & WndProc"
 
     // for hooking
-    typedef BOOL (*PFN_SetCursorPos)(int x, int y);
-    typedef BOOL (*PFN_ClipCursor)(const RECT* lpRect);
-    typedef UINT (*PFN_SendInput)(UINT cInputs, LPINPUT pInputs, int cbSize);
-    typedef void (*PFN_mouse_event)(DWORD dwFlags, DWORD dx, DWORD dy, DWORD dwData, ULONG_PTR dwExtraInfo);
-    typedef BOOL (*PFN_GetCursorPos)(LPPOINT lpPoint);
-    typedef LRESULT (*PFN_SendMessageW)(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
+    typedef decltype(&SetCursorPos) PFN_SetCursorPos;
+    typedef decltype(&ClipCursor) PFN_ClipCursor;
+    typedef decltype(&SendInput) PFN_SendInput;
+    typedef decltype(&mouse_event) PFN_mouse_event;
+    typedef decltype(&GetCursorPos) PFN_GetCursorPos;
+    typedef decltype(&SendMessageW) PFN_SendMessageW;
 
     inline static PFN_SetCursorPos pfn_SetPhysicalCursorPos = nullptr;
     inline static PFN_SetCursorPos pfn_SetCursorPos = nullptr;

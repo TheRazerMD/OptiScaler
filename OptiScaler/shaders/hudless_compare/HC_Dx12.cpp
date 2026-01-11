@@ -1,5 +1,9 @@
 #include "HC_Dx12.h"
 
+#include "HC_Common.h"
+#include "precompile/hudless_compare_PShader.h"
+#include "precompile/hudless_compare_VShader.h"
+
 #include <Config.h>
 
 DXGI_FORMAT HC_Dx12::ToSRGB(DXGI_FORMAT f)
@@ -68,39 +72,29 @@ bool HC_Dx12::CreateBufferResource(UINT index, ID3D12Device* InDevice, ID3D12Res
 
     LOG_DEBUG("[{0}] Start!", _name);
 
-    D3D12_HEAP_PROPERTIES heapProperties;
-    D3D12_HEAP_FLAGS heapFlags;
-    HRESULT hr = InSource->GetHeapProperties(&heapProperties, &heapFlags);
+    auto resourceFlags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 
-    if (hr != S_OK)
-    {
-        LOG_ERROR("[{0}] GetHeapProperties result: {1:x}", _name.c_str(), hr);
-        return false;
-    }
+    auto result = Shader_Dx12::CreateBufferResource(InDevice, InSource, InState, &_buffer[index], resourceFlags);
 
-    texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS |
-                     D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS;
-    texDesc.Width = texDesc.Width;
-    texDesc.Height = texDesc.Height;
-
-    hr = InDevice->CreateCommittedResource(&heapProperties, D3D12_HEAP_FLAG_NONE, &texDesc, InState, nullptr,
-                                           IID_PPV_ARGS(&_buffer[index]));
-
-    if (hr != S_OK)
+    if (result)
     {
         LOG_ERROR("[{0}] CreateCommittedResource result: {1:x}", _name, hr);
         return false;
     }
 
-    _buffer[index]->SetName(L"HC_Buffer");
-    _bufferState[index] = InState;
+        _buffer[index]->SetName(L"HC_Buffer");
+        _bufferState[index] = InState;
+    }
 
-    return true;
+    return result;
 }
 
 void HC_Dx12::ResourceBarrier(ID3D12GraphicsCommandList* cmdList, ID3D12Resource* resource,
                               D3D12_RESOURCE_STATES beforeState, D3D12_RESOURCE_STATES afterState)
 {
+    if (beforeState == afterState)
+        return;
+
     D3D12_RESOURCE_BARRIER barrier = {};
     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
     barrier.Transition.pResource = resource;
@@ -115,18 +109,12 @@ void HC_Dx12::SetBufferState(UINT index, ID3D12GraphicsCommandList* InCommandLis
     if (_bufferState[index] == InState)
         return;
 
-    D3D12_RESOURCE_BARRIER barrier = {};
-    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-    barrier.Transition.pResource = _buffer[index];
-    barrier.Transition.StateBefore = _bufferState[index];
-    barrier.Transition.StateAfter = InState;
-    barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-    InCommandList->ResourceBarrier(1, &barrier);
+    ResourceBarrier(InCommandList, _buffer[index], _bufferState[index], InState);
 
     _bufferState[index] = InState;
 }
 
-HC_Dx12::HC_Dx12(std::string InName, ID3D12Device* InDevice)
+HC_Dx12::HC_Dx12(std::string InName, ID3D12Device* InDevice) : Shader_Dx12(InName, InDevice)
 {
     _name = InName;
 
@@ -137,40 +125,61 @@ HC_Dx12::HC_Dx12(std::string InName, ID3D12Device* InDevice)
         return;
     }
 
-    // Root signature
-    CD3DX12_DESCRIPTOR_RANGE1 rangeSRV0(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0);
-    CD3DX12_DESCRIPTOR_RANGE1 rangeSRV1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1, 0);
-    CD3DX12_DESCRIPTOR_RANGE1 rangeCBV0(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0, 0);
+    CD3DX12_DESCRIPTOR_RANGE1 descriptorRanges[] = {
+        // 2 SRVs starting at register t0, space 0
+        CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 0, 0),
 
-    CD3DX12_ROOT_PARAMETER1 params[3] {};
-    params[0].InitAsDescriptorTable(1, &rangeSRV0, D3D12_SHADER_VISIBILITY_PIXEL);
-    params[1].InitAsDescriptorTable(1, &rangeSRV1, D3D12_SHADER_VISIBILITY_PIXEL);
-    params[2].InitAsDescriptorTable(1, &rangeCBV0, D3D12_SHADER_VISIBILITY_PIXEL);
+        // 1 CBV starting at register b0, space 0
+        CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0, 0)
+    };
 
-    D3D12_STATIC_SAMPLER_DESC samp {};
-    samp.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
-    samp.AddressU = samp.AddressV = samp.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-    samp.MaxLOD = D3D12_FLOAT32_MAX;
-    samp.ShaderRegister = 0;
-    samp.RegisterSpace = 0;
-    samp.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    CD3DX12_ROOT_PARAMETER1 rootParameter {};
+    rootParameter.InitAsDescriptorTable(std::size(descriptorRanges), descriptorRanges);
 
-    CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rsDesc;
-    rsDesc.Init_1_1(_countof(params), params, 1, &samp, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+    D3D12_STATIC_SAMPLER_DESC sampler {};
+    sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+    sampler.AddressU = sampler.AddressV = sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    sampler.MaxLOD = D3D12_FLOAT32_MAX;
+    sampler.ShaderRegister = 0;
+    sampler.RegisterSpace = 0;
+    sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-    ID3DBlob *sig, *err;
-    auto result = D3D12SerializeVersionedRootSignature(&rsDesc, &sig, &err);
+    CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSigDesc;
+    rootSigDesc.Init_1_1(1, &rootParameter, 1, &sampler, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+    ID3DBlob* signatureBlob;
+    ID3DBlob* errorBlob;
+
+    auto result = D3D12SerializeVersionedRootSignature(&rootSigDesc, &signatureBlob, &errorBlob);
     if (result != S_OK)
     {
         LOG_ERROR("D3D12SerializeVersionedRootSignature error: {:X}", (unsigned long) result);
         return;
     }
 
-    result =
-        InDevice->CreateRootSignature(0, sig->GetBufferPointer(), sig->GetBufferSize(), IID_PPV_ARGS(&_rootSignature));
+    result = InDevice->CreateRootSignature(0, signatureBlob->GetBufferPointer(), signatureBlob->GetBufferSize(),
+                                           IID_PPV_ARGS(&_rootSignature));
     if (result != S_OK)
     {
         LOG_ERROR("CreateRootSignature error: {:X}", (unsigned long) result);
+        return;
+    }
+
+    if (errorBlob != nullptr)
+    {
+        errorBlob->Release();
+        errorBlob = nullptr;
+    }
+
+    if (signatureBlob != nullptr)
+    {
+        signatureBlob->Release();
+        signatureBlob = nullptr;
+    }
+
+    if (_rootSignature == nullptr)
+    {
+        LOG_ERROR("[{0}] _rootSignature is null!", _name);
         return;
     }
 
@@ -178,39 +187,39 @@ HC_Dx12::HC_Dx12(std::string InName, ID3D12Device* InDevice)
     UINT cflags = 0;
     ID3DBlob *vs, *ps;
 
-    D3D12_GRAPHICS_PIPELINE_STATE_DESC pso {};
-    pso.pRootSignature = _rootSignature;
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC graphicsPsoDesc {};
+    graphicsPsoDesc.pRootSignature = _rootSignature;
 
     if (Config::Instance()->UsePrecompiledShaders.value_or_default())
     {
-        pso.VS = CD3DX12_SHADER_BYTECODE(reinterpret_cast<const void*>(hudless_compare_VS_cso),
-                                         sizeof(hudless_compare_VS_cso));
-        pso.PS = CD3DX12_SHADER_BYTECODE(reinterpret_cast<const void*>(hudless_compare_PS_cso),
-                                         sizeof(hudless_compare_PS_cso));
+        graphicsPsoDesc.VS = CD3DX12_SHADER_BYTECODE(reinterpret_cast<const void*>(hudless_compare_VS_cso),
+                                                     sizeof(hudless_compare_VS_cso));
+        graphicsPsoDesc.PS = CD3DX12_SHADER_BYTECODE(reinterpret_cast<const void*>(hudless_compare_PS_cso),
+                                                     sizeof(hudless_compare_PS_cso));
     }
     else
     {
         vs = HC_CompileShader(hcCode.c_str(), "VSMain", "vs_5_1");
         if (vs != nullptr)
-            pso.VS = { vs->GetBufferPointer(), vs->GetBufferSize() };
+            graphicsPsoDesc.VS = { vs->GetBufferPointer(), vs->GetBufferSize() };
 
         ps = HC_CompileShader(hcCode.c_str(), "PSMain", "ps_5_1");
         if (ps != nullptr)
-            pso.PS = { ps->GetBufferPointer(), ps->GetBufferSize() };
+            graphicsPsoDesc.PS = { ps->GetBufferPointer(), ps->GetBufferSize() };
     }
 
-    pso.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-    pso.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-    pso.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-    pso.DepthStencilState.DepthEnable = FALSE;
-    pso.SampleMask = UINT_MAX;
-    pso.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    pso.NumRenderTargets = 1;
-    pso.RTVFormats[0] =
-        TranslateTypelessFormats(ToSRGB(scDesc.BufferDesc.Format)); // match swapchain RTV format (can be *_SRGB)
-    pso.SampleDesc = { 1, 0 };
+    graphicsPsoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+    graphicsPsoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    graphicsPsoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+    graphicsPsoDesc.DepthStencilState.DepthEnable = FALSE;
+    graphicsPsoDesc.SampleMask = UINT_MAX;
+    graphicsPsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    graphicsPsoDesc.NumRenderTargets = 1;
+    graphicsPsoDesc.RTVFormats[0] =
+        Shader_Dx12::TranslateTypelessFormats(scDesc.BufferDesc.Format); // match swapchain RTV format (can be *_SRGB)
+    graphicsPsoDesc.SampleDesc = { 1, 0 };
 
-    result = InDevice->CreateGraphicsPipelineState(&pso, IID_PPV_ARGS(&_pipelineState));
+    result = InDevice->CreateGraphicsPipelineState(&graphicsPsoDesc, IID_PPV_ARGS(&_pipelineState));
     if (result != S_OK)
     {
         LOG_ERROR("CreateGraphicsPipelineState error: {:X}", (unsigned long) result);
@@ -231,48 +240,16 @@ HC_Dx12::HC_Dx12(std::string InName, ID3D12Device* InDevice)
         return;
     }
 
-    // Command List
-    for (size_t i = 0; i < 2; i++)
+    ScopedSkipHeapCapture skipHeapCapture {};
+
+    for (int i = 0; i < HC_NUM_OF_HEAPS; i++)
     {
-        result = InDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&_commandAllocator[i]));
-
-        if (result != S_OK)
+        if (!_frameHeaps[i].Initialize(InDevice, 2, 0, 1, 1))
         {
-            LOG_ERROR("CreateCommandAllocator error: {:X}", (unsigned long) result);
+            LOG_ERROR("[{0}] Failed to init heap", _name);
+            _init = false;
             return;
         }
-
-        result = InDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, _commandAllocator[i], NULL,
-                                             IID_PPV_ARGS(&_commandList[i]));
-        if (result != S_OK)
-        {
-            LOG_ERROR("CreateCommandList error: {:X}", (unsigned long) result);
-            return;
-        }
-
-        result = _commandList[i]->Close();
-        if (result != S_OK)
-        {
-            LOG_ERROR("_commandList->Close error: {:X}", (unsigned long) result);
-            return;
-        }
-    }
-
-    // Create Heaps
-    D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
-    heapDesc.NumDescriptors = 6; // SRV + UAV + CBV
-    heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-    heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-
-    State::Instance().skipHeapCapture = true;
-
-    auto hr = InDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&_srvHeap[0]));
-
-    if (FAILED(hr))
-    {
-        LOG_ERROR("[{0}] CreateDescriptorHeap[0] error {1:x}", _name, hr);
-        return;
-    }
 
     heapDesc.NumDescriptors = 2; // RTV
     heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
@@ -285,13 +262,10 @@ HC_Dx12::HC_Dx12(std::string InName, ID3D12Device* InDevice)
         return;
     }
 
-    _init = _srvHeap[1] != nullptr;
-
-    if (_init)
-        _device = InDevice;
+    _init = true;
 }
 
-bool HC_Dx12::Dispatch(IDXGISwapChain3* sc, ID3D12CommandQueue* queue, ID3D12Resource* hudless,
+bool HC_Dx12::Dispatch(IDXGISwapChain3* sc, ID3D12GraphicsCommandList* cmdList, ID3D12Resource* hudless,
                        D3D12_RESOURCE_STATES state)
 {
     if (sc == nullptr || hudless == nullptr || !_init)
@@ -315,17 +289,19 @@ bool HC_Dx12::Dispatch(IDXGISwapChain3* sc, ID3D12CommandQueue* queue, ID3D12Res
         return false;
     }
 
+    scBuffer->Release();
+
     // Check Hudless Buffer
     D3D12_RESOURCE_DESC hudlessDesc = hudless->GetDesc();
 
-    if (hudlessDesc.Format != scDesc.BufferDesc.Format || hudlessDesc.Width != scDesc.BufferDesc.Width ||
+    if (/*hudlessDesc.Format != scDesc.BufferDesc.Format ||*/ hudlessDesc.Width != scDesc.BufferDesc.Width ||
         hudlessDesc.Height != scDesc.BufferDesc.Height)
     {
         return false;
     }
 
     _counter++;
-    _counter = _counter % 2;
+    _counter = _counter % HC_NUM_OF_HEAPS;
 
     // Check existing buffer
     D3D12_RESOURCE_DESC bufferDesc {};
@@ -335,11 +311,11 @@ bool HC_Dx12::Dispatch(IDXGISwapChain3* sc, ID3D12CommandQueue* queue, ID3D12Res
     if (_buffer[_counter] == nullptr || bufferDesc.Format != scDesc.BufferDesc.Format ||
         bufferDesc.Width != scDesc.BufferDesc.Width || bufferDesc.Height != scDesc.BufferDesc.Height)
     {
-        if (!CreateBufferResource(_counter, _device, scBuffer, D3D12_RESOURCE_STATE_COPY_DEST))
-        {
-            LOG_ERROR("CreateBufferResource error!");
-            return false;
-        }
+    if (!CreateBufferResource(_counter, _device, scBuffer, D3D12_RESOURCE_STATE_COPY_DEST))
+    {
+        LOG_ERROR("CreateBufferResource error!");
+        return false;
+    }
     }
 
     // Reset CommandList
@@ -358,61 +334,23 @@ bool HC_Dx12::Dispatch(IDXGISwapChain3* sc, ID3D12CommandQueue* queue, ID3D12Res
     }
 
     // Copy Swapchain Buffer to read buffer
-    SetBufferState(_counter, _commandList[_counter], D3D12_RESOURCE_STATE_COPY_DEST);
-    ResourceBarrier(_commandList[_counter], scBuffer, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_COPY_SOURCE);
+    SetBufferState(_counter, cmdList, D3D12_RESOURCE_STATE_COPY_DEST);
+    ResourceBarrier(cmdList, scBuffer, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
     if (_buffer != nullptr)
-        _commandList[_counter]->CopyResource(_buffer[_counter], scBuffer);
+        cmdList->CopyResource(_buffer[_counter], scBuffer);
 
-    ResourceBarrier(_commandList[_counter], scBuffer, D3D12_RESOURCE_STATE_COPY_SOURCE,
-                    D3D12_RESOURCE_STATE_RENDER_TARGET);
-    SetBufferState(_counter, _commandList[_counter], D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-    ResourceBarrier(_commandList[_counter], hudless, state, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+    ResourceBarrier(cmdList, scBuffer, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
+    SetBufferState(_counter, cmdList, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+    if (state != D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE)
+        ResourceBarrier(cmdList, hudless, state, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
     // Start setting pipeline
     UINT outWidth = scDesc.BufferDesc.Width;
     UINT outHeight = scDesc.BufferDesc.Height;
 
-    // Create heap handles
-    if (_cpuSrv0Handle[0].ptr == NULL)
-    {
-        auto size = _device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-        _cpuSrv0Handle[0] = _srvHeap[0]->GetCPUDescriptorHandleForHeapStart();
-        _cpuSrv0Handle[1] = _cpuSrv0Handle[0];
-        _cpuSrv0Handle[1].ptr += size;
-        _cpuSrv1Handle[0] = _cpuSrv0Handle[1];
-        _cpuSrv1Handle[0].ptr += size;
-        _cpuSrv1Handle[1] = _cpuSrv1Handle[0];
-        _cpuSrv1Handle[1].ptr += size;
-        _cpuCbv0Handle[0] = _cpuSrv1Handle[1];
-        _cpuCbv0Handle[0].ptr += size;
-        _cpuCbv0Handle[1] = _cpuCbv0Handle[0];
-        _cpuCbv0Handle[1].ptr += size;
-    }
-
-    if (_cpuRtv0Handle[0].ptr == NULL)
-    {
-        auto size = _device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-        _cpuRtv0Handle[0] = _srvHeap[1]->GetCPUDescriptorHandleForHeapStart();
-        _cpuRtv0Handle[1] = _cpuRtv0Handle[0];
-        _cpuRtv0Handle[1].ptr += size;
-    }
-
-    if (_gpuSrv0Handle[0].ptr == NULL)
-    {
-        auto size = _device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-        _gpuSrv0Handle[0] = _srvHeap[0]->GetGPUDescriptorHandleForHeapStart();
-        _gpuSrv0Handle[1] = _gpuSrv0Handle[0];
-        _gpuSrv0Handle[1].ptr += size;
-        _gpuSrv1Handle[0] = _gpuSrv0Handle[1];
-        _gpuSrv1Handle[0].ptr += size;
-        _gpuSrv1Handle[1] = _gpuSrv1Handle[0];
-        _gpuSrv1Handle[1].ptr += size;
-        _gpuCbv0Handle[0] = _gpuSrv1Handle[1];
-        _gpuCbv0Handle[0].ptr += size;
-        _gpuCbv0Handle[1] = _gpuCbv0Handle[0];
-        _gpuCbv0Handle[1].ptr += size;
-    }
+    FrameDescriptorHeap& currentHeap = _frameHeaps[_counter];
 
     // Create views
     {
@@ -420,8 +358,8 @@ bool HC_Dx12::Dispatch(IDXGISwapChain3* sc, ID3D12CommandQueue* queue, ID3D12Res
         srv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
         srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
         srv.Texture2D.MipLevels = 1;
-        srv.Format = TranslateTypelessFormats(ToSRGB(hudlessDesc.Format));
-        _device->CreateShaderResourceView(hudless, &srv, _cpuSrv0Handle[_counter]);
+        srv.Format = Shader_Dx12::TranslateTypelessFormats(hudlessDesc.Format);
+        _device->CreateShaderResourceView(hudless, &srv, currentHeap.GetSrvCPU(0));
     }
 
     {
@@ -429,27 +367,20 @@ bool HC_Dx12::Dispatch(IDXGISwapChain3* sc, ID3D12CommandQueue* queue, ID3D12Res
         srv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
         srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
         srv.Texture2D.MipLevels = 1;
-        srv.Format = TranslateTypelessFormats(ToSRGB(scDesc.BufferDesc.Format));
-        _device->CreateShaderResourceView(_buffer[_counter], &srv, _cpuSrv1Handle[_counter]);
-    }
-
-    {
-        D3D12_CONSTANT_BUFFER_VIEW_DESC cbv {};
-        cbv.BufferLocation = _constantBuffer->GetGPUVirtualAddress();
-        cbv.SizeInBytes = sizeof(InternalCompareParams);
-        _device->CreateConstantBufferView(&cbv, _cpuCbv0Handle[_counter]);
+        srv.Format = Shader_Dx12::TranslateTypelessFormats(scDesc.BufferDesc.Format);
+        _device->CreateShaderResourceView(_buffer[_counter], &srv, currentHeap.GetSrvCPU(1));
     }
 
     {
         D3D12_RENDER_TARGET_VIEW_DESC rtv {};
         rtv.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-        rtv.Format = TranslateTypelessFormats(ToSRGB(scDesc.BufferDesc.Format));
-        _device->CreateRenderTargetView(scBuffer, &rtv, _cpuRtv0Handle[_counter]);
+        rtv.Format = Shader_Dx12::TranslateTypelessFormats(scDesc.BufferDesc.Format);
+        _device->CreateRenderTargetView(scBuffer, &rtv, currentHeap.GetRtvCPU(0));
     }
 
     InternalCompareParams constants {};
-    constants.DiffThreshold = 0.003;
-    constants.PinkAmount = 0.6;
+    constants.DiffThreshold = 0.003f;
+    constants.PinkAmount = 0.6f;
 
     BYTE* pCBDataBegin;
     CD3DX12_RANGE readRange(0, 0);
@@ -471,47 +402,44 @@ bool HC_Dx12::Dispatch(IDXGISwapChain3* sc, ID3D12CommandQueue* queue, ID3D12Res
     _constantBuffer->Unmap(0, nullptr);
 
     {
-        D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
-        cbvDesc.BufferLocation = _constantBuffer->GetGPUVirtualAddress();
-        cbvDesc.SizeInBytes = sizeof(constants);
-        _device->CreateConstantBufferView(&cbvDesc, _cpuCbv0Handle[_counter]);
+        D3D12_CONSTANT_BUFFER_VIEW_DESC cbv {};
+        cbv.BufferLocation = _constantBuffer->GetGPUVirtualAddress();
+        cbv.SizeInBytes = sizeof(constants);
+        _device->CreateConstantBufferView(&cbv, currentHeap.GetCbvCPU(0));
     }
 
-    // Pipeline
-    // Bind pipeline + heap
-    _commandList[_counter]->SetGraphicsRootSignature(_rootSignature);
-    _commandList[_counter]->SetPipelineState(_pipelineState);
+    ID3D12DescriptorHeap* heaps[] = { currentHeap.GetHeapCSU() };
+    cmdList->SetDescriptorHeaps(_countof(heaps), heaps);
 
-    _commandList[_counter]->SetDescriptorHeaps(1, &_srvHeap[0]);
+    cmdList->SetGraphicsRootSignature(_rootSignature);
+    cmdList->SetPipelineState(_pipelineState);
 
-    _commandList[_counter]->SetGraphicsRootDescriptorTable(0, _gpuSrv0Handle[_counter]); // t0
-    _commandList[_counter]->SetGraphicsRootDescriptorTable(1, _gpuSrv1Handle[_counter]); // t1
-    _commandList[_counter]->SetGraphicsRootDescriptorTable(2, _gpuCbv0Handle[_counter]); // b0
+    cmdList->SetGraphicsRootDescriptorTable(0, currentHeap.GetTableGPUStart());
 
     // Set RTV, viewport, scissor
-    _commandList[_counter]->OMSetRenderTargets(1, &_cpuRtv0Handle[_counter], FALSE, nullptr);
+    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles[] = { currentHeap.GetRtvCPU(0) };
+    cmdList->OMSetRenderTargets(_countof(rtvHandles), rtvHandles, true, nullptr);
 
     D3D12_VIEWPORT vp {};
     vp.TopLeftX = 0.0f;
     vp.TopLeftY = 0.0f;
-    vp.Width = outWidth;
-    vp.Height = outHeight;
+    vp.Width = static_cast<FLOAT>(outWidth);
+    vp.Height = static_cast<FLOAT>(outHeight);
     vp.MinDepth = 0.0f;
     vp.MaxDepth = 1.0f;
-    _commandList[_counter]->RSSetViewports(1, &vp);
+    cmdList->RSSetViewports(1, &vp);
 
     D3D12_RECT rect { 0, 0, (LONG) outWidth, (LONG) outHeight };
-    _commandList[_counter]->RSSetScissorRects(1, &rect);
+    cmdList->RSSetScissorRects(1, &rect);
 
     // Fullscreen triangle
-    _commandList[_counter]->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    _commandList[_counter]->DrawInstanced(3, 1, 0, 0);
+    cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    cmdList->DrawInstanced(3, 1, 0, 0);
 
-    ResourceBarrier(_commandList[_counter], scBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
-    ResourceBarrier(_commandList[_counter], hudless, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, state);
+    ResourceBarrier(cmdList, scBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 
-    _commandList[_counter]->Close();
-    queue->ExecuteCommandLists(1, (ID3D12CommandList**) &_commandList[_counter]);
+    if (state != D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE)
+        ResourceBarrier(cmdList, hudless, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, state);
 
     return true;
 }
@@ -542,16 +470,9 @@ HC_Dx12::~HC_Dx12()
         _rootSignature = nullptr;
     }
 
-    if (_srvHeap[0] != nullptr)
+    for (int i = 0; i < HC_NUM_OF_HEAPS; i++)
     {
-        _srvHeap[0]->Release();
-        _srvHeap[0] = nullptr;
-    }
-
-    if (_srvHeap[1] != nullptr)
-    {
-        _srvHeap[1]->Release();
-        _srvHeap[1] = nullptr;
+        _frameHeaps[i].ReleaseHeaps();
     }
 
     if (_constantBuffer != nullptr)

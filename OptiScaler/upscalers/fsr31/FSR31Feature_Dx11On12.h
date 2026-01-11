@@ -16,6 +16,7 @@ class FSR31FeatureDx11on12 : public FSR31Feature, public IFeature_Dx11wDx12
 
   public:
     std::string Name() const { return "FSR3 w/Dx12"; }
+    feature_version Version() override { return FSR31Feature::Version(); }
 
     FSR31FeatureDx11on12(unsigned int InHandleId, NVSDK_NGX_Parameter* InParameters);
 
@@ -28,6 +29,6 @@ class FSR31FeatureDx11on12 : public FSR31Feature, public IFeature_Dx11wDx12
             return;
 
         if (_context != nullptr)
-            FfxApiProxy::D3D12_DestroyContext()(&_context, NULL);
+            FfxApiProxy::D3D12_DestroyContext(&_context, NULL);
     }
 };

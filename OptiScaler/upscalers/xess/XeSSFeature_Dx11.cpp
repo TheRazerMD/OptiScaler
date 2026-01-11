@@ -72,167 +72,168 @@ bool XeSSFeature_Dx11::Init(ID3D11Device* InDevice, ID3D11DeviceContext* InConte
     Device = InDevice;
     DeviceContext = InContext;
 
-    State::Instance().skipSpoofing = true;
-
-    auto ret = XeSSProxy::D3D11CreateContext()(InDevice, &_xessContext);
-
-    if (ret != XESS_RESULT_SUCCESS)
     {
-        LOG_ERROR("xessD3D12CreateContext error: {0}", ResultToString(ret));
-        return false;
-    }
+        ScopedSkipSpoofing skipSpoofing {};
 
-    ret = XeSSProxy::D3D11IsOptimalDriver()(_xessContext);
-    LOG_DEBUG("xessIsOptimalDriver : {0}", ResultToString(ret));
+        auto ret = XeSSProxy::D3D11CreateContext()(InDevice, &_xessContext);
 
-    ret = XeSSProxy::D3D11SetLoggingCallback()(_xessContext, XESS_LOGGING_LEVEL_DEBUG, XeSSLogCallback);
-    LOG_DEBUG("xessSetLoggingCallback : {0}", ResultToString(ret));
-
-    xess_d3d11_init_params_t xessParams {};
-
-    xessParams.initFlags = XESS_INIT_FLAG_NONE;
-
-    if (DepthInverted())
-        xessParams.initFlags |= XESS_INIT_FLAG_INVERTED_DEPTH;
-
-    // Autoexposure is always enabled for XeSS Dx11
-    LOG_INFO("AutoExposure is always enabled for XeSS Dx11");
-    xessParams.initFlags |= XESS_INIT_FLAG_ENABLE_AUTOEXPOSURE;
-
-    // if (AutoExposure())
-    //     xessParams.initFlags |= XESS_INIT_FLAG_ENABLE_AUTOEXPOSURE;
-    // else
-    //     xessParams.initFlags |= XESS_INIT_FLAG_EXPOSURE_SCALE_TEXTURE;
-
-    if (!IsHdr())
-        xessParams.initFlags |= XESS_INIT_FLAG_LDR_INPUT_COLOR;
-
-    if (JitteredMV())
-        xessParams.initFlags |= XESS_INIT_FLAG_JITTERED_MV;
-
-    if (!LowResMV())
-        xessParams.initFlags |= XESS_INIT_FLAG_HIGH_RES_MV;
-
-    int responsiveMask = 0;
-    if (InParameters->Get("XeSS.ResponsivePixelMask", &responsiveMask) == NVSDK_NGX_Result_Success &&
-        responsiveMask > 0)
-        xessParams.initFlags |= XESS_INIT_FLAG_RESPONSIVE_PIXEL_MASK;
-
-    if (!Config::Instance()->DisableReactiveMask.value_or(true))
-    {
-        Config::Instance()->DisableReactiveMask = false;
-        xessParams.initFlags |= XESS_INIT_FLAG_RESPONSIVE_PIXEL_MASK;
-        LOG_DEBUG("xessParams.initFlags (ReactiveMaskActive) {0:b}", xessParams.initFlags);
-    }
-
-    _xessInitFlags = xessParams.initFlags;
-
-    switch (PerfQualityValue())
-    {
-    case NVSDK_NGX_PerfQuality_Value_UltraPerformance:
-        if (Version().major >= 1 && Version().minor >= 3)
-            xessParams.qualitySetting = XESS_QUALITY_SETTING_ULTRA_PERFORMANCE;
-        else
-            xessParams.qualitySetting = XESS_QUALITY_SETTING_PERFORMANCE;
-
-        break;
-
-    case NVSDK_NGX_PerfQuality_Value_MaxPerf:
-        if (Version().major >= 1 && Version().minor >= 3)
-            xessParams.qualitySetting = XESS_QUALITY_SETTING_BALANCED;
-        else
-            xessParams.qualitySetting = XESS_QUALITY_SETTING_PERFORMANCE;
-
-        break;
-
-    case NVSDK_NGX_PerfQuality_Value_Balanced:
-        if (Version().major >= 1 && Version().minor >= 3)
-            xessParams.qualitySetting = XESS_QUALITY_SETTING_QUALITY;
-        else
-            xessParams.qualitySetting = XESS_QUALITY_SETTING_BALANCED;
-
-        break;
-
-    case NVSDK_NGX_PerfQuality_Value_MaxQuality:
-        if (Version().major >= 1 && Version().minor >= 3)
-            xessParams.qualitySetting = XESS_QUALITY_SETTING_ULTRA_QUALITY;
-        else
-            xessParams.qualitySetting = XESS_QUALITY_SETTING_QUALITY;
-
-        break;
-
-    case NVSDK_NGX_PerfQuality_Value_UltraQuality:
-        if (Version().major >= 1 && Version().minor >= 3)
-            xessParams.qualitySetting = XESS_QUALITY_SETTING_ULTRA_QUALITY_PLUS;
-        else
-            xessParams.qualitySetting = XESS_QUALITY_SETTING_ULTRA_QUALITY;
-
-        break;
-
-    case NVSDK_NGX_PerfQuality_Value_DLAA:
-        if (Version().major >= 1 && Version().minor >= 3)
-            xessParams.qualitySetting = XESS_QUALITY_SETTING_AA;
-        else
-            xessParams.qualitySetting = XESS_QUALITY_SETTING_ULTRA_QUALITY;
-
-        break;
-
-    default:
-        xessParams.qualitySetting =
-            XESS_QUALITY_SETTING_BALANCED; // Set out-of-range value for non-existing XESS_QUALITY_SETTING_BALANCED mode
-        break;
-    }
-
-    if (Config::Instance()->OutputScalingEnabled.value_or(false) && LowResMV())
-    {
-        float ssMulti = Config::Instance()->OutputScalingMultiplier.value_or(1.5f);
-
-        if (ssMulti < 0.5f)
+        if (ret != XESS_RESULT_SUCCESS)
         {
-            ssMulti = 0.5f;
-            Config::Instance()->OutputScalingMultiplier = ssMulti;
-        }
-        else if (ssMulti > 3.0f)
-        {
-            ssMulti = 3.0f;
-            Config::Instance()->OutputScalingMultiplier = ssMulti;
+            LOG_ERROR("xessD3D12CreateContext error: {0}", ResultToString(ret));
+            return false;
         }
 
-        _targetWidth = DisplayWidth() * ssMulti;
-        _targetHeight = DisplayHeight() * ssMulti;
-    }
-    else
-    {
-        _targetWidth = DisplayWidth();
-        _targetHeight = DisplayHeight();
-    }
+        ret = XeSSProxy::D3D11IsOptimalDriver()(_xessContext);
+        LOG_DEBUG("xessIsOptimalDriver : {0}", ResultToString(ret));
 
-    if (Config::Instance()->ExtendedLimits.value_or(false) && RenderWidth() > DisplayWidth())
-    {
-        _targetWidth = RenderWidth();
-        _targetHeight = RenderHeight();
+        ret = XeSSProxy::D3D11SetLoggingCallback()(_xessContext, XESS_LOGGING_LEVEL_DEBUG, XeSSLogCallback);
+        LOG_DEBUG("xessSetLoggingCallback : {0}", ResultToString(ret));
 
-        // enable output scaling to restore image
-        if (LowResMV())
+        xess_d3d11_init_params_t xessParams {};
+
+        xessParams.initFlags = XESS_INIT_FLAG_NONE;
+
+        if (DepthInverted())
+            xessParams.initFlags |= XESS_INIT_FLAG_INVERTED_DEPTH;
+
+        // Autoexposure is always enabled for XeSS Dx11
+        LOG_INFO("AutoExposure is always enabled for XeSS Dx11");
+        xessParams.initFlags |= XESS_INIT_FLAG_ENABLE_AUTOEXPOSURE;
+
+        // if (AutoExposure())
+        //     xessParams.initFlags |= XESS_INIT_FLAG_ENABLE_AUTOEXPOSURE;
+        // else
+        //     xessParams.initFlags |= XESS_INIT_FLAG_EXPOSURE_SCALE_TEXTURE;
+
+        if (!IsHdr())
+            xessParams.initFlags |= XESS_INIT_FLAG_LDR_INPUT_COLOR;
+
+        if (JitteredMV())
+            xessParams.initFlags |= XESS_INIT_FLAG_JITTERED_MV;
+
+        if (!LowResMV())
+            xessParams.initFlags |= XESS_INIT_FLAG_HIGH_RES_MV;
+
+        int responsiveMask = 0;
+        if (InParameters->Get("XeSS.ResponsivePixelMask", &responsiveMask) == NVSDK_NGX_Result_Success &&
+            responsiveMask > 0)
+            xessParams.initFlags |= XESS_INIT_FLAG_RESPONSIVE_PIXEL_MASK;
+
+        if (!Config::Instance()->DisableReactiveMask.value_or(true))
         {
-            Config::Instance()->OutputScalingMultiplier = 1.0f;
-            Config::Instance()->OutputScalingEnabled = true;
+            Config::Instance()->DisableReactiveMask = false;
+            xessParams.initFlags |= XESS_INIT_FLAG_RESPONSIVE_PIXEL_MASK;
+            LOG_DEBUG("xessParams.initFlags (ReactiveMaskActive) {0:b}", xessParams.initFlags);
         }
-    }
 
-    xessParams.outputResolution.x = TargetWidth();
-    xessParams.outputResolution.y = TargetHeight();
+        _xessInitFlags = xessParams.initFlags;
 
-    State::Instance().skipHeapCapture = true;
-    ret = XeSSProxy::D3D11Init()(_xessContext, &xessParams);
-    State::Instance().skipHeapCapture = false;
+        switch (PerfQualityValue())
+        {
+        case NVSDK_NGX_PerfQuality_Value_UltraPerformance:
+            if (Version().major >= 1 && Version().minor >= 3)
+                xessParams.qualitySetting = XESS_QUALITY_SETTING_ULTRA_PERFORMANCE;
+            else
+                xessParams.qualitySetting = XESS_QUALITY_SETTING_PERFORMANCE;
 
-    State::Instance().skipSpoofing = false;
+            break;
 
-    if (ret != XESS_RESULT_SUCCESS)
-    {
-        LOG_ERROR("xessD3D12Init error: {0}", ResultToString(ret));
-        return false;
+        case NVSDK_NGX_PerfQuality_Value_MaxPerf:
+            if (Version().major >= 1 && Version().minor >= 3)
+                xessParams.qualitySetting = XESS_QUALITY_SETTING_BALANCED;
+            else
+                xessParams.qualitySetting = XESS_QUALITY_SETTING_PERFORMANCE;
+
+            break;
+
+        case NVSDK_NGX_PerfQuality_Value_Balanced:
+            if (Version().major >= 1 && Version().minor >= 3)
+                xessParams.qualitySetting = XESS_QUALITY_SETTING_QUALITY;
+            else
+                xessParams.qualitySetting = XESS_QUALITY_SETTING_BALANCED;
+
+            break;
+
+        case NVSDK_NGX_PerfQuality_Value_MaxQuality:
+            if (Version().major >= 1 && Version().minor >= 3)
+                xessParams.qualitySetting = XESS_QUALITY_SETTING_ULTRA_QUALITY;
+            else
+                xessParams.qualitySetting = XESS_QUALITY_SETTING_QUALITY;
+
+            break;
+
+        case NVSDK_NGX_PerfQuality_Value_UltraQuality:
+            if (Version().major >= 1 && Version().minor >= 3)
+                xessParams.qualitySetting = XESS_QUALITY_SETTING_ULTRA_QUALITY_PLUS;
+            else
+                xessParams.qualitySetting = XESS_QUALITY_SETTING_ULTRA_QUALITY;
+
+            break;
+
+        case NVSDK_NGX_PerfQuality_Value_DLAA:
+            if (Version().major >= 1 && Version().minor >= 3)
+                xessParams.qualitySetting = XESS_QUALITY_SETTING_AA;
+            else
+                xessParams.qualitySetting = XESS_QUALITY_SETTING_ULTRA_QUALITY;
+
+            break;
+
+        default:
+            xessParams.qualitySetting = XESS_QUALITY_SETTING_BALANCED; // Set out-of-range value for non-existing
+                                                                       // XESS_QUALITY_SETTING_BALANCED mode
+            break;
+        }
+
+        if (Config::Instance()->OutputScalingEnabled.value_or(false) && LowResMV())
+        {
+            float ssMulti = Config::Instance()->OutputScalingMultiplier.value_or(1.5f);
+
+            if (ssMulti < 0.5f)
+            {
+                ssMulti = 0.5f;
+                Config::Instance()->OutputScalingMultiplier = ssMulti;
+            }
+            else if (ssMulti > 3.0f)
+            {
+                ssMulti = 3.0f;
+                Config::Instance()->OutputScalingMultiplier = ssMulti;
+            }
+
+            _targetWidth = static_cast<unsigned int>(DisplayWidth() * ssMulti);
+            _targetHeight = static_cast<unsigned int>(DisplayHeight() * ssMulti);
+        }
+        else
+        {
+            _targetWidth = DisplayWidth();
+            _targetHeight = DisplayHeight();
+        }
+
+        if (Config::Instance()->ExtendedLimits.value_or(false) && RenderWidth() > DisplayWidth())
+        {
+            _targetWidth = RenderWidth();
+            _targetHeight = RenderHeight();
+
+            // enable output scaling to restore image
+            if (LowResMV())
+            {
+                Config::Instance()->OutputScalingMultiplier = 1.0f;
+                Config::Instance()->OutputScalingEnabled = true;
+            }
+        }
+
+        xessParams.outputResolution.x = TargetWidth();
+        xessParams.outputResolution.y = TargetHeight();
+
+        {
+            ScopedSkipHeapCapture skipHeapCapture {};
+            ret = XeSSProxy::D3D11Init()(_xessContext, &xessParams);
+        }
+
+        if (ret != XESS_RESULT_SUCCESS)
+        {
+            LOG_ERROR("xessD3D12Init error: {0}", ResultToString(ret));
+            return false;
+        }
     }
 
     if (!Config::Instance()->OverlayMenu.value_or(true) && (Imgui == nullptr || Imgui.get() == nullptr))
@@ -315,7 +316,8 @@ bool XeSSFeature_Dx11::Evaluate(ID3D11DeviceContext* DeviceContext, NVSDK_NGX_Pa
     InParameters->Get(NVSDK_NGX_Parameter_Jitter_Offset_X, &params.jitterOffsetX);
     InParameters->Get(NVSDK_NGX_Parameter_Jitter_Offset_Y, &params.jitterOffsetY);
 
-    if (InParameters->Get(NVSDK_NGX_Parameter_DLSS_Exposure_Scale, &params.exposureScale) != NVSDK_NGX_Result_Success)
+    if (InParameters->Get(NVSDK_NGX_Parameter_DLSS_Exposure_Scale, &params.exposureScale) != NVSDK_NGX_Result_Success ||
+        params.exposureScale <= 0.0f)
         params.exposureScale = 1.0f;
 
     InParameters->Get(NVSDK_NGX_Parameter_Reset, &params.resetHistory);

@@ -167,20 +167,21 @@ extern "C"
     /// @ingroup FSR3
     typedef struct FfxFsr3ContextDescription
     {
-        uint32_t flags;                ///< A collection of <c><i>FfxFsr3InitializationFlagBits</i></c>.
-        FfxDimensions2D maxRenderSize; ///< The maximum size that rendering will be performed at.
-        FfxDimensions2D
+        uint32_t flags;                      ///< A collection of <c><i>FfxFsr3InitializationFlagBits</i></c>.
+        Fsr3::FfxDimensions2D maxRenderSize; ///< The maximum size that rendering will be performed at.
+        Fsr3::FfxDimensions2D
             upscaleOutputSize; ///< The size of the presentation resolution targeted by the upscaling process.
-        FfxDimensions2D
+        Fsr3::FfxDimensions2D
             displaySize; ///< The size of the presentation resolution targeted by the frame interpolation process.
-        FfxInterface
-            backendInterfaceSharedResources;    ///< A set of pointers to the backend implementation for FidelityFX SDK
-        FfxInterface backendInterfaceUpscaling; ///< A set of pointers to the backend implementation for FidelityFX SDK
-        FfxInterface
+        Fsr3::FfxInterface
+            backendInterfaceSharedResources; ///< A set of pointers to the backend implementation for FidelityFX SDK
+        Fsr3::FfxInterface
+            backendInterfaceUpscaling; ///< A set of pointers to the backend implementation for FidelityFX SDK
+        Fsr3::FfxInterface
             backendInterfaceFrameInterpolation; ///< A set of pointers to the backend implementation for FidelityFX SDK
-        FfxFsr3UpscalerMessage fpMessage;       ///< A pointer to a function that can recieve messages from the runtime.
+        Fsr3::FfxFsr3UpscalerMessage fpMessage; ///< A pointer to a function that can recieve messages from the runtime.
 
-        FfxSurfaceFormat backBufferFormat; ///< The format of the swapchain surface
+        Fsr3::FfxSurfaceFormat backBufferFormat; ///< The format of the swapchain surface
 
     } FfxFsr3ContextDescription;
 
@@ -191,25 +192,29 @@ extern "C"
     typedef struct FfxFsr3DispatchUpscaleDescription
     {
 
-        FfxCommandList commandList; ///< The <c><i>FfxCommandList</i></c> to record FSR2 rendering commands into.
-        FfxResource color; ///< A <c><i>FfxResource</i></c> containing the color buffer for the current frame (at render
-                           ///< resolution).
-        FfxResource depth; ///< A <c><i>FfxResource</i></c> containing 32bit depth values for the current frame (at
-                           ///< render resolution).
-        FfxResource motionVectors; ///< A <c><i>FfxResource</i></c> containing 2-dimensional motion vectors (at render
-                                   ///< resolution if <c><i>FFX_FSR2_ENABLE_DISPLAY_RESOLUTION_MOTION_VECTORS</i></c> is
-                                   ///< not set).
-        FfxResource exposure;      ///< A optional <c><i>FfxResource</i></c> containing a 1x1 exposure value.
-        FfxResource
+        Fsr3::FfxCommandList commandList; ///< The <c><i>FfxCommandList</i></c> to record FSR2 rendering commands into.
+        Fsr3::FfxResource color; ///< A <c><i>FfxResource</i></c> containing the color buffer for the current frame (at
+                                 ///< render resolution).
+        Fsr3::FfxResource depth; ///< A <c><i>FfxResource</i></c> containing 32bit depth values for the current frame
+                                 ///< (at
+                                 ///< render resolution).
+        Fsr3::FfxResource
+            motionVectors; ///< A <c><i>FfxResource</i></c> containing 2-dimensional motion vectors (at render
+                           ///< resolution if <c><i>FFX_FSR2_ENABLE_DISPLAY_RESOLUTION_MOTION_VECTORS</i></c> is
+                           ///< not set).
+        Fsr3::FfxResource exposure; ///< A optional <c><i>FfxResource</i></c> containing a 1x1 exposure value.
+        Fsr3::FfxResource
             reactive; ///< A optional <c><i>FfxResource</i></c> containing alpha value of reactive objects in the scene.
-        FfxResource transparencyAndComposition; ///< A optional <c><i>FfxResource</i></c> containing alpha value of
-                                                ///< special objects in the scene.
-        FfxResource upscaleOutput; ///< A <c><i>FfxResource</i></c> containing the output color buffer for the current
-                                   ///< frame (at presentation resolution).
-        FfxFloatCoords2D jitterOffset;      ///< The subpixel jitter offset applied to the camera.
-        FfxFloatCoords2D motionVectorScale; ///< The scale factor to apply to motion vectors.
-        FfxDimensions2D renderSize;         ///< The resolution that was used for rendering the input resources.
-        bool enableSharpening;              ///< Enable an additional sharpening pass.
+        Fsr3::FfxResource transparencyAndComposition; ///< A optional <c><i>FfxResource</i></c> containing alpha value
+                                                      ///< of
+                                                      ///< special objects in the scene.
+        Fsr3::FfxResource upscaleOutput;     ///< A <c><i>FfxResource</i></c> containing the output color buffer for the
+                                             ///< current
+                                             ///< frame (at presentation resolution).
+        Fsr3::FfxFloatCoords2D jitterOffset; ///< The subpixel jitter offset applied to the camera.
+        Fsr3::FfxFloatCoords2D motionVectorScale; ///< The scale factor to apply to motion vectors.
+        Fsr3::FfxDimensions2D renderSize;         ///< The resolution that was used for rendering the input resources.
+        bool enableSharpening;                    ///< Enable an additional sharpening pass.
         float sharpness; ///< The sharpness value between 0 and 1, where 0 is no additional sharpness and 1 is maximum
                          ///< additional sharpness.
         float frameTimeDelta; ///< The time elapsed since the last frame (expressed in milliseconds).
@@ -223,7 +228,7 @@ extern "C"
         float viewSpaceToMetersFactor; ///< The scale factor to convert view space units to meters
     } FfxFsr3DispatchUpscaleDescription;
 
-    FFX_API FfxErrorCode ffxFsr3DispatchFrameGeneration(const FfxFrameGenerationDispatchDescription* desc);
+    FFX_API Fsr3::FfxErrorCode ffxFsr3DispatchFrameGeneration(const Fsr3::FfxFrameGenerationDispatchDescription* desc);
 
     /// A structure encapsulating the parameters for automatic generation of a reactive mask
     ///
@@ -231,16 +236,17 @@ extern "C"
     typedef struct FfxFsr3GenerateReactiveDescription
     {
 
-        FfxCommandList commandList;  ///< The <c><i>FfxCommandList</i></c> to record FSR3 rendering commands into.
-        FfxResource colorOpaqueOnly; ///< A <c><i>FfxResource</i></c> containing the opaque only color buffer for the
-                                     ///< current frame (at render resolution).
-        FfxResource colorPreUpscale; ///< A <c><i>FfxResource</i></c> containing the opaque+translucent color buffer for
-                                     ///< the current frame (at render resolution).
-        FfxResource
+        Fsr3::FfxCommandList commandList;  ///< The <c><i>FfxCommandList</i></c> to record FSR3 rendering commands into.
+        Fsr3::FfxResource colorOpaqueOnly; ///< A <c><i>FfxResource</i></c> containing the opaque only color buffer for
+                                           ///< the current frame (at render resolution).
+        Fsr3::FfxResource colorPreUpscale; ///< A <c><i>FfxResource</i></c> containing the opaque+translucent color
+                                           ///< buffer for
+                                           ///< the current frame (at render resolution).
+        Fsr3::FfxResource
             outReactive; ///< A <c><i>FfxResource</i></c> containing the surface to generate the reactive mask into.
-        FfxDimensions2D renderSize; ///< The resolution that was used for rendering the input resources.
-        float scale;                ///< A value to scale the output
-        float cutoffThreshold;      ///< A threshold value to generate a binary reactive mask
+        Fsr3::FfxDimensions2D renderSize; ///< The resolution that was used for rendering the input resources.
+        float scale;                      ///< A value to scale the output
+        float cutoffThreshold;            ///< A threshold value to generate a binary reactive mask
         float binaryValue;
         uint32_t flags; ///< Flags to determine how to generate the reactive mask
     } FfxFsr3GenerateReactiveDescription;
@@ -310,7 +316,8 @@ extern "C"
     /// FFX_ERROR_BACKEND_API_ERROR         The operation failed because of an error returned from the backend.
     ///
     /// @ingroup FSR3
-    FFX_API FfxErrorCode ffxFsr3ContextCreate(FfxFsr3Context* context, FfxFsr3ContextDescription* contextDescription);
+    FFX_API Fsr3::FfxErrorCode ffxFsr3ContextCreate(FfxFsr3Context* context,
+                                                    FfxFsr3ContextDescription* contextDescription);
 
     /// Dispatch the various passes that constitute FidelityFX Super Resolution 3 Upscaling.
     ///
@@ -354,10 +361,10 @@ extern "C"
     /// FFX_ERROR_BACKEND_API_ERROR         The operation failed because of an error returned from the backend.
     ///
     /// @ingroup FSR3
-    FFX_API FfxErrorCode ffxFsr3ContextDispatchUpscale(FfxFsr3Context* context,
-                                                       const FfxFsr3DispatchUpscaleDescription* dispatchParams);
+    FFX_API Fsr3::FfxErrorCode ffxFsr3ContextDispatchUpscale(FfxFsr3Context* context,
+                                                             const FfxFsr3DispatchUpscaleDescription* dispatchParams);
 
-    FFX_API FfxErrorCode ffxFsr3SkipPresent(FfxFsr3Context* context);
+    FFX_API Fsr3::FfxErrorCode ffxFsr3SkipPresent(FfxFsr3Context* context);
 
     /// A helper function generate a Reactive mask from an opaque only texure and one containing translucent objects.
     ///
@@ -368,11 +375,11 @@ extern "C"
     /// FFX_OK                              The operation completed successfully.
     ///
     /// @ingroup FSR3
-    FFX_API FfxErrorCode ffxFsr3ContextGenerateReactiveMask(FfxFsr3Context* context,
-                                                            const FfxFsr3GenerateReactiveDescription* params);
+    FFX_API Fsr3::FfxErrorCode ffxFsr3ContextGenerateReactiveMask(FfxFsr3Context* context,
+                                                                  const FfxFsr3GenerateReactiveDescription* params);
 
-    FFX_API FfxErrorCode ffxFsr3ConfigureFrameGeneration(FfxFsr3Context* context,
-                                                         const FfxFrameGenerationConfig* config);
+    FFX_API Fsr3::FfxErrorCode ffxFsr3ConfigureFrameGeneration(FfxFsr3Context* context,
+                                                               const Fsr3::FfxFrameGenerationConfig* config);
 
     /// Destroy the FidelityFX Super Resolution context.
     ///
@@ -385,7 +392,7 @@ extern "C"
     /// <c><i>NULL</i></c>.
     ///
     /// @ingroup FSR3
-    FFX_API FfxErrorCode ffxFsr3ContextDestroy(FfxFsr3Context* context);
+    FFX_API Fsr3::FfxErrorCode ffxFsr3ContextDestroy(FfxFsr3Context* context);
 
     /// Get the upscale ratio from the quality mode.
     ///
@@ -434,9 +441,9 @@ extern "C"
     /// FFX_ERROR_INVALID_ENUM              An invalid quality mode was specified.
     ///
     /// @ingroup FSR3
-    FFX_API FfxErrorCode ffxFsr3GetRenderResolutionFromQualityMode(uint32_t* renderWidth, uint32_t* renderHeight,
-                                                                   uint32_t displayWidth, uint32_t displayHeight,
-                                                                   FfxFsr3QualityMode qualityMode);
+    FFX_API Fsr3::FfxErrorCode ffxFsr3GetRenderResolutionFromQualityMode(uint32_t* renderWidth, uint32_t* renderHeight,
+                                                                         uint32_t displayWidth, uint32_t displayHeight,
+                                                                         FfxFsr3QualityMode qualityMode);
 
     /// A helper function to calculate the jitter phase count from display
     /// resolution.
@@ -533,7 +540,7 @@ extern "C"
     /// FFX_ERROR_INVALID_ARGUMENT          Argument <c><i>phaseCount</i></c> must be greater than 0.
     ///
     /// @ingroup FSR3
-    FFX_API FfxErrorCode ffxFsr3GetJitterOffset(float* outX, float* outY, int32_t index, int32_t phaseCount);
+    FFX_API Fsr3::FfxErrorCode ffxFsr3GetJitterOffset(float* outX, float* outY, int32_t index, int32_t phaseCount);
 
     /// A helper function to check if a resource is
     /// <c><i>FFX_FSR3_RESOURCE_IDENTIFIER_NULL</i></c>.
@@ -548,7 +555,7 @@ extern "C"
     /// <c><i>FFX_FSR3_RESOURCE_IDENTIFIER_NULL</i></c>.
     ///
     /// @ingroup FSR3
-    FFX_API bool ffxFsr3ResourceIsNull(FfxResource resource);
+    FFX_API bool ffxFsr3ResourceIsNull(Fsr3::FfxResource resource);
 
 #if defined(__cplusplus)
 }

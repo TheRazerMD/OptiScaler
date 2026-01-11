@@ -4,13 +4,13 @@
 
 #include "Config.h"
 
+#include "fsr4/FSR4Upgrade.h"
+
 #include "detours/detours.h"
 #include <wincrypt.h>
 
-typedef BOOL (*PFN_CryptQueryObject)(DWORD dwObjectType, const void* pvObject, DWORD dwExpectedContentTypeFlags,
-                                     DWORD dwExpectedFormatTypeFlags, DWORD dwFlags, DWORD* pdwMsgAndCertEncodingType,
-                                     DWORD* pdwContentType, DWORD* pdwFormatType, HCERTSTORE* phCertStore,
-                                     HCRYPTMSG* phMsg, const void** ppvContext);
+typedef decltype(&CryptQueryObject) PFN_CryptQueryObject;
+
 static PFN_CryptQueryObject o_CryptQueryObject = nullptr;
 
 static BOOL hkCryptQueryObject(DWORD dwObjectType, const void* pvObject, DWORD dwExpectedContentTypeFlags,
@@ -26,11 +26,11 @@ static BOOL hkCryptQueryObject(DWORD dwObjectType, const void* pvObject, DWORD d
 
         // It's applied even if ffx is already signed, could be improved
         if (pathString.contains("amd_fidelityfx_dx12.dll") ||
-            pathString.contains("amd_fidelityfx_vk.dll") && fsr4Module)
+            pathString.contains("amd_fidelityfx_vk.dll") && GetFSR4Module())
         {
             LOG_DEBUG("Replacing FFX with a signed dll");
             WCHAR signedDll[256] {};
-            GetModuleFileNameW(fsr4Module, signedDll, 256);
+            GetModuleFileNameW(GetFSR4Module(), signedDll, 256);
 
             return o_CryptQueryObject(dwObjectType, signedDll, dwExpectedContentTypeFlags, dwExpectedFormatTypeFlags,
                                       dwFlags, pdwMsgAndCertEncodingType, pdwContentType, pdwFormatType, phCertStore,

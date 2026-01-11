@@ -41,12 +41,7 @@ static bool _d3d12Captured = false;
 // for showing
 static bool _showRenderImGuiDebugOnce = true;
 
-// mutexes
-static std::mutex _dx11CleanMutex;
-static std::mutex _dx12CleanMutex;
-
 static IID streamlineRiid {};
-
 static bool CheckForRealObject(std::string functionName, IUnknown* pObject, IUnknown** ppRealObject)
 {
     if (streamlineRiid.Data1 == 0)
@@ -84,8 +79,8 @@ static void CreateRenderTargetDx12(ID3D12Device* device, IDXGISwapChain* pSwapCh
 {
     LOG_FUNC();
 
-    DXGI_SWAP_CHAIN_DESC desc;
-    HRESULT hr = pSwapChain->GetDesc(&desc);
+    DXGI_SWAP_CHAIN_DESC sd;
+    HRESULT hr = pSwapChain->GetDesc(&sd);
 
     if (hr != S_OK)
     {
@@ -93,23 +88,22 @@ static void CreateRenderTargetDx12(ID3D12Device* device, IDXGISwapChain* pSwapCh
         return;
     }
 
-    for (UINT i = 0; i < desc.BufferCount; ++i)
+    for (UINT i = 0; i < sd.BufferCount; ++i)
     {
-        ID3D12Resource* pBackBuffer = NULL;
-
+        ID3D12Resource* pBackBuffer = nullptr;
         auto result = pSwapChain->GetBuffer(i, IID_PPV_ARGS(&pBackBuffer));
+
+        if (pBackBuffer != nullptr)
+            pBackBuffer->Release();
 
         if (result != S_OK)
         {
-            LOG_ERROR("pSwapChain->GetBuffer: {0:X}", (unsigned long) result);
+            LOG_ERROR("pSwapChain->GetBuffer: {:X}", (unsigned long) result);
             return;
         }
 
-        if (pBackBuffer)
+        if (pBackBuffer != nullptr)
         {
-            DXGI_SWAP_CHAIN_DESC sd;
-            pSwapChain->GetDesc(&sd);
-
             D3D12_RENDER_TARGET_VIEW_DESC desc = {};
             desc.Format = static_cast<DXGI_FORMAT>(GetCorrectDXGIFormat(sd.BufferDesc.Format));
             desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
@@ -132,10 +126,7 @@ static void CleanupRenderTargetDx12(bool clearQueue)
     for (UINT i = 0; i < NUM_BACK_BUFFERS; ++i)
     {
         if (g_mainRenderTargetResource[i])
-        {
-            g_mainRenderTargetResource[i]->Release();
-            g_mainRenderTargetResource[i] = NULL;
-        }
+            g_mainRenderTargetResource[i] = nullptr;
     }
 
     if (clearQueue)
@@ -175,10 +166,7 @@ static void CleanupRenderTargetDx12(bool clearQueue)
         }
 
         if (g_pd3dCommandQueue != nullptr)
-        {
-            g_pd3dCommandQueue->Release();
             g_pd3dCommandQueue = nullptr;
-        }
 
         g_pd3dSrvDescHeapAlloc.Destroy();
 
@@ -227,10 +215,7 @@ static void CleanupRenderTargetDx11(bool shutDown)
     }
 
     if (g_pd3dDevice != nullptr)
-    {
-        g_pd3dDevice->Release();
         g_pd3dDevice = nullptr;
-    }
 
     _dx11Device = false;
     _isInited = false;
@@ -271,7 +256,9 @@ static void RenderImGui_DX11(IDXGISwapChain* pSwapChain)
     {
         if (pSwapChain->GetDevice(IID_PPV_ARGS(&g_pd3dDevice)) == S_OK)
         {
+            g_pd3dDevice->Release();
             g_pd3dDevice->GetImmediateContext(&g_pd3dDeviceContext);
+            g_pd3dDeviceContext->Release();
             ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
         }
     }
@@ -351,9 +338,11 @@ static void RenderImGui_DX12(IDXGISwapChain* pSwapChainPlain)
             desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
             desc.NodeMask = 1;
 
-            State::Instance().skipHeapCapture = true;
+            {
+                ScopedSkipHeapCapture skipHeapCapture {};
+                result = device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&g_pd3dRtvDescHeap));
+            }
 
-            result = device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&g_pd3dRtvDescHeap));
             if (result != S_OK)
             {
                 LOG_ERROR("CreateDescriptorHeap(g_pd3dRtvDescHeap): {0:X}", (unsigned long) result);
@@ -379,9 +368,11 @@ static void RenderImGui_DX12(IDXGISwapChain* pSwapChainPlain)
             desc.NumDescriptors = SRV_HEAP_SIZE;
             desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 
-            result = device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&g_pd3dSrvDescHeap));
+            {
+                ScopedSkipHeapCapture skipHeapCapture {};
+                result = device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&g_pd3dSrvDescHeap));
+            }
 
-            State::Instance().skipHeapCapture = false;
             if (result != S_OK)
             {
                 LOG_ERROR("CreateDescriptorHeap(g_pd3dSrvDescHeap): {0:X}", (unsigned long) result);
@@ -544,6 +535,14 @@ void MenuOverlayDx::CleanupRenderTarget(bool clearQueue, HWND hWnd)
 {
     LOG_FUNC();
 
+    auto fg = State::Instance().currentFG;
+    if (fg != nullptr && fg->FrameGenerationContext() != nullptr && fg->IsActive())
+    {
+        State::Instance().FGchanged = true;
+        fg->UpdateTarget();
+        fg->Deactivate();
+    }
+
     if (_dx11Device)
         CleanupRenderTargetDx11(false);
     else
@@ -553,6 +552,9 @@ void MenuOverlayDx::CleanupRenderTarget(bool clearQueue, HWND hWnd)
 void MenuOverlayDx::Present(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags,
                             const DXGI_PRESENT_PARAMETERS* pPresentParameters, IUnknown* pDevice, HWND hWnd, bool isUWP)
 {
+    if (!Config::Instance()->OverlayMenu.value_or_default())
+        return;
+
     LOG_DEBUG("");
 
     ID3D12CommandQueue* cq = nullptr;
@@ -587,7 +589,7 @@ void MenuOverlayDx::Present(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT 
     // Process window handle changed, update base
     if (MenuOverlayBase::Handle() != hWnd)
     {
-        LOG_DEBUG("Handle changed");
+        LOG_DEBUG("Handle changed {:X} -> {:X}", (size_t) MenuOverlayBase::Handle(), (size_t) hWnd);
 
         if (MenuOverlayBase::IsInited())
             MenuOverlayBase::Shutdown();
@@ -605,7 +607,6 @@ void MenuOverlayDx::Present(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT 
             CleanupRenderTargetDx11(false);
 
             g_pd3dDevice = device;
-            g_pd3dDevice->AddRef();
 
             CreateRenderTargetDx11(pSwapChain);
             MenuOverlayBase::Dx11Ready();
@@ -621,19 +622,20 @@ void MenuOverlayDx::Present(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT 
             g_pd3dCommandQueue = cq;
             g_pd3dDeviceParam = device12;
 
-            g_pd3dCommandQueue->AddRef();
-            g_pd3dDeviceParam->AddRef();
-
             MenuOverlayBase::Dx12Ready();
             _isInited = true;
         }
     }
 
-    // Render menu
-    if (_dx11Device)
-        RenderImGui_DX11(pSwapChain);
-    else if (_dx12Device)
-        RenderImGui_DX12(pSwapChain);
+    {
+        ScopedSkipHeapCapture skipHeapCapture {};
+
+        // Render menu
+        if (_dx11Device)
+            RenderImGui_DX11(pSwapChain);
+        else if (_dx12Device)
+            RenderImGui_DX12(pSwapChain);
+    }
 
     // release used objects
     if (cq != nullptr)

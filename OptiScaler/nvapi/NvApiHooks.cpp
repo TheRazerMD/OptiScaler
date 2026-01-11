@@ -21,6 +21,18 @@ NvAPI_Status __stdcall NvApiHooks::hkNvAPI_GPU_GetArchInfo(NvPhysicalGpuHandle h
 
     if (status == NVAPI_OK && pGpuArchInfo)
     {
+        if (pGpuArchInfo->architecture_id <= NV_GPU_ARCHITECTURE_GP100)
+        {
+            State::Instance().isPascalOrOlder = true;
+
+            // Check if values were volatile, override them if so
+            // if (!Config::Instance()->StreamlineSpoofing.value_for_config().has_value())
+            //    Config::Instance()->StreamlineSpoofing.set_volatile_value(true);
+
+            if (!Config::Instance()->DisableFlipMetering.value_for_config().has_value())
+                Config::Instance()->DisableFlipMetering.set_volatile_value(true);
+        }
+
         LOG_DEBUG("Original arch: {0:X} impl: {1:X} rev: {2:X}!", pGpuArchInfo->architecture,
                   pGpuArchInfo->implementation, pGpuArchInfo->revision);
 
@@ -98,7 +110,7 @@ void* __stdcall NvApiHooks::hkNvAPI_QueryInterface(unsigned int InterfaceId)
 
     if (functionPointer)
     {
-        if (InterfaceId == GET_ID(NvAPI_GPU_GetArchInfo) && !State::Instance().enablerAvailable)
+        if (InterfaceId == GET_ID(NvAPI_GPU_GetArchInfo))
         {
             o_NvAPI_GPU_GetArchInfo = reinterpret_cast<decltype(&NvAPI_GPU_GetArchInfo)>(functionPointer);
             return &hkNvAPI_GPU_GetArchInfo;

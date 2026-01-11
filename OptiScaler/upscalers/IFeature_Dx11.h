@@ -22,7 +22,5 @@ class IFeature_Dx11 : public virtual IFeature
 
     IFeature_Dx11(unsigned int InHandleId, NVSDK_NGX_Parameter* InParameters) : IFeature(InHandleId, InParameters) {}
 
-    void Shutdown() final;
-
     ~IFeature_Dx11();
 };

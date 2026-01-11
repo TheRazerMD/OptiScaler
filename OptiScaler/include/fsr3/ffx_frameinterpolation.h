@@ -117,12 +117,12 @@ extern "C"
     typedef struct FfxFrameInterpolationContextDescription
     {
 
-        FfxInterface backendInterface; ///< A set of pointers to the backend implementation for FidelityFX SDK
+        Fsr3::FfxInterface backendInterface; ///< A set of pointers to the backend implementation for FidelityFX SDK
 
-        uint32_t flags;                ///< A collection of <c><i>FfxFrameInterpolationInitializationFlagBits</i></c>.
-        FfxDimensions2D maxRenderSize; ///< The maximum size that rendering will be performed at.
-        FfxDimensions2D displaySize;   ///< The size of the presentation resolution
-        FfxSurfaceFormat backBufferFormat;
+        uint32_t flags; ///< A collection of <c><i>FfxFrameInterpolationInitializationFlagBits</i></c>.
+        Fsr3::FfxDimensions2D maxRenderSize; ///< The maximum size that rendering will be performed at.
+        Fsr3::FfxDimensions2D displaySize;   ///< The size of the presentation resolution
+        Fsr3::FfxSurfaceFormat backBufferFormat;
     } FfxFrameInterpolationContextDescription;
 
     /// A structure encapsulating the FidelityFX Super Resolution 2 context.
@@ -189,8 +189,9 @@ extern "C"
     /// FFX_ERROR_BACKEND_API_ERROR         The operation failed because of an error returned from the backend.
     ///
     /// @ingroup FRAMEINTERPOLATION
-    FFX_API FfxErrorCode ffxFrameInterpolationContextCreate(
-        FfxFrameInterpolationContext* context, FfxFrameInterpolationContextDescription* contextDescription);
+    FFX_API Fsr3::FfxErrorCode
+    ffxFrameInterpolationContextCreate(FfxFrameInterpolationContext* context,
+                                       FfxFrameInterpolationContextDescription* contextDescription);
 
     typedef enum FfxFrameInterpolationDispatchFlags
     {
@@ -204,33 +205,38 @@ extern "C"
     typedef struct FfxFrameInterpolationDispatchDescription
     {
 
-        uint32_t flags;              ///< combination of FfxFrameInterpolationDispatchFlags
-        FfxCommandList commandList;  ///< The <c><i>FfxCommandList</i></c> to record frame interpolation commands into.
-        FfxDimensions2D displaySize; ///< The destination output dimensions
-        FfxDimensions2D renderSize;  ///< The dimensions used to render game content, dilatedDepth, dilatedMotionVectors
-                                     ///< are expected to be of ths size.
-        FfxResource currentBackBuffer; ///< The current presentation color, if currentBackBuffer_HUDLess is not used,
-                                       ///< this will be used as interpolation source data.
-        FfxResource currentBackBuffer_HUDLess; ///< The current presentation color without HUD content, when use it will
-                                               ///< be used as interpolation source data.
-        FfxResource output;                    ///< The output resource where to store the interpolated result.
-        FfxResource
+        uint32_t flags; ///< combination of FfxFrameInterpolationDispatchFlags
+        Fsr3::FfxCommandList
+            commandList; ///< The <c><i>FfxCommandList</i></c> to record frame interpolation commands into.
+        Fsr3::FfxDimensions2D displaySize;   ///< The destination output dimensions
+        Fsr3::FfxDimensions2D renderSize;    ///< The dimensions used to render game content, dilatedDepth,
+                                             ///< dilatedMotionVectors are expected to be of ths size.
+        Fsr3::FfxResource currentBackBuffer; ///< The current presentation color, if currentBackBuffer_HUDLess is not
+                                             ///< used,
+                                             ///< this will be used as interpolation source data.
+        Fsr3::FfxResource currentBackBuffer_HUDLess; ///< The current presentation color without HUD content, when use
+                                                     ///< it will
+                                                     ///< be used as interpolation source data.
+        Fsr3::FfxResource output;                    ///< The output resource where to store the interpolated result.
+        Fsr3::FfxResource
             dilatedDepth; ///< The dilated depth buffer data (see example computation in the FfxFsr3Upscaler effect)
-        FfxResource dilatedMotionVectors;     ///< The dilated motion vector data (see example computation in the
-                                              ///< FfxFsr3Upscaler effect)
-        FfxResource reconstructPrevNearDepth; ///< The estimated previous frame depth buffer (see example computation in
-                                              ///< the FfxFsr3Upscaler effect)
+        Fsr3::FfxResource dilatedMotionVectors;     ///< The dilated motion vector data (see example computation in the
+                                                    ///< FfxFsr3Upscaler effect)
+        Fsr3::FfxResource reconstructPrevNearDepth; ///< The estimated previous frame depth buffer (see example
+                                                    ///< computation in
+                                                    ///< the FfxFsr3Upscaler effect)
 
-        FfxRect2D interpolationRect; ///< The area of the backbuffer that should be used for interpolation in case only
-                                     ///< a part of the screen is used e.g. due to movie bars
+        Fsr3::FfxRect2D interpolationRect; ///< The area of the backbuffer that should be used for interpolation in case
+                                           ///< only
+                                           ///< a part of the screen is used e.g. due to movie bars
 
-        FfxResource opticalFlowVector; ///< The optical flow motion vectors (see example computation in the
-                                       ///< FfxOpticalFlow effect)
-        FfxResource opticalFlowSceneChangeDetection; ///< The optical flow scene change detection data
-        FfxDimensions2D opticalFlowBufferSize;       ///< The optical flow motion vector resource dimensions
-        FfxFloatCoords2D opticalFlowScale; ///< The optical flow motion vector scale factor, used to scale resoure
-                                           ///< values into [0.0,1.0] range.
-        int opticalFlowBlockSize;          ///< The optical flow block dimension size
+        Fsr3::FfxResource opticalFlowVector; ///< The optical flow motion vectors (see example computation in the
+                                             ///< FfxOpticalFlow effect)
+        Fsr3::FfxResource opticalFlowSceneChangeDetection; ///< The optical flow scene change detection data
+        Fsr3::FfxDimensions2D opticalFlowBufferSize;       ///< The optical flow motion vector resource dimensions
+        Fsr3::FfxFloatCoords2D opticalFlowScale; ///< The optical flow motion vector scale factor, used to scale resoure
+                                                 ///< values into [0.0,1.0] range.
+        int opticalFlowBlockSize;                ///< The optical flow block dimension size
 
         float cameraNear; ///< The distance to the near plane of the camera.
         float cameraFar;  ///< The distance to the far plane of the camera. This is used only used in case of non
@@ -242,14 +248,15 @@ extern "C"
         float frameTimeDelta; ///< The time elapsed since the last frame (expressed in milliseconds).
         bool reset; ///< A boolean value which when set to true, indicates the camera has moved discontinuously.
 
-        FfxBackbufferTransferFunction backBufferTransferFunction; ///< The transfer function use to convert
-                                                                  ///< interpolation source color data to linear RGB.
-        float minMaxLuminance[2]; ///< Min and max luminance values, used when converting HDR colors to linear RGB
+        Fsr3::FfxBackbufferTransferFunction
+            backBufferTransferFunction; ///< The transfer function use to convert
+                                        ///< interpolation source color data to linear RGB.
+        float minMaxLuminance[2];       ///< Min and max luminance values, used when converting HDR colors to linear RGB
 
     } FfxFrameInterpolationDispatchDescription;
 
-    FFX_API FfxErrorCode ffxFrameInterpolationDispatch(FfxFrameInterpolationContext* context,
-                                                       const FfxFrameInterpolationDispatchDescription* params);
+    FFX_API Fsr3::FfxErrorCode ffxFrameInterpolationDispatch(FfxFrameInterpolationContext* context,
+                                                             const FfxFrameInterpolationDispatchDescription* params);
 
     /// Destroy the FidelityFX Super Resolution context.
     ///
@@ -262,7 +269,7 @@ extern "C"
     /// <c><i>NULL</i></c>.
     ///
     /// @ingroup FRAMEINTERPOLATION
-    FFX_API FfxErrorCode ffxFrameInterpolationContextDestroy(FfxFrameInterpolationContext* context);
+    FFX_API Fsr3::FfxErrorCode ffxFrameInterpolationContextDestroy(FfxFrameInterpolationContext* context);
 
 #if defined(__cplusplus)
 }

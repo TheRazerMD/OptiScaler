@@ -3,6 +3,7 @@
 
 #include <filesystem>
 
+#include <dxgi.h>
 #include <xess.h>
 
 namespace Util
@@ -14,6 +15,18 @@ typedef struct _version_t
     uint16_t patch;
     uint16_t reserved;
 } version_t;
+
+struct MonitorInfo
+{
+    HMONITOR handle;
+    int x;
+    int y;
+    int width;
+    int height;
+    RECT monitorRect;  // full monitor bounds
+    RECT workRect;     // work area (taskbar excluded)
+    std::wstring name; // e.g., \\.\DISPLAY1
+};
 
 std::filesystem::path ExePath();
 std::filesystem::path DllPath();
@@ -30,6 +43,12 @@ std::wstring GetWindowTitle(HWND hwnd);
 std::optional<std::filesystem::path> FindFilePath(const std::filesystem::path& startDir,
                                                   const std::filesystem::path fileName);
 std::string WhoIsTheCaller(void* returnAddress);
+HMODULE GetCallerModule(void* returnAddress);
+MonitorInfo GetMonitorInfoForWindow(HWND hwnd);
+MonitorInfo GetMonitorInfoForOutput(IDXGIOutput* pOutput);
+int GetActiveRefreshRate(HWND hwnd);
+bool CheckForRealObject(std::string functionName, IUnknown* pObject, IUnknown** ppRealObject);
+
 }; // namespace Util
 
 inline void ThrowIfFailed(HRESULT hr)

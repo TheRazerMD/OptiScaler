@@ -23,4 +23,7 @@ class FSR2FeatureVk212 : public FSR2Feature212, public IFeature_Vk
               PFN_vkGetInstanceProcAddr InGIPA, PFN_vkGetDeviceProcAddr InGDPA,
               NVSDK_NGX_Parameter* InParameters) override;
     bool Evaluate(VkCommandBuffer InCmdBuffer, NVSDK_NGX_Parameter* InParameters) override;
+
+    feature_version Version() override { return FSR2Feature212::Version(); }
+    std::string Name() const override { return FSR2Feature212::Name(); }
 };
