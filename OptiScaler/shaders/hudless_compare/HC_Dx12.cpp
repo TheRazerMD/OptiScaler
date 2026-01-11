@@ -6,70 +6,9 @@
 
 #include <Config.h>
 
-DXGI_FORMAT HC_Dx12::ToSRGB(DXGI_FORMAT f)
-{
-    return f;
-
-    // switch (f)
-    //{
-    // case DXGI_FORMAT_R8G8B8A8_UNORM:
-    //     return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-    // case DXGI_FORMAT_B8G8R8A8_UNORM:
-    //     return DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
-    // default:
-    //     return f;
-    // }
-}
-
-DXGI_FORMAT HC_Dx12::TranslateTypelessFormats(DXGI_FORMAT format)
-{
-    switch (format)
-    {
-    case DXGI_FORMAT_R32G32B32A32_TYPELESS:
-        return DXGI_FORMAT_R32G32B32A32_FLOAT;
-    case DXGI_FORMAT_R32G32B32_TYPELESS:
-        return DXGI_FORMAT_R32G32B32_FLOAT;
-    case DXGI_FORMAT_R16G16B16A16_TYPELESS:
-        return DXGI_FORMAT_R16G16B16A16_FLOAT;
-    case DXGI_FORMAT_R10G10B10A2_TYPELESS:
-        return DXGI_FORMAT_R10G10B10A2_UNORM;
-    case DXGI_FORMAT_R8G8B8A8_TYPELESS:
-        return DXGI_FORMAT_R8G8B8A8_UNORM;
-    case DXGI_FORMAT_B8G8R8A8_TYPELESS:
-        return DXGI_FORMAT_B8G8R8A8_UNORM;
-    case DXGI_FORMAT_R16G16_TYPELESS:
-        return DXGI_FORMAT_R16G16_FLOAT;
-    case DXGI_FORMAT_R32G32_TYPELESS:
-        return DXGI_FORMAT_R32G32_FLOAT;
-    default:
-        return format;
-    }
-}
-
 bool HC_Dx12::CreateBufferResource(UINT index, ID3D12Device* InDevice, ID3D12Resource* InSource,
                                    D3D12_RESOURCE_STATES InState)
 {
-    if (InDevice == nullptr || InSource == nullptr)
-        return false;
-
-    D3D12_RESOURCE_DESC texDesc = InSource->GetDesc();
-
-    if (_buffer[index] != nullptr)
-    {
-        auto bufDesc = _buffer[index]->GetDesc();
-
-        if (bufDesc.Width != (UINT64) (texDesc.Width) || bufDesc.Height != (UINT) (texDesc.Height) ||
-            bufDesc.Format != texDesc.Format)
-        {
-            _buffer[index]->Release();
-            _buffer[index] = nullptr;
-        }
-        else
-        {
-            return true;
-        }
-    }
-
     LOG_DEBUG("[{0}] Start!", _name);
 
     auto resourceFlags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
@@ -78,10 +17,6 @@ bool HC_Dx12::CreateBufferResource(UINT index, ID3D12Device* InDevice, ID3D12Res
 
     if (result)
     {
-        LOG_ERROR("[{0}] CreateCommittedResource result: {1:x}", _name, hr);
-        return false;
-    }
-
         _buffer[index]->SetName(L"HC_Buffer");
         _bufferState[index] = InState;
     }
@@ -116,8 +51,6 @@ void HC_Dx12::SetBufferState(UINT index, ID3D12GraphicsCommandList* InCommandLis
 
 HC_Dx12::HC_Dx12(std::string InName, ID3D12Device* InDevice) : Shader_Dx12(InName, InDevice)
 {
-    _name = InName;
-
     DXGI_SWAP_CHAIN_DESC scDesc {};
     if (State::Instance().currentSwapchain->GetDesc(&scDesc) != S_OK)
     {
@@ -250,16 +183,6 @@ HC_Dx12::HC_Dx12(std::string InName, ID3D12Device* InDevice) : Shader_Dx12(InNam
             _init = false;
             return;
         }
-
-    heapDesc.NumDescriptors = 2; // RTV
-    heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-    heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-    hr = InDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&_srvHeap[1]));
-
-    if (FAILED(hr))
-    {
-        LOG_ERROR("[{0}] CreateDescriptorHeap[1] error {1:x}", _name, hr);
-        return;
     }
 
     _init = true;
@@ -308,28 +231,9 @@ bool HC_Dx12::Dispatch(IDXGISwapChain3* sc, ID3D12GraphicsCommandList* cmdList, 
     if (_buffer[_counter] != nullptr)
         bufferDesc = _buffer[_counter]->GetDesc();
 
-    if (_buffer[_counter] == nullptr || bufferDesc.Format != scDesc.BufferDesc.Format ||
-        bufferDesc.Width != scDesc.BufferDesc.Width || bufferDesc.Height != scDesc.BufferDesc.Height)
-    {
     if (!CreateBufferResource(_counter, _device, scBuffer, D3D12_RESOURCE_STATE_COPY_DEST))
     {
         LOG_ERROR("CreateBufferResource error!");
-        return false;
-    }
-    }
-
-    // Reset CommandList
-    result = _commandAllocator[_counter]->Reset();
-    if (result != S_OK)
-    {
-        LOG_ERROR("_commandAllocator->Reset() error: {:X}", (UINT) result);
-        return false;
-    }
-
-    result = _commandList[_counter]->Reset(_commandAllocator[_counter], nullptr);
-    if (result != S_OK)
-    {
-        LOG_ERROR("_commandList->Reset error: {:X}", (UINT) result);
         return false;
     }
 
@@ -448,21 +352,6 @@ HC_Dx12::~HC_Dx12()
 {
     if (!_init || State::Instance().isShuttingDown)
         return;
-
-    for (size_t i = 0; i < 2; i++)
-    {
-        if (_commandAllocator[i] != nullptr)
-            _commandAllocator[i]->Release();
-
-        if (_commandList[i] != nullptr)
-            _commandList[i]->Release();
-
-        if (_buffer[i] != nullptr)
-        {
-            _buffer[i]->Release();
-            _buffer[i] = nullptr;
-        }
-    }
 
     if (_rootSignature != nullptr)
     {

@@ -2,10 +2,6 @@
 
 #include <pch.h>
 
-#include "HC_Common.h"
-#include "precompile/hudless_compare_PShader.h"
-#include "precompile/hudless_compare_VShader.h"
-
 #include <d3d12.h>
 #include <d3dx/d3dx12.h>
 #include <dxgi1_6.h>
