@@ -138,6 +138,7 @@ static VkResult hkvkCreateWin32SurfaceKHR(VkInstance instance, const VkWin32Surf
         MenuOverlayVk::DestroyVulkanObjects(false);
 
         _instance = instance;
+        State::Instance().VulkanInstance = instance;
         LOG_DEBUG("_instance captured: {0:X}", (UINT64) _instance);
         _hwnd = pCreateInfo->hwnd;
         LOG_DEBUG("_hwnd captured: {0:X}", (UINT64) _hwnd);

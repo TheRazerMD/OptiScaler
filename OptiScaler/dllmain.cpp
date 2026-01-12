@@ -22,6 +22,7 @@
 
 #include "inputs/FSR2_Dx11.h"
 #include "inputs/FSR2_Dx12.h"
+#include "inputs/FSR2_Vk.h"
 #include "inputs/FSR3_Dx12.h"
 #include "inputs/FG/FSR3_Dx12_FG.h"
 
@@ -1702,21 +1703,24 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 
         if (Config::Instance()->EnableFsr2Inputs.value_or_default())
         {
-
-            handle = GetDllNameWModule(&fsr2NamesW);
-            if (handle != nullptr)
-                HookFSR2Inputs(handle);
-
-            handle = GetDllNameWModule(&fsr2BENamesW);
-            if (handle != nullptr)
-                HookFSR2Dx12Inputs(handle);
-
             spdlog::info("");
 
-            if (Config::Instance()->UseFsr2Dx11Inputs.value_or_default())
+            if (Config::Instance()->UseFsr2VulkanInputs.value_or_default())
+                HookFSR2VkExeInputs();
+            else if (Config::Instance()->UseFsr2Dx11Inputs.value_or_default())
                 HookFSR2Dx11ExeInputs();
             else
+            {
+                handle = GetDllNameWModule(&fsr2NamesW);
+                if (handle != nullptr)
+                    HookFSR2Inputs(handle);
+
+                handle = GetDllNameWModule(&fsr2BENamesW);
+                if (handle != nullptr)
+                    HookFSR2Dx12Inputs(handle);
+
                 HookFSR2ExeInputs();
+            }
         }
 
         if (Config::Instance()->EnableFsr3Inputs.value_or_default())
