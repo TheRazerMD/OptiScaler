@@ -1499,7 +1499,7 @@ void ResTrack_Dx12::hkDrawInstanced(ID3D12GraphicsCommandList* This, UINT Vertex
 
     if (!_useShards)
     {
-        if (This == MenuOverlayDx::MenuCommandList() && fgPossibleHudless[fIndex].contains(This))
+        if (This == MenuOverlayDx::MenuCommandList())
         {
             std::lock_guard<std::mutex> lock(_hudlessTrackMutex);
             fgPossibleHudless[fIndex][This].clear();
@@ -1614,7 +1614,7 @@ void ResTrack_Dx12::hkDrawIndexedInstanced(ID3D12GraphicsCommandList* This, UINT
 
     if (!_useShards)
     {
-        if (This == MenuOverlayDx::MenuCommandList() && fgPossibleHudless[fIndex].contains(This))
+        if (This == MenuOverlayDx::MenuCommandList())
         {
             std::lock_guard<std::mutex> lock(_hudlessTrackMutex);
             fgPossibleHudless[fIndex][This].clear();
@@ -1803,7 +1803,7 @@ void ResTrack_Dx12::hkDispatch(ID3D12GraphicsCommandList* This, UINT ThreadGroup
 
     if (!_useShards)
     {
-        if (This == MenuOverlayDx::MenuCommandList() && fgPossibleHudless[fIndex].contains(This))
+        if (This == MenuOverlayDx::MenuCommandList())
         {
             std::lock_guard<std::mutex> lock(_hudlessTrackMutex);
             fgPossibleHudless[fIndex][This].clear();
