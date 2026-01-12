@@ -155,6 +155,8 @@ class State
     float lastMipBias = 100.0f;
     float lastMipBiasMax = -100.0f;
 
+    int xefgMaxInterpolationCount = 1;
+
     // DLSS
     bool dlssPresetsOverriddenExternally = false;
     bool dlssPresetsOverridenByOpti = false;

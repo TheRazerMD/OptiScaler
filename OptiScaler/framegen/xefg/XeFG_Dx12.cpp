@@ -225,6 +225,18 @@ bool XeFG_Dx12::CreateSwapchain(IDXGIFactory* factory, ID3D12CommandQueue* cmdQu
 
         _width = desc->BufferDesc.Width;
         _height = desc->BufferDesc.Height;
+
+        xefg_swapchain_properties_t props {};
+        auto result = XeFGProxy::GetProperties()(_swapChainContext, &props);
+        if (result == XEFG_SWAPCHAIN_RESULT_SUCCESS)
+        {
+            State::Instance().xefgMaxInterpolationCount = props.maxSupportedInterpolations;
+            LOG_INFO("Max supported interpolations: {}", props.maxSupportedInterpolations);
+        }
+        else
+        {
+            LOG_ERROR("Can't get swapchain properties: {} ({})", magic_enum::enum_name(result), (UINT) result);
+        }
     }
 
     IDXGIFactory* realFactory = nullptr;
@@ -279,7 +291,18 @@ bool XeFG_Dx12::CreateSwapchain(IDXGIFactory* factory, ID3D12CommandQueue* cmdQu
     fsDesc.Windowed = desc->Windowed;
 
     xefg_swapchain_d3d12_init_params_t params {};
-    params.maxInterpolatedFrames = 1;
+
+    auto intTarget = Config::Instance()->FGXeFGInterpolationCount.value_or_default();
+
+    if (intTarget < 1 || intTarget > State::Instance().xefgMaxInterpolationCount)
+    {
+        LOG_WARN("Invalid XeFG interpolation count: {}, max count: {}", intTarget,
+                 State::Instance().xefgMaxInterpolationCount);
+
+        intTarget = 1;
+    }
+
+    params.maxInterpolatedFrames = intTarget;
 
     params.initFlags = XEFG_SWAPCHAIN_INIT_FLAG_NONE;
 
@@ -329,13 +352,6 @@ bool XeFG_Dx12::CreateSwapchain(IDXGIFactory* factory, ID3D12CommandQueue* cmdQu
         return false;
     }
 
-    xefg_swapchain_properties_t props {};
-    result = XeFGProxy::GetProperties()(_swapChainContext, &props);
-    if (result == XEFG_SWAPCHAIN_RESULT_SUCCESS)
-        LOG_INFO("Max supported interpolations: {}", props.maxSupportedInterpolations);
-    else
-        LOG_ERROR("Can't get swapchain properties: {} ({})", magic_enum::enum_name(result), (UINT) result);
-
     _gameCommandQueue = realQueue;
     _swapChain = *swapChain;
     _hwnd = hwnd;
@@ -370,6 +386,18 @@ bool XeFG_Dx12::CreateSwapchain1(IDXGIFactory* factory, ID3D12CommandQueue* cmdQ
 
         _width = desc->Width;
         _height = desc->Height;
+
+        xefg_swapchain_properties_t props {};
+        auto result = XeFGProxy::GetProperties()(_swapChainContext, &props);
+        if (result == XEFG_SWAPCHAIN_RESULT_SUCCESS)
+        {
+            State::Instance().xefgMaxInterpolationCount = props.maxSupportedInterpolations;
+            LOG_INFO("Max supported interpolations: {}", props.maxSupportedInterpolations);
+        }
+        else
+        {
+            LOG_ERROR("Can't get swapchain properties: {} ({})", magic_enum::enum_name(result), (UINT) result);
+        }
     }
 
     IDXGIFactory* realFactory = nullptr;
@@ -388,7 +416,18 @@ bool XeFG_Dx12::CreateSwapchain1(IDXGIFactory* factory, ID3D12CommandQueue* cmdQ
     factory12->Release();
 
     xefg_swapchain_d3d12_init_params_t params {};
-    params.maxInterpolatedFrames = 1;
+
+    auto intTarget = Config::Instance()->FGXeFGInterpolationCount.value_or_default();
+
+    if (intTarget < 1 || intTarget > State::Instance().xefgMaxInterpolationCount)
+    {
+        LOG_WARN("Invalid XeFG interpolation count: {}, max count: {}", intTarget,
+                 State::Instance().xefgMaxInterpolationCount);
+
+        intTarget = 1;
+    }
+
+    params.maxInterpolatedFrames = intTarget;
 
     params.initFlags = XEFG_SWAPCHAIN_INIT_FLAG_NONE;
 
@@ -441,13 +480,6 @@ bool XeFG_Dx12::CreateSwapchain1(IDXGIFactory* factory, ID3D12CommandQueue* cmdQ
         LOG_ERROR("D3D12GetSwapChainPtr error: {} ({})", magic_enum::enum_name(result), (UINT) result);
         return false;
     }
-
-    xefg_swapchain_properties_t props {};
-    result = XeFGProxy::GetProperties()(_swapChainContext, &props);
-    if (result == XEFG_SWAPCHAIN_RESULT_SUCCESS)
-        LOG_INFO("Max supported interpolations: {}", props.maxSupportedInterpolations);
-    else
-        LOG_ERROR("Can't get swapchain properties: {} ({})", magic_enum::enum_name(result), (UINT) result);
 
     _gameCommandQueue = realQueue;
     _swapChain = *swapChain;

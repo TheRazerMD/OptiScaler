@@ -170,6 +170,10 @@ bool Config::Reload(std::filesystem::path iniPath)
         }
 
         {
+            FGXeFGInterpolationCount.set_from_config(readInt("XeFG", "InterpolationCount"));
+            if (FGXeFGInterpolationCount.has_value() &&
+                (FGXeFGInterpolationCount.value() < 1 || FGXeFGInterpolationCount.value() > 3))
+                FGXeFGInterpolationCount.reset();
             FGXeFGIgnoreInitChecks.set_from_config(readBool("XeFG", "IgnoreInitChecks"));
             FGXeFGDepthInverted.set_from_config(readBool("XeFG", "DepthInverted"));
             FGXeFGJitteredMV.set_from_config(readBool("XeFG", "JitteredMV"));
@@ -782,6 +786,8 @@ bool Config::SaveIni()
 
     // XeFG output
     {
+        ini.SetValue("XeFG", "InterpolationCount",
+                     GetIntValue(Instance()->FGXeFGInterpolationCount.value_for_config()).c_str());
         ini.SetValue("XeFG", "IgnoreInitChecks",
                      GetBoolValue(Instance()->FGXeFGIgnoreInitChecks.value_for_config()).c_str());
         ini.SetValue("XeFG", "DepthInverted", GetBoolValue(Instance()->FGXeFGDepthInverted.value_for_config()).c_str());

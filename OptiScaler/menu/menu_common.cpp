@@ -3631,6 +3631,36 @@ bool MenuCommon::RenderMenu()
 
                         ShowHelpMarker("Enable frame generation");
 
+                        ImGui::SameLine(0.0f, 16.0f);
+
+                        if (state.xefgMaxInterpolationCount > 1)
+                        {
+                            const char* intModes[] = { "2X", "3X", "4X", "5X", "6X" };
+                            auto currentSet = config->FGXeFGInterpolationCount.value_or_default() - 1;
+                            auto currentIntCount = intModes[currentSet];
+
+                            ImGui::PushItemWidth(95.0f * config->MenuScale.value_or_default());
+
+                            if (ImGui::BeginCombo("MFG", currentIntCount))
+                            {
+                                for (int i = 0; i < state.xefgMaxInterpolationCount; i++)
+                                {
+                                    if (ImGui::Selectable(intModes[i], (currentSet == i)))
+                                    {
+                                        LOG_DEBUG("XeFG Interpolation Count set to: {}", i + 1);
+                                        config->FGXeFGInterpolationCount = i + 1;
+                                    }
+                                }
+
+                                ImGui::EndCombo();
+                            }
+
+                            ImGui::PopItemWidth();
+                        }
+
+                        ShowHelpMarker("Set XeFG interpolation count\n"
+                                       "Will be active after restart!");
+
                         bool fgDV = config->FGXeFGDebugView.value_or_default();
                         if (ImGui::Checkbox("Debug View##2", &fgDV))
                         {
