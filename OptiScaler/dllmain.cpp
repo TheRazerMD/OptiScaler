@@ -1208,6 +1208,18 @@ static void printQuirks(flag_set<GameQuirk>& quirks)
         state->detectedQuirks.push_back("Load vulkan-1.dll");
     }
 
+    if (quirks & GameQuirk::UseFsr2Dx11Inputs)
+    {
+        spdlog::info("Quirk: Use FSR2 DX11 inputs");
+        state->detectedQuirks.push_back("Use FSR2 DX11 inputs");
+    }
+
+    if (quirks & GameQuirk::UseFsr2VulkanInputs)
+    {
+        spdlog::info("Quirk: Use FSR2 Vulkan inputs");
+        state->detectedQuirks.push_back("Use FSR2 Vulkan inputs");
+    }
+
     return;
 }
 
@@ -1314,6 +1326,12 @@ static void CheckQuirks()
 
     if (quirks & GameQuirk::DisableXeFGChecks && !Config::Instance()->FGXeFGIgnoreInitChecks.has_value())
         Config::Instance()->FGXeFGIgnoreInitChecks.set_volatile_value(true);
+
+    if (quirks & GameQuirk::UseFsr2Dx11Inputs && !Config::Instance()->UseFsr2Dx11Inputs.has_value())
+        Config::Instance()->UseFsr2Dx11Inputs.set_volatile_value(true);
+
+    if (quirks & GameQuirk::UseFsr2VulkanInputs && !Config::Instance()->UseFsr2VulkanInputs.has_value())
+        Config::Instance()->UseFsr2VulkanInputs.set_volatile_value(true);
 
     // For Luma, we assume if Luma addon in game folder it's used
     const auto dir = Util::ExePath().parent_path();

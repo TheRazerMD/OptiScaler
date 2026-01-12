@@ -29,6 +29,8 @@ enum class GameQuirk : uint64_t
     AlwaysCaptureFSRFGSwapchain,
     AllowedFrameAhead2,
     DisableXeFGChecks,
+    UseFsr2Dx11Inputs,
+    UseFsr2VulkanInputs,
 
     // Quirks that are applied deeper in code
     CyberpunkHudlessStateOverride,
@@ -93,6 +95,13 @@ static const QuirkEntry quirkTable[] = {
 
     // Where Winds Meet
     QUIRK_ENTRY("wwm.exe", GameQuirk::DisableXeFGChecks),
+
+    // World War Z
+    QUIRK_ENTRY("wwzretail.exe", GameQuirk::UseFsr2VulkanInputs, GameQuirk::EnableVulkanExtensionSpoofing,
+                GameQuirk::DisableDxgiSpoofing),
+
+    // Trails in the Sky 1st Chapter
+    QUIRK_ENTRY("sora_1st.exe", GameQuirk::UseFsr2Dx11Inputs, GameQuirk::DisableDxgiSpoofing),
 
     // The Last of Us Part I
     QUIRK_ENTRY("tlou-i.exe", GameQuirk::AllowedFrameAhead2),
