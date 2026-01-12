@@ -101,7 +101,25 @@ bool XeFG_Dx12::CreateSwapchainContext(ID3D12Device* device)
     return createResult;
 }
 
-const char* XeFG_Dx12::Name() { return "XeFG"; }
+const char* XeFG_Dx12::Name()
+{
+    static std::string nameBuffer;
+
+    if (nameBuffer.size() == 0)
+    {
+        if (State::Instance().xefgMaxInterpolationCount == 1)
+        {
+            nameBuffer = "XeFG";
+        }
+        else
+        {
+            auto count = Config::Instance()->FGXeFGInterpolationCount.value_or_default() + 1;
+            nameBuffer = "XeFG " + std::to_string(count) + "x";
+        }
+    }
+
+    return nameBuffer.c_str();
+}
 
 feature_version XeFG_Dx12::Version()
 {
