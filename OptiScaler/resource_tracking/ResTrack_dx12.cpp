@@ -269,7 +269,8 @@ SIZE_T ResTrack_Dx12::GetGPUHandle(ID3D12Device* This, SIZE_T cpuHandle, D3D12_D
     for (size_t i = 0; i < count; i++)
     {
         auto val = fgHeaps[i].get();
-        if (val->active && val->cpuStart <= cpuHandle && val->cpuEnd > cpuHandle && val->gpuStart != 0)
+        if (fgHeaps[i] != nullptr && val->active && val->cpuStart <= cpuHandle && val->cpuEnd > cpuHandle &&
+            val->gpuStart != 0)
         {
             auto incSize = This->GetDescriptorHandleIncrementSize(type);
             auto addr = cpuHandle - val->cpuStart;
@@ -289,7 +290,8 @@ SIZE_T ResTrack_Dx12::GetCPUHandle(ID3D12Device* This, SIZE_T gpuHandle, D3D12_D
     for (size_t i = 0; i < count; i++)
     {
         auto val = fgHeaps[i].get();
-        if (val->active && val->gpuStart <= gpuHandle && val->gpuEnd > gpuHandle && val->cpuStart != 0)
+        if (fgHeaps[i] != nullptr && val->active && val->gpuStart <= gpuHandle && val->gpuEnd > gpuHandle &&
+            val->cpuStart != 0)
         {
             auto incSize = This->GetDescriptorHandleIncrementSize(type);
             auto addr = gpuHandle - val->gpuStart;
@@ -311,14 +313,15 @@ HeapInfo* ResTrack_Dx12::GetHeapByCpuHandleCBV(SIZE_T cpuHandle)
     {
         auto heapInfo = fgHeaps[cacheCBV.index].get();
 
-        if (heapInfo->active && heapInfo->cpuStart <= cpuHandle && cpuHandle < heapInfo->cpuEnd)
+        if (heapInfo != nullptr && heapInfo->active && heapInfo->cpuStart <= cpuHandle && cpuHandle < heapInfo->cpuEnd)
             return heapInfo;
     }
 
     size_t count = fgHeaps.size();
     for (size_t i = 0; i < count; i++)
     {
-        if (fgHeaps[i]->active && fgHeaps[i]->cpuStart <= cpuHandle && fgHeaps[i]->cpuEnd > cpuHandle)
+        if (fgHeaps[i] != nullptr && fgHeaps[i]->active && fgHeaps[i]->cpuStart <= cpuHandle &&
+            fgHeaps[i]->cpuEnd > cpuHandle)
         {
             cacheCBV.index = static_cast<int>(i);
             cacheCBV.genSeen = currentGen;
@@ -338,14 +341,15 @@ HeapInfo* ResTrack_Dx12::GetHeapByCpuHandleRTV(SIZE_T cpuHandle)
     {
         auto heapInfo = fgHeaps[cacheRTV.index].get();
 
-        if (heapInfo->active && heapInfo->cpuStart <= cpuHandle && cpuHandle < heapInfo->cpuEnd)
+        if (heapInfo != nullptr && heapInfo->active && heapInfo->cpuStart <= cpuHandle && cpuHandle < heapInfo->cpuEnd)
             return heapInfo;
     }
 
     size_t count = fgHeaps.size();
     for (size_t i = 0; i < count; i++)
     {
-        if (fgHeaps[i]->active && fgHeaps[i]->cpuStart <= cpuHandle && fgHeaps[i]->cpuEnd > cpuHandle)
+        if (fgHeaps[i] != nullptr && fgHeaps[i]->active && fgHeaps[i]->cpuStart <= cpuHandle &&
+            fgHeaps[i]->cpuEnd > cpuHandle)
         {
             cacheRTV.index = static_cast<int>(i);
             cacheRTV.genSeen = currentGen;
@@ -365,14 +369,15 @@ HeapInfo* ResTrack_Dx12::GetHeapByCpuHandleSRV(SIZE_T cpuHandle)
     {
         auto heapInfo = fgHeaps[cacheSRV.index].get();
 
-        if (heapInfo->active && heapInfo->cpuStart <= cpuHandle && cpuHandle < heapInfo->cpuEnd)
+        if (heapInfo != nullptr && heapInfo->active && heapInfo->cpuStart <= cpuHandle && cpuHandle < heapInfo->cpuEnd)
             return heapInfo;
     }
 
     size_t count = fgHeaps.size();
     for (size_t i = 0; i < count; i++)
     {
-        if (fgHeaps[i]->active && fgHeaps[i]->cpuStart <= cpuHandle && fgHeaps[i]->cpuEnd > cpuHandle)
+        if (fgHeaps[i] != nullptr && fgHeaps[i]->active && fgHeaps[i]->cpuStart <= cpuHandle &&
+            fgHeaps[i]->cpuEnd > cpuHandle)
         {
             cacheSRV.index = static_cast<int>(i);
             cacheSRV.genSeen = currentGen;
@@ -392,14 +397,15 @@ HeapInfo* ResTrack_Dx12::GetHeapByCpuHandleUAV(SIZE_T cpuHandle)
     {
         auto heapInfo = fgHeaps[cacheUAV.index].get();
 
-        if (heapInfo->active && heapInfo->cpuStart <= cpuHandle && cpuHandle < heapInfo->cpuEnd)
+        if (heapInfo != nullptr && heapInfo->active && heapInfo->cpuStart <= cpuHandle && cpuHandle < heapInfo->cpuEnd)
             return heapInfo;
     }
 
     size_t count = fgHeaps.size();
     for (size_t i = 0; i < count; i++)
     {
-        if (fgHeaps[i]->active && fgHeaps[i]->cpuStart <= cpuHandle && fgHeaps[i]->cpuEnd > cpuHandle)
+        if (fgHeaps[i] != nullptr && fgHeaps[i]->active && fgHeaps[i]->cpuStart <= cpuHandle &&
+            fgHeaps[i]->cpuEnd > cpuHandle)
         {
             cacheUAV.index = static_cast<int>(i);
             cacheUAV.genSeen = currentGen;
@@ -420,7 +426,8 @@ HeapInfo* ResTrack_Dx12::GetHeapByCpuHandle(SIZE_T cpuHandle)
         {
             auto heapInfo = fgHeaps[cache.index].get();
 
-            if (heapInfo->active && heapInfo->cpuStart <= cpuHandle && cpuHandle < heapInfo->cpuEnd)
+            if (heapInfo != nullptr && heapInfo->active && heapInfo->cpuStart <= cpuHandle &&
+                cpuHandle < heapInfo->cpuEnd)
                 return heapInfo;
         }
     }
@@ -428,7 +435,8 @@ HeapInfo* ResTrack_Dx12::GetHeapByCpuHandle(SIZE_T cpuHandle)
     size_t count = fgHeaps.size();
     for (size_t i = 0; i < count; i++)
     {
-        if (fgHeaps[i]->active && fgHeaps[i]->cpuStart <= cpuHandle && fgHeaps[i]->cpuEnd > cpuHandle)
+        if (fgHeaps[i] != nullptr && fgHeaps[i]->active && fgHeaps[i]->cpuStart <= cpuHandle &&
+            fgHeaps[i]->cpuEnd > cpuHandle)
         {
             cache.index = static_cast<int>(i);
             cache.genSeen = currentGen;
@@ -449,7 +457,8 @@ HeapInfo* ResTrack_Dx12::GetHeapByGpuHandleGR(SIZE_T gpuHandle)
         {
             auto heapInfo = fgHeaps[cacheGR.index].get();
 
-            if (heapInfo->active && heapInfo->gpuStart <= gpuHandle && gpuHandle < heapInfo->gpuEnd)
+            if (heapInfo != nullptr && heapInfo->active && heapInfo->gpuStart <= gpuHandle &&
+                gpuHandle < heapInfo->gpuEnd)
                 return heapInfo;
         }
     }
@@ -457,7 +466,8 @@ HeapInfo* ResTrack_Dx12::GetHeapByGpuHandleGR(SIZE_T gpuHandle)
     size_t count = fgHeaps.size();
     for (size_t i = 0; i < count; i++)
     {
-        if (fgHeaps[i]->active && fgHeaps[i]->gpuStart <= gpuHandle && fgHeaps[i]->gpuEnd > gpuHandle)
+        if (fgHeaps[i] != nullptr && fgHeaps[i]->active && fgHeaps[i]->gpuStart <= gpuHandle &&
+            fgHeaps[i]->gpuEnd > gpuHandle)
         {
             cacheGR.index = static_cast<int>(i);
             cacheGR.genSeen = currentGen;
@@ -481,7 +491,8 @@ HeapInfo* ResTrack_Dx12::GetHeapByGpuHandleCR(SIZE_T gpuHandle)
         {
             auto heapInfo = fgHeaps[cacheCR.index].get();
 
-            if (heapInfo->active && heapInfo->gpuStart <= gpuHandle && gpuHandle < heapInfo->gpuEnd)
+            if (heapInfo != nullptr && heapInfo->active && heapInfo->gpuStart <= gpuHandle &&
+                gpuHandle < heapInfo->gpuEnd)
                 return heapInfo;
         }
     }
@@ -489,7 +500,8 @@ HeapInfo* ResTrack_Dx12::GetHeapByGpuHandleCR(SIZE_T gpuHandle)
     size_t count = fgHeaps.size();
     for (size_t i = 0; i < count; i++)
     {
-        if (fgHeaps[i]->active && fgHeaps[i]->gpuStart <= gpuHandle && fgHeaps[i]->gpuEnd > gpuHandle)
+        if (fgHeaps[i] != nullptr && fgHeaps[i]->active && fgHeaps[i]->gpuStart <= gpuHandle &&
+            fgHeaps[i]->gpuEnd > gpuHandle)
         {
             cacheCR.index = static_cast<int>(i);
             cacheCR.genSeen = currentGen;
@@ -858,8 +870,6 @@ static ULONG STDMETHODCALLTYPE hkHeapRelease(ID3D12DescriptorHeap* This)
                 }
             }
 
-            up.reset();
-
             gHeapGeneration.fetch_add(1, std::memory_order_relaxed); // invalidate caches
         }
 
@@ -913,8 +923,10 @@ HRESULT ResTrack_Dx12::hkCreateDescriptorHeap(ID3D12Device* This, D3D12_DESCRIPT
             bool foundEmpty = false;
             for (size_t i = 0; i < count; i++)
             {
-                if (fgHeaps[i] == nullptr)
+                if (fgHeaps[i] != nullptr && !fgHeaps[i]->active)
                 {
+
+                    fgHeaps[i].reset();
                     fgHeaps[i] = std::make_unique<HeapInfo>(heap, cpuStart, cpuEnd, gpuStart, gpuEnd, numDescriptors,
                                                             increment, type);
 
