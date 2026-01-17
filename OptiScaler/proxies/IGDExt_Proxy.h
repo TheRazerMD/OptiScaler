@@ -272,15 +272,14 @@ class IGDExtProxy
 
             if (!_atomicSupportEnabled)
                 DestroyContext();
-
-            return _atomicSupportEnabled;
         }
         else
         {
             LOG_WARN("EmulatedTyped64bitAtomics is not needed!");
+            _atomicSupportEnabled = false;
         }
 
-        return false;
+        return _atomicSupportEnabled;
     }
 
   public:
@@ -329,7 +328,13 @@ class IGDExtProxy
         ScopedSkipSpoofing skipSpoofing {};
 
         if (CreateContext(device))
-            EnableAtomic64Support();
+        {
+            if (!EnableAtomic64Support())
+            {
+                DestroyContext();
+                Config::Instance()->UESpoofIntelAtomics64.set_volatile_value(false);
+            }
+        }
     }
 
     static void DestroyContext()
@@ -345,6 +350,7 @@ class IGDExtProxy
 
         auto result = _INTC_DestroyDeviceExtensionContext(&_context);
         _context = nullptr;
+        _atomicSupportEnabled = false;
 
         LOG_INFO("_INTC_DestroyDeviceExtensionContext result: {:X}", (UINT) result);
     }

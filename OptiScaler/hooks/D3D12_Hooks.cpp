@@ -32,9 +32,10 @@ typedef HRESULT (*PFN_CreatePlacedResource)(ID3D12Device* device, ID3D12Heap* pH
                                             const D3D12_CLEAR_VALUE* pOptimizedClearValue, REFIID riid,
                                             void** ppvResource);
 
-typedef D3D12_RESOURCE_ALLOCATION_INFO (*PFN_GetResourceAllocationInfo)(ID3D12Device* device, UINT visibleMask,
-                                                                        UINT numResourceDescs,
-                                                                        D3D12_RESOURCE_DESC* pResourceDescs);
+typedef void(STDMETHODCALLTYPE* PFN_GetResourceAllocationInfo)(ID3D12Device* device,
+                                                               D3D12_RESOURCE_ALLOCATION_INFO* pResult,
+                                                               UINT visibleMask, UINT numResourceDescs,
+                                                               D3D12_RESOURCE_DESC* pResourceDescs);
 
 typedef HRESULT (*PFN_CreateRootSignature)(ID3D12Device* device, UINT nodeMask, const void* pBlobWithRootSignature,
                                            SIZE_T blobLengthInBytes, REFIID riid, void** ppvRootSignature);
@@ -313,14 +314,8 @@ static HRESULT hkD3D12CreateDevice(IDXGIAdapter* pAdapter, D3D_FEATURE_LEVEL Min
                 o_D3D12DeviceRelease(_intelD3D12Device);
         }
 
-        // For WuWa, might cause issues with other games
-        // if (_lastAdapterLuid.HighPart != desc.AdapterLuid.HighPart ||
-        //    _lastAdapterLuid.LowPart != desc.AdapterLuid.LowPart)
-        // {
-        //    ResTrack_Dx12::ReleaseHooks();
-        // }
-
-        // _lastAdapterLuid = desc.AdapterLuid;
+        // if (Config::Instance()->UESpoofIntelAtomics64.value_or_default())
+        //     UnhookDevice();
 
         HookToDevice(State::Instance().currentD3D12Device);
         _d3d12Captured = true;
@@ -446,14 +441,8 @@ static HRESULT hkCreateDevice(ID3D12DeviceFactory* pFactory, IDXGIAdapter* pAdap
                 o_D3D12DeviceRelease(_intelD3D12Device);
         }
 
-        // For WuWa, might cause issues with other games
-        // if (_lastAdapterLuid.HighPart != desc.AdapterLuid.HighPart ||
-        //    _lastAdapterLuid.LowPart != desc.AdapterLuid.LowPart)
-        // {
-        //    ResTrack_Dx12::ReleaseHooks();
-        // }
-
-        // _lastAdapterLuid = desc.AdapterLuid;
+        // if (Config::Instance()->UESpoofIntelAtomics64.value_or_default())
+        //     UnhookDevice();
 
         HookToDevice(State::Instance().currentD3D12Device);
         _d3d12Captured = true;
@@ -556,7 +545,6 @@ static ULONG hkD3D12DeviceRelease(IUnknown* device)
     }
 
     auto result = o_D3D12DeviceRelease(device);
-
     return result;
 }
 
@@ -565,11 +553,14 @@ static HRESULT hkCheckFeatureSupport(ID3D12Device* device, D3D12_FEATURE Feature
 {
     auto result = o_CheckFeatureSupport(device, Feature, pFeatureSupportData, FeatureSupportDataSize);
 
-    if (Config::Instance()->UESpoofIntelAtomics64.value_or_default() && Feature == D3D12_FEATURE_D3D12_OPTIONS9)
+    if (Config::Instance()->UESpoofIntelAtomics64.value_or_default() && Feature == D3D12_FEATURE_D3D12_OPTIONS9 &&
+        device == State::Instance().currentD3D12Device)
     {
         auto featureSupport = (D3D12_FEATURE_DATA_D3D12_OPTIONS9*) pFeatureSupportData;
-        LOG_INFO("Spoofing AtomicInt64OnTypedResourceSupported");
-        featureSupport->AtomicInt64OnTypedResourceSupported = true;
+        LOG_INFO("Spoofing AtomicInt64OnTypedResourceSupported {} -> 1",
+                 featureSupport->AtomicInt64OnTypedResourceSupported);
+
+        featureSupport->AtomicInt64OnTypedResourceSupported = 1;
     }
 
     return result;
@@ -591,6 +582,8 @@ static HRESULT hkCreateCommittedResource(ID3D12Device* device, const D3D12_HEAP_
             _skipCommitedResource = true;
             auto result = IGDExtProxy::CreateCommitedResource(pHeapProperties, HeapFlags, pDesc, InitialResourceState,
                                                               pOptimizedClearValue, riidResource, ppvResource);
+
+            LOG_DEBUG("IGDExtProxy::hkCreateCommittedResource result: {:X}", (UINT) result);
             _skipCommitedResource = false;
 
             return result;
@@ -617,6 +610,7 @@ static HRESULT hkCreatePlacedResource(ID3D12Device* device, ID3D12Heap* pHeap, U
             skipPlacedResource = true;
             auto result = IGDExtProxy::CreatePlacedResource(pHeap, HeapOffset, pDesc, InitialState,
                                                             pOptimizedClearValue, riid, ppvResource);
+            LOG_DEBUG("IGDExtProxy::hkCreatePlacedResource result: {:X}", (UINT) result);
             skipPlacedResource = false;
 
             return result;
@@ -627,13 +621,26 @@ static HRESULT hkCreatePlacedResource(ID3D12Device* device, ID3D12Heap* pHeap, U
                                   ppvResource);
 }
 
-static D3D12_RESOURCE_ALLOCATION_INFO hkGetResourceAllocationInfo(ID3D12Device* device, UINT visibleMask,
-                                                                  UINT numResourceDescs,
-                                                                  D3D12_RESOURCE_DESC* pResourceDescs)
-{
-    if (State::Instance().currentD3D12Device != device)
-        device = State::Instance().currentD3D12Device;
+/*
+The Golden Rule of x64 Struct Returns
+If a Windows x64 function returns a struct larger than 8 bytes (and isn't a vector intrinsic):
 
+Input: The caller allocates stack memory and passes a pointer to it as a hidden argument.
+
+Static Function: RCX = Hidden Ptr, RDX = Arg1
+
+Member Function: RCX = this, RDX = Hidden Ptr, R8 = Arg1
+
+Output: The function must return that same hidden pointer in RAX.
+
+Why Agility SDK crashed but legacy didn't: The Agility SDK is compiled with newer MSVC optimizations that strictly
+enforce the "Return in RAX" rule for chained calls. The legacy DLL likely had some wiggle room or didn't immediately
+dereference RAX after the call.
+*/
+static D3D12_RESOURCE_ALLOCATION_INFO* STDMETHODCALLTYPE
+hkGetResourceAllocationInfo(ID3D12Device* device, D3D12_RESOURCE_ALLOCATION_INFO* pResult, UINT visibleMask,
+                            UINT numResourceDescs, D3D12_RESOURCE_DESC* pResourceDescs)
+{
     if (!_skipGetResourceAllocationInfo)
     {
         auto ueDesc = reinterpret_cast<UE_D3D12_RESOURCE_DESC*>(pResourceDescs);
@@ -643,13 +650,17 @@ static D3D12_RESOURCE_ALLOCATION_INFO hkGetResourceAllocationInfo(ID3D12Device* 
         {
             _skipGetResourceAllocationInfo = true;
             auto result = IGDExtProxy::GetResourceAllocationInfo(visibleMask, numResourceDescs, pResourceDescs);
+            LOG_DEBUG("IGDExtProxy::GetResourceAllocationInfo result: SizeInBytes={}", result.SizeInBytes);
             _skipGetResourceAllocationInfo = false;
-
-            return result;
+            *pResult = result;
+            return pResult;
         }
     }
 
-    return o_GetResourceAllocationInfo(device, visibleMask, numResourceDescs, pResourceDescs);
+    pResult->Alignment = 0;
+    pResult->SizeInBytes = 0;
+    o_GetResourceAllocationInfo(device, pResult, visibleMask, numResourceDescs, pResourceDescs);
+    return pResult;
 }
 
 static void hkCreateSampler(ID3D12Device* device, const D3D12_SAMPLER_DESC* pDesc,
@@ -884,10 +895,8 @@ static void HookToDevice(ID3D12Device* InDevice)
             if (o_D3D12DeviceRelease != nullptr)
                 DetourAttach(&(PVOID&) o_D3D12DeviceRelease, hkD3D12DeviceRelease);
 
-            // This does not work but luckily
-            // UE works without Intel Extension for it
-            // if (o_GetResourceAllocationInfo != nullptr)
-            //    DetourAttach(&(PVOID&) o_GetResourceAllocationInfo, hkGetResourceAllocationInfo);
+            if (o_GetResourceAllocationInfo != nullptr)
+                DetourAttach(&(PVOID&) o_GetResourceAllocationInfo, hkGetResourceAllocationInfo);
         }
 
         DetourTransactionCommit();
@@ -899,6 +908,8 @@ static void HookToDevice(ID3D12Device* InDevice)
 
 static void UnhookDevice()
 {
+    LOG_DEBUG();
+
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
 
