@@ -923,6 +923,8 @@ static void UnhookDevice()
     if (o_GetResourceAllocationInfo != nullptr)
         DetourDetach(&(PVOID&) o_GetResourceAllocationInfo, hkGetResourceAllocationInfo);
 
+    DetourTransactionCommit();
+
     o_CreateSampler = nullptr;
     o_CheckFeatureSupport = nullptr;
     o_CreateCommittedResource = nullptr;
@@ -930,7 +932,7 @@ static void UnhookDevice()
     o_D3D12DeviceRelease = nullptr;
     o_GetResourceAllocationInfo = nullptr;
 
-    DetourTransactionCommit();
+    ResTrack_Dx12::ReleaseDeviceHooks();
 }
 
 void D3D12Hooks::Hook()

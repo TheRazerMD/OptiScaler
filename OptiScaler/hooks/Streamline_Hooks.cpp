@@ -1187,12 +1187,11 @@ void StreamlineHooks::unhookReflex()
     DetourUpdateThread(GetCurrentThread());
 
     if (o_reflex_slGetPluginFunction)
-    {
         DetourDetach(&(PVOID&) o_reflex_slGetPluginFunction, hkreflex_slGetPluginFunction);
-        o_reflex_slGetPluginFunction = nullptr;
-    }
 
     DetourTransactionCommit();
+
+    o_reflex_slGetPluginFunction = nullptr;
 }
 
 void StreamlineHooks::hookReflex(HMODULE slReflex)
