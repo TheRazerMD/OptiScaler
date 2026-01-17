@@ -103,6 +103,12 @@ static std::string FfxGetGetDescTypeName(ffxStructType_t type)
     case 0x00010008u:
         return std::format("QUERY_DESC_TYPE_UPSCALE_GPU_MEMORY_USAGE ({:X})", type);
 
+    case 0x00010009u:
+        return std::format("QUERY_DESC_TYPE_UPSCALE_GPU_MEMORY_USAGE_V2 ({:X})", type);
+
+    case 0x0001000au:
+        return std::format("QUERY_DESC_TYPE_UPSCALE_GET_RESOURCE_REQUIREMENTS ({:X})", type);
+
     case 0x00020001u:
         return std::format("CREATE_CONTEXT_DESC_TYPE_FRAMEGENERATION ({:X})", type);
 
@@ -133,6 +139,9 @@ static std::string FfxGetGetDescTypeName(ffxStructType_t type)
     case 0x0002000au:
         return std::format("DISPATCH_DESC_TYPE_FRAMEGENERATION_PREPARE_CAMERAINFO ({:X})", type);
 
+    case 0x0002000bu:
+        return std::format("QUERY_DESC_TYPE_FRAMEGENERATION_GPU_MEMORY_USAGE_V2 ({:X})", type);
+
     case 0x30001u:
         return std::format("CREATE_CONTEXT_DESC_TYPE_FRAMEGENERATIONSWAPCHAIN_WRAP_DX12 ({:X})", type);
 
@@ -159,6 +168,9 @@ static std::string FfxGetGetDescTypeName(ffxStructType_t type)
 
     case 0x00030009u:
         return std::format("QUERY_DESC_TYPE_FRAMEGENERATIONSWAPCHAIN_GPU_MEMORY_USAGE_DX12 ({:X})", type);
+
+    case 0x0003000au:
+        return std::format("QUERY_DESC_TYPE_FRAMEGENERATIONSWAPCHAIN_GPU_MEMORY_USAGE_DX12_V2 ({:X})", type);
     }
 
     return std::format("??? ({:X})", type);
