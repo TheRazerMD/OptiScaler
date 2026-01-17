@@ -438,6 +438,7 @@ class ResTrack_Dx12
   public:
     static void HookDevice(ID3D12Device* device);
     static void ReleaseHooks();
+    static void ReleaseDeviceHooks();
     static void ClearPossibleHudless();
     static void SetResourceCmdList(FG_ResourceType type, ID3D12GraphicsCommandList* cmdList);
 };

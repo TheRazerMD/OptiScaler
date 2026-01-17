@@ -2063,9 +2063,12 @@ void ResTrack_Dx12::HookDevice(ID3D12Device* device)
     if (device == nullptr)
         return;
 
-    _useShards = Config::Instance()->FGUseShards.value_or_default();
-    _trackedResources.reserve(1024);
-    fgHeaps.reserve(65536);
+    if (fgHeaps.capacity() < 65536)
+    {
+        _useShards = Config::Instance()->FGUseShards.value_or_default();
+        _trackedResources.reserve(1024);
+        fgHeaps.reserve(65536);
+    }
 
     LOG_FUNC();
 
@@ -2078,14 +2081,15 @@ void ResTrack_Dx12::HookDevice(ID3D12Device* device)
 
     // Hudfix
     o_CreateDescriptorHeap = (PFN_CreateDescriptorHeap) pVTable[14];
-    o_CreateConstantBufferView = (PFN_CreateConstantBufferView) pVTable[17];
     o_CreateShaderResourceView = (PFN_CreateShaderResourceView) pVTable[18];
     o_CreateUnorderedAccessView = (PFN_CreateUnorderedAccessView) pVTable[19];
     o_CreateRenderTargetView = (PFN_CreateRenderTargetView) pVTable[20];
-    o_CreateDepthStencilView = (PFN_CreateDepthStencilView) pVTable[21];
     o_CreateSampler = (PFN_CreateSampler) pVTable[22];
     o_CopyDescriptors = (PFN_CopyDescriptors) pVTable[23];
     o_CopyDescriptorsSimple = (PFN_CopyDescriptorsSimple) pVTable[24];
+
+    // o_CreateDepthStencilView = (PFN_CreateDepthStencilView) pVTable[21];
+    // o_CreateConstantBufferView = (PFN_CreateConstantBufferView) pVTable[17];
 
     // Apply the detour
 
@@ -2118,6 +2122,91 @@ void ResTrack_Dx12::HookDevice(ID3D12Device* device)
     HookToQueue(device);
     HookCommandList(device);
     HookResource(device);
+}
+
+void ResTrack_Dx12::ReleaseDeviceHooks()
+{
+    LOG_DEBUG("");
+
+    DetourTransactionBegin();
+    DetourUpdateThread(GetCurrentThread());
+
+    if (o_CreateDescriptorHeap != nullptr)
+        DetourDetach(&(PVOID&) o_CreateDescriptorHeap, hkCreateDescriptorHeap);
+
+    if (o_CreateRenderTargetView != nullptr)
+        DetourDetach(&(PVOID&) o_CreateRenderTargetView, hkCreateRenderTargetView);
+
+    if (o_CreateShaderResourceView != nullptr)
+        DetourDetach(&(PVOID&) o_CreateShaderResourceView, hkCreateShaderResourceView);
+
+    if (o_CreateUnorderedAccessView != nullptr)
+        DetourDetach(&(PVOID&) o_CreateUnorderedAccessView, hkCreateUnorderedAccessView);
+
+    if (o_CopyDescriptors != nullptr)
+        DetourDetach(&(PVOID&) o_CopyDescriptors, hkCopyDescriptors);
+
+    if (o_CopyDescriptorsSimple != nullptr)
+        DetourDetach(&(PVOID&) o_CopyDescriptorsSimple, hkCopyDescriptorsSimple);
+
+    // Queue
+    if (o_ExecuteCommandLists != nullptr)
+        DetourDetach(&(PVOID&) o_ExecuteCommandLists, hkExecuteCommandLists);
+
+    // CommandList
+    if (o_OMSetRenderTargets != nullptr)
+        DetourDetach(&(PVOID&) o_OMSetRenderTargets, hkOMSetRenderTargets);
+
+    if (o_SetGraphicsRootDescriptorTable != nullptr)
+        DetourDetach(&(PVOID&) o_SetGraphicsRootDescriptorTable, hkSetGraphicsRootDescriptorTable);
+
+    if (o_SetComputeRootDescriptorTable != nullptr)
+        DetourDetach(&(PVOID&) o_SetComputeRootDescriptorTable, hkSetComputeRootDescriptorTable);
+
+    if (o_DrawIndexedInstanced != nullptr)
+        DetourDetach(&(PVOID&) o_DrawIndexedInstanced, hkDrawIndexedInstanced);
+
+    if (o_DrawInstanced != nullptr)
+        DetourDetach(&(PVOID&) o_DrawInstanced, hkDrawInstanced);
+
+    if (o_Dispatch != nullptr)
+        DetourDetach(&(PVOID&) o_Dispatch, hkDispatch);
+
+    if (o_Close != nullptr)
+        DetourDetach(&(PVOID&) o_Close, hkClose);
+
+    if (o_ExecuteBundle != nullptr)
+        DetourDetach(&(PVOID&) o_ExecuteBundle, hkExecuteBundle);
+
+    // Resource
+    if (o_Release != nullptr)
+        DetourDetach(&(PVOID&) o_Release, hkRelease);
+
+    DetourTransactionCommit();
+
+    // Device
+    o_CreateDescriptorHeap = nullptr;
+    o_CreateRenderTargetView = nullptr;
+    o_CreateShaderResourceView = nullptr;
+    o_CreateUnorderedAccessView = nullptr;
+    o_CopyDescriptors = nullptr;
+    o_CopyDescriptorsSimple = nullptr;
+
+    // Queue
+    o_ExecuteCommandLists = nullptr;
+
+    // CommandList
+    o_OMSetRenderTargets = nullptr;
+    o_SetGraphicsRootDescriptorTable = nullptr;
+    o_SetComputeRootDescriptorTable = nullptr;
+    o_DrawIndexedInstanced = nullptr;
+    o_DrawInstanced = nullptr;
+    o_Dispatch = nullptr;
+    o_Close = nullptr;
+    o_ExecuteBundle = nullptr;
+
+    // Resource
+    o_Release = nullptr;
 }
 
 void ResTrack_Dx12::ReleaseHooks()
