@@ -1506,13 +1506,14 @@ void ResTrack_Dx12::hkDrawInstanced(ID3D12GraphicsCommandList* This, UINT Vertex
             return;
         }
 
-        if (fgPossibleHudless[fIndex].size() == 0 || !fgPossibleHudless[fIndex].contains(This))
-        {
-            LOG_DEBUG_ONLY("Early exit");
+        if (fgPossibleHudless[fIndex].size() == 0)
             return;
-        }
 
         std::lock_guard<std::mutex> lock(_hudlessTrackMutex);
+
+        if (!fgPossibleHudless[fIndex].contains(This))
+            return;
+
         auto val0 = fgPossibleHudless[fIndex][This];
 
         do
@@ -1621,14 +1622,14 @@ void ResTrack_Dx12::hkDrawIndexedInstanced(ID3D12GraphicsCommandList* This, UINT
             return;
         }
 
-        // if can't find output skip
-        if (fgPossibleHudless[fIndex].size() == 0 || !fgPossibleHudless[fIndex].contains(This))
-        {
-            LOG_DEBUG_ONLY("Early exit");
+        if (fgPossibleHudless[fIndex].size() == 0)
             return;
-        }
 
         std::lock_guard<std::mutex> lock(_hudlessTrackMutex);
+
+        if (!fgPossibleHudless[fIndex].contains(This))
+            return;
+
         auto val0 = fgPossibleHudless[fIndex][This];
 
         do
@@ -1810,14 +1811,14 @@ void ResTrack_Dx12::hkDispatch(ID3D12GraphicsCommandList* This, UINT ThreadGroup
             return;
         }
 
-        // if can't find output skip
-        if (fgPossibleHudless[fIndex].size() == 0 || !fgPossibleHudless[fIndex].contains(This))
-        {
-            LOG_DEBUG_ONLY("Early exit");
+        if (fgPossibleHudless[fIndex].size() == 0)
             return;
-        }
 
         std::lock_guard<std::mutex> lock(_hudlessTrackMutex);
+
+        if (!fgPossibleHudless[fIndex].contains(This))
+            return;
+
         auto val0 = fgPossibleHudless[fIndex][This];
 
         do
