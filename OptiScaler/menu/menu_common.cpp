@@ -1216,23 +1216,56 @@ template <HasDefaultValue B> void MenuCommon::AddDLSSRenderPreset(std::string na
                               "PRESET L", "PRESET M", "PRESET N", "PRESET O", "Latest" };
     const std::string presetsDesc[] = {
         "Whatever the game uses",
+
+        // Preset A
         "Intended for Performance/Balanced/Quality modes.\nAn older variant best suited to combat ghosting for "
-        "elements with missing inputs, such as motion vectors.",
-        "Intended for Ultra Performance mode.\nSimilar to Preset A but for Ultra Performance mode.",
+        "elements with missing inputs, such as motion vectors.\nRemoved on recent versions!",
+
+        // Preset B
+        "Intended for Ultra Performance mode.\nSimilar to Preset A but for Ultra Performance mode.\nRemoved on recent "
+        "versions!",
+
+        // Preset C
         "Intended for Performance/Balanced/Quality modes.\nGenerally favors current frame information;\nwell suited "
-        "for fast-paced game content.",
-        "Default preset for Performance/Balanced/Quality modes;\ngenerally favors image stability.",
-        "DLSS 3.7+, a better D preset",
-        "Default preset for Ultra Performance and DLAA modes",
+        "for fast-paced game content.\nRemoved on recent versions!",
+
+        // Preset D
+        "Default preset for Performance/Balanced/Quality modes;\ngenerally favors image stability. \nRemoved on recent "
+        "versions!",
+
+        // Preset E
+        "DLSS 3.7+, a better D preset\nRemoved on recent versions!",
+
+        // Preset F
+        "Default preset for Ultra Performance and DLAA modes\nRemoved on recent versions!",
+
+        // Preset G
         "Unused",
 
+        // Preset H
         "Unused",
+
+        // Preset I
         "Unused",
-        "Transformers",
-        "Transformers 2",
-        "2nd Gen Transformers",
-        "2nd Gen Transformers 2",
+
+        // Preset J
+        "Similar to preset K. Preset J might exhibit slightly\nless ghostingat the cost of extra flickering.\nPreset K "
+        "is generally recommended over preset J\n1st Gen Transformer",
+
+        // Preset K
+        "Default preset for DLAA/Balanced/Quality modes that is\ntransformer based. Best image quality\npreset at a "
+        "higher performance cost\n1st Gen Transformer",
+
+        // Preset L
+        "Default for Ultra Perf mode\n2nd Gen Transformers",
+
+        // Preset M
+        "Default for Perf mode\n2nd Gen Transformer",
+
+        // Preset N
         "Unused",
+
+        // Preset O
         "Unused",
 
         "Latest supported by the dll"
@@ -1251,9 +1284,21 @@ template <HasDefaultValue B> void MenuCommon::AddDLSSRenderPreset(std::string na
 template <HasDefaultValue B> void MenuCommon::AddDLSSDRenderPreset(std::string name, CustomOptional<uint32_t, B>* value)
 {
     const char* presets[] = { "DEFAULT", "PRESET A", "PRESET B", "PRESET C", "PRESET D", "PRESET E" };
-    const std::string presetsDesc[] = {
-        "Whatever the game uses", "Removed", "Removed", "Removed", "Default", "Preset E"
-    };
+    const std::string presetsDesc[] = { "Whatever the game uses",
+                                        // Preset A
+                                        "Preset A\nRemoved on recent versions!",
+
+                                        // Preset B
+                                        "Preset B\nRemoved on recent versions!",
+
+                                        // Preset C
+                                        "Preset C\nRemoved on recent versions!",
+
+                                        // Preset D
+                                        "Default model, Transformer",
+
+                                        // Preset E
+                                        "Latest Transformer model\nMust use if DoF guide is needed" };
 
     if (value->value_or_default() == 0x00FFFFFF)
         *value = 6;
