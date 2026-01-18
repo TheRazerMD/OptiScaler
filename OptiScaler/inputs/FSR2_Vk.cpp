@@ -526,7 +526,7 @@ static FfxErrorCode ffxFsr2ContextDispatch_Vk(FfxFsr2Context* context,
     LOG_DEBUG("handle: {:X}, internalResolution: {}x{}", handle->Id, dispatchDescription->renderSize.width,
               dispatchDescription->renderSize.height);
 
-    State::Instance().setInputApiName = "FSR2.X-VK";
+    State::Instance().setInputApiName = "FSR2.X";
 
     auto evalResult =
         NVSDK_NGX_VULKAN_EvaluateFeature((VkCommandBuffer) dispatchDescription->commandList, handle, params, nullptr);

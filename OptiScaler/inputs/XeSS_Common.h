@@ -6,12 +6,14 @@
 #include "xess.h"
 
 xess_result_t hk_xessGetVersion(xess_version_t* pVersion);
+xess_result_t hk_xessGetVersionDx11(xess_version_t* pVersion);
 xess_result_t hk_xessIsOptimalDriver(xess_context_handle_t hContext);
 xess_result_t hk_xessSetLoggingCallback(xess_context_handle_t hContext, xess_logging_level_t loggingLevel,
                                         xess_app_log_callback_t loggingCallback);
 xess_result_t hk_xessGetProperties(xess_context_handle_t hContext, const xess_2d_t* pOutputResolution,
                                    xess_properties_t* pBindingProperties);
 xess_result_t hk_xessDestroyContext(xess_context_handle_t hContext);
+xess_result_t hk_xessDestroyContextDx11(xess_context_handle_t hContext);
 xess_result_t hk_xessSetVelocityScale(xess_context_handle_t hContext, float x, float y);
 xess_result_t hk_xessForceLegacyScaleFactors(xess_context_handle_t hContext, bool force);
 xess_result_t hk_xessGetExposureMultiplier(xess_context_handle_t hContext, float* pScale);

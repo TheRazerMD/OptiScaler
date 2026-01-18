@@ -81,6 +81,18 @@ xess_result_t hk_xessGetVersion(xess_version_t* pVersion)
     return XESS_RESULT_SUCCESS;
 }
 
+xess_result_t hk_xessGetVersionDx11(xess_version_t* pVersion)
+{
+    LOG_DEBUG("");
+
+    pVersion->major = XeSSProxy::VersionDx11().major;
+    pVersion->minor = XeSSProxy::VersionDx11().minor;
+    pVersion->patch = XeSSProxy::VersionDx11().patch;
+    pVersion->reserved = XeSSProxy::VersionDx11().reserved;
+
+    return XESS_RESULT_SUCCESS;
+}
+
 xess_result_t hk_xessIsOptimalDriver(xess_context_handle_t hContext)
 {
     LOG_DEBUG("");
@@ -118,6 +130,12 @@ xess_result_t hk_xessDestroyContext(xess_context_handle_t hContext)
     {
         NVSDK_NGX_D3D12_ReleaseFeature(_contexts[hContext]);
         _d3d12InitParams.erase(hContext);
+    }
+
+    if (_d3d11InitParams.contains(hContext))
+    {
+        NVSDK_NGX_D3D11_ReleaseFeature(_contexts[hContext]);
+        _d3d11InitParams.erase(hContext);
     }
 
     if (_vkInitParams.contains(hContext))
