@@ -29,6 +29,21 @@ static ID3D12Device* D3D12Device = nullptr;
 static int evalCounter = 0;
 static std::wstring appDataPath = L".";
 static bool shutdown = false;
+static inline bool _skipInit = false;
+
+class ScopedInit
+{
+  private:
+    bool previousState;
+
+  public:
+    ScopedInit()
+    {
+        previousState = _skipInit;
+        _skipInit = true;
+    }
+    ~ScopedInit() { _skipInit = previousState; }
+};
 
 #pragma region Hooks
 
@@ -124,12 +139,6 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D12_Init_Ext(unsigned long long InApp
 {
     LOG_FUNC();
 
-    if (State::Instance().NvngxDx12Inited)
-    {
-        LOG_WARN("NVNGX already inited");
-        return NVSDK_NGX_Result_Success;
-    }
-
     if (Config::Instance()->UseGenericAppIdWithDlss.value_or_default())
         InApplicationId = app_id_override;
 
@@ -141,7 +150,7 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D12_Init_Ext(unsigned long long InApp
     if (InFeatureInfo != nullptr && InSDKVersion > 0x0000013)
         State::Instance().NVNGX_Logger = InFeatureInfo->LoggingInfo;
 
-    if (Config::Instance()->DLSSEnabled.value_or_default() && !NVNGXProxy::IsDx12Inited())
+    if (Config::Instance()->DLSSEnabled.value_or_default() && !_skipInit)
     {
         if (NVNGXProxy::NVNGXModule() == nullptr)
             NVNGXProxy::InitNVNGX();
@@ -160,6 +169,12 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D12_Init_Ext(unsigned long long InApp
         {
             LOG_WARN("NVNGXProxy::NVNGXModule or NVNGXProxy::D3D12_Init_Ext is nullptr!");
         }
+    }
+
+    if (State::Instance().NvngxDx12Inited)
+    {
+        LOG_WARN("NVNGX already inited");
+        return NVSDK_NGX_Result_Success;
     }
 
     if (State::Instance().activeFgInput == FGInput::Nukems)
@@ -194,27 +209,6 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D12_Init_Ext(unsigned long long InApp
         UpscalerTimeDx12::Init(InDevice);
     }
 
-    // early hooking for signatures
-    // if (orgSetComputeRootSignature == nullptr)
-    //{
-    //    ID3D12CommandAllocator* alloc = nullptr;
-    //    ID3D12GraphicsCommandList* gcl = nullptr;
-
-    //    auto result = InDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&alloc));
-    //    if (result == S_OK)
-    //    {
-
-    //        result = InDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, alloc, NULL, IID_PPV_ARGS(&gcl));
-    //        if (result == S_OK)
-    //        {
-    //            HookToCommandList(gcl);
-    //            gcl->Release();
-    //        }
-
-    //        alloc->Release();
-    //    }
-    //}
-
     State::Instance().NvngxDx12Inited = true;
 
     UpscalerInputsDx12::Init(InDevice);
@@ -229,13 +223,7 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D12_Init(unsigned long long InApplica
 {
     LOG_FUNC();
 
-    if (State::Instance().NvngxDx12Inited)
-    {
-        LOG_WARN("NVNGX already inited");
-        return NVSDK_NGX_Result_Success;
-    }
-
-    if (Config::Instance()->DLSSEnabled.value_or_default() && !NVNGXProxy::IsDx12Inited())
+    if (Config::Instance()->DLSSEnabled.value_or_default() && !_skipInit)
     {
         if (Config::Instance()->UseGenericAppIdWithDlss.value_or_default())
             InApplicationId = app_id_override;
@@ -257,12 +245,19 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D12_Init(unsigned long long InApplica
         }
     }
 
+    if (State::Instance().NvngxDx12Inited)
+    {
+        LOG_WARN("NVNGX already inited");
+        return NVSDK_NGX_Result_Success;
+    }
+
     // if (State::Instance().activeFgInput == FGInput::Nukems)
     //{
     //     DLSSGMod::InitDLSSGMod_Dx12();
     //     DLSSGMod::D3D12_Init(InApplicationId, InApplicationDataPath, InDevice, InFeatureInfo, InSDKVersion);
     // }
 
+    ScopedInit scopedInit {};
     auto result =
         NVSDK_NGX_D3D12_Init_Ext(InApplicationId, InApplicationDataPath, InDevice, InSDKVersion, InFeatureInfo);
     LOG_DEBUG("was called NVSDK_NGX_D3D12_Init_Ext");
@@ -278,21 +273,7 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D12_Init_ProjectID(const char* InProj
 {
     LOG_FUNC();
 
-    LOG_INFO("InProjectId: {0}", InProjectId);
-    LOG_INFO("InEngineType: {0}", (int) InEngineType);
-    LOG_INFO("InEngineVersion: {0}", InEngineVersion);
-
-    State::Instance().NVNGX_ProjectId = std::string(InProjectId);
-    State::Instance().NVNGX_Engine = InEngineType;
-    State::Instance().NVNGX_EngineVersion = std::string(InEngineVersion);
-
-    if (State::Instance().NvngxDx12Inited)
-    {
-        LOG_WARN("NVNGX already inited");
-        return NVSDK_NGX_Result_Success;
-    }
-
-    if (Config::Instance()->DLSSEnabled.value_or_default() && !NVNGXProxy::IsDx12Inited())
+    if (Config::Instance()->DLSSEnabled.value_or_default() && !_skipInit)
     {
         if (Config::Instance()->UseGenericAppIdWithDlss.value_or_default())
             InProjectId = project_id_override;
@@ -315,8 +296,22 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D12_Init_ProjectID(const char* InProj
         }
     }
 
-    auto result = NVSDK_NGX_D3D12_Init_Ext(0x1337, InApplicationDataPath, InDevice, InSDKVersion, InFeatureInfo);
+    LOG_INFO("InProjectId: {0}", InProjectId);
+    LOG_INFO("InEngineType: {0}", (int) InEngineType);
+    LOG_INFO("InEngineVersion: {0}", InEngineVersion);
 
+    State::Instance().NVNGX_ProjectId = std::string(InProjectId);
+    State::Instance().NVNGX_Engine = InEngineType;
+    State::Instance().NVNGX_EngineVersion = std::string(InEngineVersion);
+
+    if (State::Instance().NvngxDx12Inited)
+    {
+        LOG_WARN("NVNGX already inited");
+        return NVSDK_NGX_Result_Success;
+    }
+
+    ScopedInit scopedInit {};
+    auto result = NVSDK_NGX_D3D12_Init_Ext(0x1337, InApplicationDataPath, InDevice, InSDKVersion, InFeatureInfo);
     return result;
 }
 

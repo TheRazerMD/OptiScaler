@@ -18,6 +18,21 @@ inline ID3D11Device* D3D11Device = nullptr;
 static ankerl::unordered_dense::map<unsigned int, ContextData<IFeature_Dx11>> Dx11Contexts;
 static inline int evalCounter = 0;
 static inline bool shutdown = false;
+static inline bool _skipInit = false;
+
+class ScopedInit
+{
+  private:
+    bool previousState;
+
+  public:
+    ScopedInit()
+    {
+        previousState = _skipInit;
+        _skipInit = true;
+    }
+    ~ScopedInit() { _skipInit = previousState; }
+};
 
 #pragma region NVSDK_NGX_D3D11_Init
 
@@ -26,7 +41,7 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D11_Init_Ext(unsigned long long InApp
                                                         NVSDK_NGX_Version InSDKVersion,
                                                         const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo)
 {
-    if (Config::Instance()->DLSSEnabled.value_or_default() && !NVNGXProxy::IsDx11Inited())
+    if (Config::Instance()->DLSSEnabled.value_or_default() && !_skipInit)
     {
         if (Config::Instance()->UseGenericAppIdWithDlss.value_or_default())
             InApplicationId = app_id_override;
@@ -92,7 +107,7 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D11_Init(unsigned long long InApplica
                                                     const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
                                                     NVSDK_NGX_Version InSDKVersion)
 {
-    if (Config::Instance()->DLSSEnabled.value_or_default() && !NVNGXProxy::IsDx11Inited())
+    if (Config::Instance()->DLSSEnabled.value_or_default() && !_skipInit)
     {
         if (Config::Instance()->UseGenericAppIdWithDlss.value_or_default())
             InApplicationId = app_id_override;
@@ -114,6 +129,7 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D11_Init(unsigned long long InApplica
         }
     }
 
+    ScopedInit scopedInit {};
     auto result = NVSDK_NGX_D3D11_Init_Ext(0x1337, InApplicationDataPath, InDevice, InSDKVersion, InFeatureInfo);
     LOG_DEBUG("was called NVSDK_NGX_D3D11_Init_Ext");
     return result;
@@ -126,7 +142,7 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D11_Init_ProjectID(const char* InProj
                                                               ID3D11Device* InDevice, NVSDK_NGX_Version InSDKVersion,
                                                               const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo)
 {
-    if (Config::Instance()->DLSSEnabled.value_or_default() && !NVNGXProxy::IsDx11Inited())
+    if (Config::Instance()->DLSSEnabled.value_or_default() && !_skipInit)
     {
         if (Config::Instance()->UseGenericAppIdWithDlss.value_or_default())
             InProjectId = project_id_override;
@@ -149,6 +165,7 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D11_Init_ProjectID(const char* InProj
         }
     }
 
+    ScopedInit scopedInit {};
     auto result = NVSDK_NGX_D3D11_Init_Ext(0x1337, InApplicationDataPath, InDevice, InSDKVersion, InFeatureInfo);
 
     LOG_INFO("InProjectId: {0}", InProjectId);
@@ -168,6 +185,7 @@ NVSDK_NGX_API NVSDK_NGX_Result NVSDK_NGX_D3D11_Init_with_ProjectID(
     const wchar_t* InApplicationDataPath, ID3D11Device* InDevice, const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
     NVSDK_NGX_Version InSDKVersion)
 {
+    ScopedInit scopedInit {};
     auto result = NVSDK_NGX_D3D11_Init_Ext(0x1337, InApplicationDataPath, InDevice, InSDKVersion, InFeatureInfo);
 
     LOG_INFO("InProjectId: {0}", InProjectId);

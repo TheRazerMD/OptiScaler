@@ -53,13 +53,13 @@ bool DLSSFeatureDx11::Init(ID3D11Device* InDevice, ID3D11DeviceContext* InContex
 
             if (nvResult != NVSDK_NGX_Result_Success)
             {
-                LOG_ERROR("_CreateFeature result: {0:X}", (unsigned int) nvResult);
+                LOG_ERROR("NVNGXProxy::D3D11_CreateFeature result: {0:X}", (unsigned int) nvResult);
                 break;
             }
         }
         else
         {
-            LOG_ERROR("_CreateFeature is nullptr");
+            LOG_ERROR("NVNGXProxy::D3D11_CreateFeature is nullptr");
             break;
         }
 
