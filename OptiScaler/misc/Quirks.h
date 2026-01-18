@@ -306,6 +306,9 @@ static const QuirkEntry quirkTable[] = {
     QUIRK_ENTRY("enshrouded.exe", GameQuirk::EnableVulkanSpoofing, GameQuirk::EnableVulkanExtensionSpoofing,
                 GameQuirk::LoadVulkanManually),
 
+    // Baldur's Gate 3
+    QUIRK_ENTRY("bg3.exe", GameQuirk::EnableVulkanExtensionSpoofing),
+
 };
 
 static flag_set<GameQuirk> getQuirksForExe(std::string exeName)
