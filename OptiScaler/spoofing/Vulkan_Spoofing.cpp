@@ -427,11 +427,8 @@ inline static VkResult hkvkCreateDevice(VkPhysicalDevice physicalDevice, VkDevic
         if (vkDeviceExtensions.contains(std::string(VK_KHR_SHADER_INTEGER_DOT_PRODUCT_EXTENSION_NAME)))
             newExtensionList.push_back(VK_KHR_SHADER_INTEGER_DOT_PRODUCT_EXTENSION_NAME);
 
-        if (!isPascalOrOlder)
-        {
-            if (vkDeviceExtensions.contains(std::string(VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME)))
-                newExtensionList.push_back(VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME);
-        }
+        if (vkDeviceExtensions.contains(std::string(VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME)))
+            newExtensionList.push_back(VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME);
     }
 
     pCreateInfo->enabledExtensionCount = static_cast<uint32_t>(newExtensionList.size());

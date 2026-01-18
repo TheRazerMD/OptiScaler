@@ -514,53 +514,54 @@ bool XeSSFeature_Vk::Evaluate(VkCommandBuffer InCmdBuffer, NVSDK_NGX_Parameter* 
     else
         LOG_DEBUG("AutoExposure enabled!");
 
-    bool supportsFloatResponsivePixelMask = Version() >= feature_version { 2, 0, 1 };
-    NVSDK_NGX_Resource_VK* paramReactiveMask = nullptr;
+    // Disabled reactive mask for preventing WWZ crash
+    // bool supportsFloatResponsivePixelMask = Version() >= feature_version { 2, 0, 1 };
+    // NVSDK_NGX_Resource_VK* paramReactiveMask = nullptr;
 
-    if (InParameters->Get("FSR.reactive", (void**) &paramReactiveMask) == NVSDK_NGX_Result_Success)
-    {
-        if (!Config::Instance()->DisableReactiveMask.value_or(!supportsFloatResponsivePixelMask))
-        {
-            if ((_xessInitFlags & XESS_INIT_FLAG_RESPONSIVE_PIXEL_MASK) == 0)
-            {
-                Config::Instance()->DisableReactiveMask = false;
-                LOG_WARN("Reactive mask exist but not enabled, enabling it!");
-                State::Instance().changeBackend[_handle->Id] = true;
-                return true;
-            }
+    // if (InParameters->Get("FSR.reactive", (void**) &paramReactiveMask) == NVSDK_NGX_Result_Success)
+    //{
+    //     if (!Config::Instance()->DisableReactiveMask.value_or(!supportsFloatResponsivePixelMask))
+    //     {
+    //         if ((_xessInitFlags & XESS_INIT_FLAG_RESPONSIVE_PIXEL_MASK) == 0)
+    //         {
+    //             Config::Instance()->DisableReactiveMask = false;
+    //             LOG_WARN("Reactive mask exist but not enabled, enabling it!");
+    //             State::Instance().changeBackend[_handle->Id] = true;
+    //             return true;
+    //         }
 
-            params.responsivePixelMaskTexture = NV_to_XeSS(paramReactiveMask);
-        }
-    }
-    else
-    {
-        if (InParameters->Get(NVSDK_NGX_Parameter_DLSS_Input_Bias_Current_Color_Mask, (void**) &paramReactiveMask) ==
-                NVSDK_NGX_Result_Success &&
-            paramReactiveMask != nullptr)
-        {
-            LOG_DEBUG("Input Bias mask exist..");
+    //        params.responsivePixelMaskTexture = NV_to_XeSS(paramReactiveMask);
+    //    }
+    //}
+    // else
+    //{
+    //    if (InParameters->Get(NVSDK_NGX_Parameter_DLSS_Input_Bias_Current_Color_Mask, (void**) &paramReactiveMask) ==
+    //            NVSDK_NGX_Result_Success &&
+    //        paramReactiveMask != nullptr)
+    //    {
+    //        LOG_DEBUG("Input Bias mask exist..");
 
-            if (!Config::Instance()->DisableReactiveMask.value_or(true))
-            {
-                if ((_xessInitFlags & XESS_INIT_FLAG_RESPONSIVE_PIXEL_MASK) == 0)
-                {
-                    Config::Instance()->DisableReactiveMask = false;
-                    LOG_WARN("Reactive mask exist but not enabled, enabling it!");
-                    State::Instance().changeBackend[_handle->Id] = true;
-                    return true;
-                }
+    //        if (!Config::Instance()->DisableReactiveMask.value_or(true))
+    //        {
+    //            if ((_xessInitFlags & XESS_INIT_FLAG_RESPONSIVE_PIXEL_MASK) == 0)
+    //            {
+    //                Config::Instance()->DisableReactiveMask = false;
+    //                LOG_WARN("Reactive mask exist but not enabled, enabling it!");
+    //                State::Instance().changeBackend[_handle->Id] = true;
+    //                return true;
+    //            }
 
-                params.responsivePixelMaskTexture = NV_to_XeSS(paramReactiveMask);
-            }
-        }
-        else if ((_xessInitFlags & XESS_INIT_FLAG_RESPONSIVE_PIXEL_MASK) > 0)
-        {
-            LOG_WARN("Bias mask not exist and its enabled in config, it may cause problems!!");
-            Config::Instance()->DisableReactiveMask = true;
-            State::Instance().changeBackend[_handle->Id] = true;
-            return true;
-        }
-    }
+    //            params.responsivePixelMaskTexture = NV_to_XeSS(paramReactiveMask);
+    //        }
+    //    }
+    //    else if ((_xessInitFlags & XESS_INIT_FLAG_RESPONSIVE_PIXEL_MASK) > 0)
+    //    {
+    //        LOG_WARN("Bias mask not exist and its enabled in config, it may cause problems!!");
+    //        Config::Instance()->DisableReactiveMask = true;
+    //        State::Instance().changeBackend[_handle->Id] = true;
+    //        return true;
+    //    }
+    //}
 
     _hasColor = params.colorTexture.image != VK_NULL_HANDLE;
     _hasMV = params.velocityTexture.image != VK_NULL_HANDLE;
