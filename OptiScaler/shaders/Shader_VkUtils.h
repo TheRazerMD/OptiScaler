@@ -16,7 +16,7 @@ class DescriptorSetManager
     std::deque<VkDescriptorImageInfo> _imageInfos;
     std::vector<VkWriteDescriptorSet> _writes;
 
-public:
+  public:
     DescriptorSetManager() = default;
 
     bool Initialize(VkDevice device, VkDescriptorSetLayout layout, uint32_t numSrv, uint32_t numUav, uint32_t numCbv)
@@ -27,7 +27,7 @@ public:
         _writes.clear();
 
         std::vector<VkDescriptorPoolSize> poolSizes;
-        
+
         // We allocate enough pool sizes for potential types mapping to SRV/UAV/CBV
         // SRV can be Sampled Image, Texture Buffer, Uniform Texel Buffer, or Storage Buffer (Read Only)
         if (numSrv > 0)
@@ -54,7 +54,7 @@ public:
         if (poolSizes.empty())
             return false;
 
-        VkDescriptorPoolCreateInfo poolInfo{};
+        VkDescriptorPoolCreateInfo poolInfo {};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
         poolInfo.pPoolSizes = poolSizes.data();
@@ -66,7 +66,7 @@ public:
             return false;
         }
 
-        VkDescriptorSetAllocateInfo allocInfo{};
+        VkDescriptorSetAllocateInfo allocInfo {};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocInfo.descriptorPool = _pool;
         allocInfo.descriptorSetCount = 1;
@@ -83,14 +83,14 @@ public:
 
     void SetBuffer(uint32_t binding, VkDescriptorType type, VkBuffer buffer, VkDeviceSize size, VkDeviceSize offset = 0)
     {
-        VkDescriptorBufferInfo info{};
+        VkDescriptorBufferInfo info {};
         info.buffer = buffer;
         info.offset = offset;
         info.range = size;
-        
+
         _bufferInfos.push_back(info);
 
-        VkWriteDescriptorSet write{};
+        VkWriteDescriptorSet write {};
         write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         write.dstSet = _set;
         write.dstBinding = binding;
@@ -102,16 +102,17 @@ public:
         _writes.push_back(write);
     }
 
-    void SetImage(uint32_t binding, VkDescriptorType type, VkImageView view, VkImageLayout layout, VkSampler sampler = VK_NULL_HANDLE)
+    void SetImage(uint32_t binding, VkDescriptorType type, VkImageView view, VkImageLayout layout,
+                  VkSampler sampler = VK_NULL_HANDLE)
     {
-        VkDescriptorImageInfo info{};
+        VkDescriptorImageInfo info {};
         info.imageView = view;
         info.imageLayout = layout;
         info.sampler = sampler;
 
         _imageInfos.push_back(info);
 
-        VkWriteDescriptorSet write{};
+        VkWriteDescriptorSet write {};
         write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         write.dstSet = _set;
         write.dstBinding = binding;
@@ -146,8 +147,5 @@ public:
         }
     }
 
-    ~DescriptorSetManager()
-    {
-        Release();
-    }
+    ~DescriptorSetManager() { Release(); }
 };
