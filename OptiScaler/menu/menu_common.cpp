@@ -4500,7 +4500,7 @@ bool MenuCommon::RenderMenu()
                     ImGui::EndDisabled();
 
                     // RCAS
-                    if (state.api == DX12 || state.api == DX11)
+                    // if (state.api == DX12 || state.api == DX11)
                     {
                         // xess or dlss version >= 2.5.1
                         constexpr feature_version requiredDlssVersion = { 2, 5, 1 };

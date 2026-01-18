@@ -635,6 +635,18 @@
     <ClInclude Include="inputs\XeSS_Dx11.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="shaders\Shader_Vk.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="shaders\Shader_VkUtils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="shaders\rcas\precompile\RCAS_Shader_Vk.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="shaders\rcas\RCAS_Vk.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Config.cpp">
@@ -1011,6 +1023,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="inputs\XeSS_Dx11.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="shaders\Shader_Vk.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="shaders\rcas\RCAS_Vk.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

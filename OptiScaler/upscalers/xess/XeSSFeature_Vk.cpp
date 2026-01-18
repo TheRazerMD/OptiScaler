@@ -81,6 +81,12 @@ bool XeSSFeature_Vk::Init(VkInstance InInstance, VkPhysicalDevice InPD, VkDevice
         return false;
     }
 
+    Instance = InInstance;
+    PhysicalDevice = InPD;
+    Device = InDevice;
+    GIPA = InGIPA;
+    GDPA = InGDPA;
+
     if (IsInited())
         return true;
 
@@ -381,6 +387,9 @@ bool XeSSFeature_Vk::Init(VkInstance InInstance, VkPhysicalDevice InPD, VkDevice
             LOG_ERROR("xessD3D12Init error: {0}", ResultToString(ret));
             return false;
         }
+
+        if (RCAS == nullptr)
+            RCAS = std::make_unique<RCAS_Vk>("RCAS", InDevice, InPD);
     }
 
     SetInit(true);
@@ -600,6 +609,46 @@ bool XeSSFeature_Vk::Evaluate(VkCommandBuffer InCmdBuffer, NVSDK_NGX_Parameter* 
     InParameters->Get(NVSDK_NGX_Parameter_DLSS_Input_Bias_Current_Color_SubrectBase_Y,
                       &params.inputResponsiveMaskBase.y);
 
+    VkImageView finalOutputView = params.outputTexture.imageView;
+    VkImage finalOutputImage = params.outputTexture.image;
+
+    bool rcasEnabled = Config::Instance()->RcasEnabled.value_or(true) &&
+                       (_sharpness > 0.0f || (Config::Instance()->MotionSharpnessEnabled.value_or(false) &&
+                                              Config::Instance()->MotionSharpness.value_or(0.4) > 0.0f)) &&
+                       RCAS->CanRender();
+
+    if (rcasEnabled)
+    {
+        VkImage oldImage = RCAS->GetImage();
+
+        if (RCAS->CreateImageResource(Device, PhysicalDevice, params.outputTexture.width, params.outputTexture.height,
+                                      params.outputTexture.format,
+                                      VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
+                                          VK_IMAGE_USAGE_TRANSFER_DST_BIT))
+        {
+            params.outputTexture.image = RCAS->GetImage();
+            params.outputTexture.imageView = RCAS->GetImageView();
+
+            VkImageSubresourceRange range {};
+            range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            range.baseMipLevel = 0;
+            range.levelCount = 1;
+            range.baseArrayLayer = 0;
+            range.layerCount = 1;
+
+            VkImageLayout oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+            if (oldImage != VK_NULL_HANDLE && oldImage == params.outputTexture.image)
+                oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+            RCAS->SetImageLayout(InCmdBuffer, params.outputTexture.image, oldLayout, VK_IMAGE_LAYOUT_GENERAL, range);
+        }
+        else
+        {
+            rcasEnabled = false;
+        }
+    }
+
     LOG_DEBUG("Executing!!");
     xessResult = XeSSProxy::VKExecute()(_xessContext, InCmdBuffer, &params);
 
@@ -607,6 +656,35 @@ bool XeSSFeature_Vk::Evaluate(VkCommandBuffer InCmdBuffer, NVSDK_NGX_Parameter* 
     {
         LOG_ERROR("xessVKExecute error: {0}", ResultToString(xessResult));
         return false;
+    }
+
+    if (rcasEnabled)
+    {
+        VkImageSubresourceRange range {};
+        range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        range.baseMipLevel = 0;
+        range.levelCount = 1;
+        range.baseArrayLayer = 0;
+        range.layerCount = 1;
+
+        RCAS->SetImageLayout(InCmdBuffer, RCAS->GetImage(), VK_IMAGE_LAYOUT_GENERAL,
+                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, range);
+        RCAS->SetImageLayout(InCmdBuffer, finalOutputImage, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL, range);
+
+        RcasConstants rcasConstants {};
+        rcasConstants.Sharpness = _sharpness;
+        rcasConstants.DisplayWidth = TargetWidth();
+        rcasConstants.DisplayHeight = TargetHeight();
+        InParameters->Get(NVSDK_NGX_Parameter_MV_Scale_X, &rcasConstants.MvScaleX);
+        InParameters->Get(NVSDK_NGX_Parameter_MV_Scale_Y, &rcasConstants.MvScaleY);
+        rcasConstants.DisplaySizeMV = !(GetFeatureFlags() & NVSDK_NGX_DLSS_Feature_Flags_MVLowRes);
+        rcasConstants.RenderHeight = RenderHeight();
+        rcasConstants.RenderWidth = RenderWidth();
+
+        VkExtent2D outExtent = { params.outputTexture.width, params.outputTexture.height };
+
+        RCAS->Dispatch(Device, InCmdBuffer, rcasConstants, RCAS->GetImageView(), params.velocityTexture.imageView,
+                       finalOutputView, outExtent);
     }
 
     _frameCount++;

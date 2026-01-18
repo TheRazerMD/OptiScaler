@@ -98,6 +98,9 @@ bool FSR2FeatureVk212::Init(VkInstance InInstance, VkPhysicalDevice InPD, VkDevi
     GIPA = InGIPA;
     GDPA = InGDPA;
 
+    if (RCAS == nullptr)
+        RCAS = std::make_unique<RCAS_Vk>("RCAS", InDevice, InPD);
+
     return InitFSR2(InParameters);
 }
 
@@ -354,6 +357,52 @@ bool FSR2FeatureVk212::Evaluate(VkCommandBuffer InCmdBuffer, NVSDK_NGX_Parameter
         }
     }
 
+    VkImageView finalOutputView = ((NVSDK_NGX_Resource_VK*) paramOutput)->Resource.ImageViewInfo.ImageView;
+    VkImage finalOutputImage = ((NVSDK_NGX_Resource_VK*) paramOutput)->Resource.ImageViewInfo.Image;
+
+    _sharpness = GetSharpness(InParameters);
+    bool rcasEnabled = Config::Instance()->RcasEnabled.value_or(true) &&
+                       (_sharpness > 0.0f || (Config::Instance()->MotionSharpnessEnabled.value_or(false) &&
+                                              Config::Instance()->MotionSharpness.value_or(0.4) > 0.0f)) &&
+                       RCAS->CanRender();
+
+    if (rcasEnabled)
+    {
+        VkImage oldImage = RCAS->GetImage();
+
+        if (RCAS->CreateImageResource(
+                Device, PhysicalDevice, ((NVSDK_NGX_Resource_VK*) paramOutput)->Resource.ImageViewInfo.Width,
+                ((NVSDK_NGX_Resource_VK*) paramOutput)->Resource.ImageViewInfo.Height,
+                ((NVSDK_NGX_Resource_VK*) paramOutput)->Resource.ImageViewInfo.Format,
+                VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT))
+        {
+            params.output = Fsr212::ffxGetTextureResourceVK212(
+                &_context, RCAS->GetImage(), RCAS->GetImageView(),
+                ((NVSDK_NGX_Resource_VK*) paramOutput)->Resource.ImageViewInfo.Width,
+                ((NVSDK_NGX_Resource_VK*) paramOutput)->Resource.ImageViewInfo.Height,
+                ((NVSDK_NGX_Resource_VK*) paramOutput)->Resource.ImageViewInfo.Format, (wchar_t*) L"FSR2_Output",
+                Fsr212::FFX_RESOURCE_STATE_UNORDERED_ACCESS);
+
+            VkImageSubresourceRange range {};
+            range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            range.baseMipLevel = 0;
+            range.levelCount = 1;
+            range.baseArrayLayer = 0;
+            range.layerCount = 1;
+
+            VkImageLayout oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+            if (oldImage != VK_NULL_HANDLE && oldImage == RCAS->GetImage())
+                oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+            RCAS->SetImageLayout(InCmdBuffer, RCAS->GetImage(), oldLayout, VK_IMAGE_LAYOUT_GENERAL, range);
+        }
+        else
+        {
+            rcasEnabled = false;
+        }
+    }
+
     _hasColor = params.color.resource != nullptr;
     _hasDepth = params.depth.resource != nullptr;
     _hasMV = params.motionVectors.resource != nullptr;
@@ -379,26 +428,34 @@ bool FSR2FeatureVk212::Evaluate(VkCommandBuffer InCmdBuffer, NVSDK_NGX_Parameter
         params.motionVectorScale.y = MVScaleY;
     }
 
-    if (Config::Instance()->OverrideSharpness.value_or_default())
+    if (rcasEnabled)
     {
-        params.enableSharpening = Config::Instance()->Sharpness.value_or_default() > 0.0f;
-        params.sharpness = Config::Instance()->Sharpness.value_or_default();
+        params.enableSharpening = false;
+        params.sharpness = 0.0f;
     }
     else
     {
-        float shapness = 0.0f;
-        if (InParameters->Get(NVSDK_NGX_Parameter_Sharpness, &shapness) == NVSDK_NGX_Result_Success)
+        if (Config::Instance()->OverrideSharpness.value_or_default())
         {
-            _sharpness = shapness;
-
-            params.enableSharpening = shapness > 0.0f;
-
-            if (params.enableSharpening)
+            params.enableSharpening = Config::Instance()->Sharpness.value_or_default() > 0.0f;
+            params.sharpness = Config::Instance()->Sharpness.value_or_default();
+        }
+        else
+        {
+            float shapness = 0.0f;
+            if (InParameters->Get(NVSDK_NGX_Parameter_Sharpness, &shapness) == NVSDK_NGX_Result_Success)
             {
-                if (shapness > 1.0f)
-                    params.sharpness = 1.0f;
-                else
-                    params.sharpness = shapness;
+                _sharpness = shapness;
+
+                params.enableSharpening = shapness > 0.0f;
+
+                if (params.enableSharpening)
+                {
+                    if (shapness > 1.0f)
+                        params.sharpness = 1.0f;
+                    else
+                        params.sharpness = shapness;
+                }
             }
         }
     }
@@ -438,6 +495,36 @@ bool FSR2FeatureVk212::Evaluate(VkCommandBuffer InCmdBuffer, NVSDK_NGX_Parameter
     {
         LOG_ERROR("ffxFsr2ContextDispatch error: {0}", ResultToString212(result));
         return false;
+    }
+
+    if (rcasEnabled)
+    {
+        VkImageSubresourceRange range {};
+        range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        range.baseMipLevel = 0;
+        range.levelCount = 1;
+        range.baseArrayLayer = 0;
+        range.layerCount = 1;
+
+        RCAS->SetImageLayout(InCmdBuffer, RCAS->GetImage(), VK_IMAGE_LAYOUT_GENERAL,
+                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, range);
+        RCAS->SetImageLayout(InCmdBuffer, finalOutputImage, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL, range);
+
+        RcasConstants rcasConstants {};
+        rcasConstants.Sharpness = _sharpness;
+        rcasConstants.DisplayWidth = TargetWidth();
+        rcasConstants.DisplayHeight = TargetHeight();
+        InParameters->Get(NVSDK_NGX_Parameter_MV_Scale_X, &rcasConstants.MvScaleX);
+        InParameters->Get(NVSDK_NGX_Parameter_MV_Scale_Y, &rcasConstants.MvScaleY);
+        rcasConstants.DisplaySizeMV = !(GetFeatureFlags() & NVSDK_NGX_DLSS_Feature_Flags_MVLowRes);
+        rcasConstants.RenderHeight = RenderHeight();
+        rcasConstants.RenderWidth = RenderWidth();
+
+        VkExtent2D outExtent = { params.output.description.width, params.output.description.height };
+
+        RCAS->Dispatch(Device, InCmdBuffer, rcasConstants, RCAS->GetImageView(),
+                       ((NVSDK_NGX_Resource_VK*) paramVelocity)->Resource.ImageViewInfo.ImageView, finalOutputView,
+                       outExtent);
     }
 
     _frameCount++;

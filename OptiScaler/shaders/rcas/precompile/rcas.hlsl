@@ -1,7 +1,7 @@
 // Based on this Reshade shader
 // https://github.com/RdenBlaauwen/RCAS-for-ReShade
 
-cbuffer Params : register(b0)
+cbuffer Params : register(b0, space0)
 {
     float Sharpness;
     float Contrast;
@@ -21,8 +21,11 @@ cbuffer Params : register(b0)
     int DisplayHeight;
 };
 
+[[vk::binding(1, 0)]]
 Texture2D<float3> Source : register(t0);
+[[vk::binding(2, 0)]]
 Texture2D<float2> Motion : register(t1);
+[[vk::binding(3, 0)]]
 RWTexture2D<float3> Dest : register(u0);
 
 float getRCASLuma(float3 rgb)

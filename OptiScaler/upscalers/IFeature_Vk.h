@@ -2,6 +2,8 @@
 #include <vulkan/vulkan.hpp>
 #include "IFeature.h"
 
+#include <shaders/rcas/RCAS_Vk.h>
+
 class IFeature_Vk : public virtual IFeature
 {
   private:
@@ -11,6 +13,8 @@ class IFeature_Vk : public virtual IFeature
     VkDevice Device = nullptr;
     PFN_vkGetInstanceProcAddr GIPA = nullptr;
     PFN_vkGetDeviceProcAddr GDPA = nullptr;
+
+    std::unique_ptr<RCAS_Vk> RCAS;
 
   public:
     virtual bool Init(VkInstance InInstance, VkPhysicalDevice InPD, VkDevice InDevice, VkCommandBuffer InCmdList,
