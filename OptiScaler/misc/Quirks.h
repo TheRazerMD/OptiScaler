@@ -72,13 +72,15 @@ struct QuirkEntry
 // exeName has to be lowercase
 static const QuirkEntry quirkTable[] = {
 
+    // Red Dead Redemption 2
+    // Spoofing causes FSR2 inputs crash, DLSS inputs need OptiPatcher to avoid artifacts/crashes anyway
+    QUIRK_ENTRY("rdr2.exe", GameQuirk::DisableFSR3Inputs, GameQuirk::DisableDxgiSpoofing),
+    QUIRK_ENTRY("playrdr2.exe", GameQuirk::DisableFSR3Inputs, GameQuirk::DisableDxgiSpoofing),
+
     // Red Dead Redemption
     QUIRK_ENTRY("rdr.exe", GameQuirk::SkipFsr3Method, GameQuirk::NoFSRFGFirstSwapchain, GameQuirk::DisableDxgiSpoofing),
     QUIRK_ENTRY("playrdr.exe", GameQuirk::SkipFsr3Method, GameQuirk::NoFSRFGFirstSwapchain,
                 GameQuirk::DisableDxgiSpoofing),
-
-    // No Man's Sky
-    QUIRK_ENTRY("nms.exe", GameQuirk::KernelBaseHooks, GameQuirk::VulkanDLSSBarrierFixup),
 
     // Visions of Mana
     // Use FSR2 Pattern Matching to fix broken FSR2 detection
@@ -95,10 +97,6 @@ static const QuirkEntry quirkTable[] = {
 
     // Where Winds Meet
     QUIRK_ENTRY("wwm.exe", GameQuirk::DisableXeFGChecks),
-
-    // World War Z
-    QUIRK_ENTRY("wwzretail.exe", GameQuirk::UseFsr2VulkanInputs, GameQuirk::EnableVulkanExtensionSpoofing,
-                GameQuirk::DisableDxgiSpoofing),
 
     // Trails in the Sky 1st Chapter
     QUIRK_ENTRY("sora_1st.exe", GameQuirk::UseFsr2Dx11Inputs, GameQuirk::DisableDxgiSpoofing),
@@ -252,11 +250,9 @@ static const QuirkEntry quirkTable[] = {
 
     // Disable FSR2/3 inputs due to crashing/custom implementations
     //
-    // Red Dead Redemption 2, Forgive Me Father 2, Revenge of the Savage Planet, F1 22, Metal Eden, Until Dawn, Bloom
-    // and Rage, 171, Microsoft Flight Simulator (2020) - MSFS2020, Star Wars: Outlaws, Banishers: Ghosts of New Eden,
-    // Rune Factory Guardians of Azuma, Supraworld, F1 Manager 2024, Keeper (+ WinGDK PaganIdol version)
-    QUIRK_ENTRY("rdr2.exe", GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs),
-    QUIRK_ENTRY("playrdr2.exe", GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs),
+    // Forgive Me Father 2, Revenge of the Savage Planet, F1 22, Metal Eden, Until Dawn, Bloomand Rage, 171, Microsoft
+    // Flight Simulator (2020) - MSFS2020, Star Wars: Outlaws, Banishers: Ghosts of New Eden,Rune Factory Guardians of
+    // Azuma, Supraworld, F1 Manager 2024, Keeper (+ WinGDK PaganIdol version)
     QUIRK_ENTRY_UE(fmf2, GameQuirk::DisableFSR2Inputs, GameQuirk::DisableFSR3Inputs),
     QUIRK_ENTRY_UE(towers, GameQuirk::DisableFSR2Inputs,
                    GameQuirk::DisableFSR3Inputs), // Revenge of the Savage Planet
@@ -296,7 +292,8 @@ static const QuirkEntry quirkTable[] = {
     // ------
 
     // No Man's Sky
-    QUIRK_ENTRY("nms.exe", GameQuirk::EnableVulkanSpoofing, GameQuirk::EnableVulkanExtensionSpoofing),
+    QUIRK_ENTRY("nms.exe", GameQuirk::KernelBaseHooks, GameQuirk::VulkanDLSSBarrierFixup,
+                GameQuirk::EnableVulkanSpoofing, GameQuirk::EnableVulkanExtensionSpoofing),
 
     // RTX Remix
     QUIRK_ENTRY("nvremixbridge.exe", GameQuirk::EnableVulkanSpoofing, GameQuirk::EnableVulkanExtensionSpoofing,
@@ -306,7 +303,12 @@ static const QuirkEntry quirkTable[] = {
     QUIRK_ENTRY("enshrouded.exe", GameQuirk::EnableVulkanSpoofing, GameQuirk::EnableVulkanExtensionSpoofing,
                 GameQuirk::LoadVulkanManually),
 
+    // World War Z
+    QUIRK_ENTRY("wwzretail.exe", GameQuirk::UseFsr2VulkanInputs, GameQuirk::EnableVulkanExtensionSpoofing,
+                GameQuirk::DisableDxgiSpoofing),
+
     // Baldur's Gate 3
+    // VK Ext spoof needed for FSR3
     QUIRK_ENTRY("bg3.exe", GameQuirk::EnableVulkanExtensionSpoofing),
 
 };
